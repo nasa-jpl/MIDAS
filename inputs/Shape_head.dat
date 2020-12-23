@@ -1,0 +1,6 @@
+# 01_0000_002 | Inter-Dipole Distance:  3.00000000E+00 um
+   1.0000   0.0000   0.0000 # a_1 vector
+   0.0000   1.0000   0.0000 # a_2 vector
+   1.       1.       1.     # d_x/d  d_y/d  d_z/d (normally 1 1 1 )
+   0.5      0.5      0.5    # location in lattice of "target origin"
+# um | a  3.14326249E+01 | p  2.56680000E+03 | s  4.96080000E+04 | v  1.30086000E+05

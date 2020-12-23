@@ -1,0 +1,25 @@
+#!/bin/bash
+#----------------------------------------------------
+# SLURM job script to run MY MPI NESCoP code
+#----------------------------------------------------
+#SBATCH -J job_NESCoP    # Job name
+#SBATCH -o mpi_job.e%j   # Name of stdout output file
+#SBATCH -e mpi_job.e%j   # Name of stdout output file
+#SBATCH -p development   # Queue name
+#SBATCH -N 2             # Total number of nodes requested
+#SBATCH -n 48            # Total number of mpi tasks requested
+#SBATCH -t 02:00:00      # Run time (hh:mm:ss) 
+
+# Slurm email notifications are now working on Lonestar 5 
+#SBATCH --mail-user=ines.fenni@gmail.com
+#SBATCH --mail-type=begin   # email me when the job starts
+#SBATCH --mail-type=end     # email me when the job finishes
+
+# Launch the MPI application using ibrun
+module load vtune/18.0.2 
+time amplxe-cl -collect hotspots -- ibrun ./nescop>Sim_MPI_NESCoP_01-16-2019_12h46
+
+#Note:  ibrun does not bind tasks or threads by default
+#       To bind task/threads to sockets or cores, you must use
+#       ibrun with tacc_affinity or use the "srun" command directly
+#       with the "--cpu_bind" option.
