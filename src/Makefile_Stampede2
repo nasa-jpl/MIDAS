@@ -13,7 +13,7 @@ OBJECTS=${SOURCES:.f90=.o}
 
 
 midas: ${OBJECTS}
-	${FC} -o nescop ${OBJECTS} ${FFLAGS} ${LDFLAGS} 
+	${FC} -o midas ${OBJECTS} ${FFLAGS} ${LDFLAGS} 
 
 clean:
 	@-rm *.o *.mod midas
