@@ -8,19 +8,14 @@ MODULE Initialization
 	    Real(kind=8) :: theta,phi !,x,y,z
     end type Dipole 
 
-    !! Definition of the object particule
-    type Particle
-        Integer :: type_p
-        Character*9 :: info_p
-        Real(kind=8) :: Dp,ap
-        COMPLEX(real64) :: m_p_min,Eps_p_min,m_p_max, Eps_p_max
-        Real(kind=8) :: lambda_p_min,lambda_p_max, Sc_p ! Sc_p will be the original, or largest uniform cell size : needed for some division into blocks measurments
-        Integer :: Dlamb,Nbc_p ! Nbc_p will be updated if adaptive_mesh==1
-        Real(kind=8) :: pr_dx, pr_dy, pr_dz
-        Real(kind=8) :: pr_xmin, pr_xmax,pr_ymin, pr_ymax 
-        Real(kind=8) :: pr_zmin, pr_zmax
-        Integer :: NbBl
-    end type Particle 
+    !! Definition of the object/scatterer
+    type Scatterer
+        Integer :: type_s, Dlamb
+        Character*9 :: info_s
+        Real(kind=8) :: dm, a, Sc, lambda_min,lambda_max ! Sc will be the original, or largest uniform cell size : needed for some division into blocks measurments
+        Real(kind=8) :: dx,dy,dz,xmin,xmax,ymin,ymax,zmin,zmax
+        COMPLEX(real64) :: m_min,Eps_min,m_max, Eps_max
+    end type Scatterer 
 
     !! Definition of the object cell
     type Cell 
@@ -53,15 +48,16 @@ MODULE Initialization
     Real(kind=8),Parameter :: Ro= 1E6              !(g/m3) Density of water
     Real(kind=8),Parameter :: C0= 3E8; !299792458;
     
-    Integer, Parameter :: Round_Dp = 4   ! while generating the diameter of the particles 
-                                         ! we keep 'Round_Dp' digit of precision (when Dp is expressed in mm) !
-    Integer, Parameter :: Round_Sp = 6  ! same for Sc, always expressed in mm, we keep 3 digit of precison
+    !! precision (to reconsider later)
+    Integer, Parameter :: Round_D = 4   ! while generating the diameter of the scatterer 
+                                         ! we keep 'Round_Dp' digit of precision (when Dp is expressed in m or mm) !
+    Integer, Parameter :: Round_S = 6  ! same for Sc, always expressed in m or mm (depending on if freq is in MHz or GHz), we keep 3 digit of precison
     
-    ! Parmeters used when discretizing the particles 
-    Integer, Parameter :: NBc_max_per_part = 40000;
+    ! Parmeters used when discretizing the scatterer 
+    Integer, Parameter :: NBc_max_alloc = 40000;
     
-    ! Parmeters used when dividing the particles into blocks
-    Integer, Parameter :: NbBlock_p_max = 10000;
+    ! Parmeters used when dividing the scatterer into blocks
+    Integer, Parameter :: NbBlock_s_max = 10000;
     Integer, Parameter :: Fact_Nbext_max=10;  ! Nbext_max = Fact_Nbext_max*maxval(CBFM_Blocks(:)%Nbc_b);
     Integer,Parameter :: Nbcel_Blk_max = 2000;
     Real(kind=8),Parameter :: hB_test_step = (1./2.); !! this parameter is used when dividing into blocks; the next hB to test is equal to hB_test_step*current hB  

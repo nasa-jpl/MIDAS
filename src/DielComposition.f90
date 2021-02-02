@@ -1,4 +1,4 @@
-SUBROUTINE Particle_DielComposition(m_lambdas,SimParticle,Cells)
+SUBROUTINE DielComposition(m_lambdas,Cells)
     
     USE Initialization
     USE common_variables
@@ -8,7 +8,6 @@ SUBROUTINE Particle_DielComposition(m_lambdas,SimParticle,Cells)
     
     ! IN/OUT 
     Complex, Dimension(Ndiel,Nfreq), INTENT(IN) :: m_lambdas
-    type (Particle), INTENT(INOUT) :: SimParticle
     type (Cell), Dimension(Nbc), INTENT(INOUT):: Cells
     
     ! local 
@@ -41,7 +40,7 @@ SUBROUTINE Particle_DielComposition(m_lambdas,SimParticle,Cells)
             ip = 2*mrp*mip;
             Cells(ii)%Eps_cell = rp+J*ip  
             Cells(ii)%lambda_cell = Lambda_w/sqrt(rp)
-            ! Update particle Dlam
+            ! Update scatterer Dlam
             Cells(ii)%Dlamb_cell = Cells(ii)%lambda_cell/Cells(ii)%Sc;
         EndDo        
     else ! I think it will be the same as fromshapefile and fromdielcompositionfile as we will use also Cells(ii)%num_diel and m_lambdas properly generated for
@@ -49,7 +48,7 @@ SUBROUTINE Particle_DielComposition(m_lambdas,SimParticle,Cells)
         Write(*,*) 'This dielcomp_option is still under development ! Thank you for your patience!';
         stop 1;
     EndIf     
-END SUBROUTINE Particle_DielComposition
+END SUBROUTINE DielComposition
     
 SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
     

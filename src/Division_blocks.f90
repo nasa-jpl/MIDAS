@@ -1,11 +1,11 @@
-SUBROUTINE Division_blocks(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)
+SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)
     
     USE Initialization
     USE common_variables
     USE MPI
     
     !IN/OUT 
-    type (Particle), INTENT(INOUT) :: SimParticle
+    type (Scatterer), INTENT(INOUT) :: SimScatterer
     type (Cell), Dimension(Nbc), INTENT(INOUT) :: Cells
     Integer, Dimension(7), INTENT(IN) :: Ncells_SphDomains
     type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
@@ -18,7 +18,7 @@ SUBROUTINE Division_blocks(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBF
     Real(kind=8), Dimension(:), allocatable :: hB_test
     
     INTERFACE        
-        SUBROUTINE Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,error_division)
+        SUBROUTINE Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,error_division)
         
             USE Initialization
             USE common_variables
@@ -26,16 +26,16 @@ SUBROUTINE Division_blocks(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBF
             Implicit NONE
             
             !IN/OUT 
-            type (Particle), INTENT(INOUT) :: SimParticle
+            type (Scatterer), INTENT(INOUT) :: SimScatterer
             type (Cell), Dimension(Nbc), INTENT(INOUT) :: Cells
             type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
             Integer, Dimension(:,:), allocatable, INTENT(OUT):: MLCBFM_BlDistr
             Integer, INTENT(INOUT) :: error_division            
         END SUBROUTINE Division_blocks_csh
         
-        SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_division)
+        SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_division)
 
-            ! The division into blocks depends on the type of the considered particle
+            ! The division into blocks depends on the type of the considered scatterer
             ! It is much simpler for the conventional shapes : Sphere, Cylinder ...
             ! The division here is for the complex geometries (from file) 
             ! STILL can be improved ...        
@@ -46,7 +46,7 @@ SUBROUTINE Division_blocks(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBF
             Implicit NONE
             
             !IN/OUT 
-            type (Particle), INTENT(INOUT) :: SimParticle
+            type (Scatterer), INTENT(INOUT) :: SimScatterer
             type (Cell), Dimension(Nbc), INTENT(INOUT) :: Cells
             Integer, Dimension(7), INTENT(IN) :: Ncells_SphDomains
             type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
@@ -56,11 +56,11 @@ SUBROUTINE Division_blocks(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBF
     
     END INTERFACE
     
-    Type_Par = SimParticle%type_p 
+    Type_Par = SimScatterer%type_s 
     
     
     if ((Type_Par .eq. 1) .or. (Type_Par .eq. 6)) then              
-        Call Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,err);
+        Call Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,err);
                 
         if (err .ne. 0) then 
             Write(*,'(a)') 'Something went wrong when dividing into blocks !'
@@ -74,8 +74,8 @@ SUBROUTINE Division_blocks(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBF
         !! Division into M blocks of height hBlock 
         !! To get closer to the average NBlock indicated in simulation_data, 
         !! hBlock = hBlock*hB_test_step then Redivide 
-        dmin = min(SimParticle%pr_dx,SimParticle%pr_dy,SimParticle%pr_dz);
-        dmax = max(SimParticle%pr_dx,SimParticle%pr_dy,SimParticle%pr_dz);
+        dmin = min(SimScatterer%dx,SimScatterer%dy,SimScatterer%dz);
+        dmax = max(SimScatterer%dx,SimScatterer%dy,SimScatterer%dz);
         hBlock = dmax;
                 
         !! modif to transfer to MPI code
@@ -86,7 +86,7 @@ SUBROUTINE Division_blocks(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBF
         err = 0;
         ! the second condition is to stop trying depending on Navg_cells
         Do while ((I .le. m) .and. (N .gt. Navg_cells)) 
-            Call Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,err);
+            Call Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,err);
             if ((err .ne. 0) .AND. (I .eq. 1)) then
                 Write(*,'(a)') 'Something went wrong in the division into blocks !!';
                 STOP 1;
@@ -101,14 +101,14 @@ SUBROUTINE Division_blocks(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBF
             I = I+1;
         EndDo
                
-        if (Nbc .le. 2*Navg_cells) then  ! if Nbc < 2*Navg_cells the particle is simply divided to 2 blocks
+        if (Nbc .le. 2*Navg_cells) then  ! if Nbc < 2*Navg_cells the scatterer is simply divided to 2 blocks
             hBlock = dmax;
         else              
             ! to obtain the final division into blocks, we recover hBlock which resulted in the minimum Diff_avg
             hBlock = hB_test(minloc(Diff_avg,1));           
         endif
         err = 0;
-        Call Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,err)
+        Call Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,err)
         ! Finally, we save the maximum height resulting from 
         ! the division into blocks in /Param_MoMCBFM/ hBlock
         hBlock = 2*maxval(CBFM_Blocks(:)%BSphCont(4));     
@@ -121,9 +121,9 @@ END SUBROUTINE Division_blocks
     
 
     
-SUBROUTINE Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,error_division)
+SUBROUTINE Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,error_division)
 
-    ! The division into blocks depends on the type of the considered particle
+    ! The division into blocks depends on the type of the considered scatterer
     ! It is much simpler for the conventional shapes : Sphere, Cylinder ...
     ! The division here is for the complex geometries (from file) 
     ! STILL can be improved ...        
@@ -134,7 +134,7 @@ SUBROUTINE Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,erro
     Implicit NONE
     
     !IN/OUT 
-    type (Particle), INTENT(INOUT) :: SimParticle
+    type (Scatterer), INTENT(INOUT) :: SimScatterer
     type (Cell), Dimension(Nbc), INTENT(INOUT) :: Cells
     type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
     Integer, Dimension(:,:), allocatable, INTENT(OUT):: MLCBFM_BlDistr
@@ -176,8 +176,8 @@ SUBROUTINE Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,erro
     !**********************GEOMETRY BASED DIVISION INTO BLOCKS***********************
     !********************************************************************************
     ! let us allocate a primary CBFM_Blocks and a new Cells to put in the blocks and 
-    ! the reorganized cells while scanning the particles
-    Allocate(CBFM_Blocks_tmp(NbBlock_p_max))
+    ! the reorganized cells while scanning the scattterer
+    Allocate(CBFM_Blocks_tmp(NbBlock_s_max))
     Allocate(New_Cells(Nbc)); ! the cells will be reorganized depending in the position of the block
                                 ! to which they belong
     curs_new_cel_part = 1;
@@ -187,35 +187,35 @@ SUBROUTINE Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,erro
     iB = 0;
     
     !! THIS CODE IS NOW INTENDED FOR SINGLE SCATTERING PROPERTIES 
-    Type_Par = SimParticle%type_p   
-    info_p_fl = SimParticle%info_p    
+    Type_Par = SimScatterer%type_s   
+    info_p_fl = SimScatterer%info_s    
       
-    ncp = SimParticle%Nbc_p;
-    Sc = SimParticle%Sc_p;
+    ncp = Nbc;
+    Sc = SimScatterer%Sc;
         
-    ! here we consider only the cells composing the current particle
-    Allocate(CBFM_Blocks_p_tmp(NbBlock_p_max)); 
+    ! here we consider only the cells composing the current scatterer
+    Allocate(CBFM_Blocks_p_tmp(NbBlock_s_max)); 
     Allocate(positions(3,ncp)); 
     positions(1,1:ncp) = Cells(1:ncp)%Xc
     positions(2,1:ncp) = Cells(1:ncp)%Yc
     positions(3,1:ncp) = Cells(1:ncp)%Zc      
             
       
-    !! The idea is to identify the direction along which the particle has its maximum size --> dir 0
-    !! we divide the particle along dir 0 
+    !! The idea is to identify the direction along which the scatterer has its maximum size --> dir 0
+    !! we divide the scatterer along dir 0 
     !! and then in an iterative way, divide along dir1 and dir 2 (the other two directions) 
     !! depending on the maxim size of the block to divide !
-    pr_dims(1) = SimParticle%pr_dx
-    pr_dims(2) = SimParticle%pr_dy
-    pr_dims(3) = SimParticle%pr_dz
+    pr_dims(1) = SimScatterer%dx
+    pr_dims(2) = SimScatterer%dy
+    pr_dims(3) = SimScatterer%dz
     Allocate(order_div(3));
     Do jj=1,3
     pos_max = minloc(pr_dims,1,pr_dims==maxval(pr_dims))  
     pr_dims(pos_max) = 0.
     order_div(jj) = pos_max       
     EndDo
-    pr_dims(1) = SimParticle%pr_dx; pr_dims(2) = SimParticle%pr_dy
-    pr_dims(3) = SimParticle%pr_dz
+    pr_dims(1) = SimScatterer%dx; pr_dims(2) = SimScatterer%dy
+    pr_dims(3) = SimScatterer%dz
       
     !Write(*,*) 'order_div =',order_div
     !! *****************************************************************************
@@ -241,11 +241,11 @@ SUBROUTINE Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,erro
         ! to distribute them 
         Allocate(cells_in_blocks(NbBl,ncp+1))
         if (dir0==1) Then
-        dmin = SimParticle%pr_xmin; 
+        dmin = SimScatterer%xmin; 
         elseif (dir0==2) Then
-        dmin = SimParticle%pr_ymin; 
+        dmin = SimScatterer%ymin; 
         Else
-        dmin = SimParticle%pr_zmin; 
+        dmin = SimScatterer%zmin; 
         EndIf
           
         !dstep = hBldir0;
@@ -324,7 +324,6 @@ SUBROUTINE Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,erro
            endif
 	EndDo
         NBlocks = NbBl
-        SimParticle%NbBl = NBlocks; 
         NbintBl = 0; 
 
         Deallocate(CBFM_Blocks_p); Allocate(CBFM_Blocks_p(NBlocks));
@@ -471,7 +470,7 @@ SUBROUTINE Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,erro
               
                 Else
                     cursB = cursB +1; numB_gl = curs_glb_Blk + cursB -1;
-                    if (cursB .le. NbBlock_p_max) then 
+                    if (cursB .le. NbBlock_s_max) then 
                         CBFM_Blocks_p_tmp(cursB) = CBFM_Blocks_p(iiB);                    
                         CBFM_Blocks_p_tmp(cursB)%num_block = numB_gl;   
                         Do num_cel=1,Nbc_block
@@ -511,7 +510,6 @@ SUBROUTINE Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,erro
         ! Update the new_cells and CBFM_Blocks_tmp 
         CBFM_Blocks_tmp(curs_glb_Blk:curs_glb_Blk+NbBl-1) = CBFM_Blocks_p(1:NbBl); 
         curs_glb_Blk = curs_glb_Blk + NbBl; Nblocks = Nblocks + NbBl; 
-        SimParticle%NbBl = NbBl;
         NbintBl = 0; ! not applicable to this type of division
           
         ! And finally update Cells 
@@ -521,7 +519,7 @@ SUBROUTINE Division_blocks_csh(SimParticle,Cells,CBFM_Blocks,MLCBFM_BlDistr,erro
         Deallocate(New_Cells,CBFM_Blocks_tmp);
     endif
     If (MLCBFM ==1) Then
-      !! For the moment, I am using a simple 2 Levels CBFM and assume that I have one single particle for the multilevel CBFM 
+      !! For the moment, I am using a simple 2 Levels CBFM and assume that I have one single scatterer for the multilevel CBFM 
       ! test level 1 
       !NbBlksL2 = 1
       !NberLevels = 1;
@@ -587,9 +585,9 @@ END SUBROUTINE Division_blocks_csh
 !******************************************************************************************
 !******************************************************************************************
 
-SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_division)
+SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_division)
 
-    ! The division into blocks depends on the type of the considered particle
+    ! The division into blocks depends on the type of the considered scatterer
     ! It is much simpler for the conventional shapes : Sphere, Cylinder ...
     ! The division here is for the complex geometries (from file) 
     ! STILL can be improved ...        
@@ -600,7 +598,7 @@ SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,M
     Implicit NONE
     
     !IN/OUT 
-    type (Particle), INTENT(INOUT) :: SimParticle
+    type (Scatterer), INTENT(INOUT) :: SimScatterer
     type (Cell), Dimension(Nbc), INTENT(INOUT) :: Cells
     Integer, Dimension(7), INTENT(IN) :: Ncells_SphDomains
     type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
@@ -635,24 +633,24 @@ SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,M
     type (CBFM_Block), Dimension(:), allocatable:: Blocks_extern,Blocks_extern_tmp
     
     error_division = 0;
-    Type_Par = SimParticle%type_p
-    info_p_fl = trim(SimParticle%info_p);
-    Sc = SimParticle%Sc_p
+    Type_Par = SimScatterer%type_s
+    info_p_fl = trim(SimScatterer%info_s);
+    Sc = SimScatterer%Sc
     
-    if (Type_Par == 6) Then ! these information was used to discretize the particle
+    if (Type_Par == 6) Then ! these information was used to discretize the scatterer
         Read(info_p_fl,'(a,i2,a,f5.2)') ch1,cheb_l,ch2,cheb_eps;        
-        ap_cheb = (1.+cheb_eps)*SimParticle%Dp/2.;
-        Dp_cheb = anint(2*ap_cheb*10**Round_Sp)/10**Round_Sp;
+        ap_cheb = (1.+cheb_eps)*SimScatterer%dm/2.;
+        Dp_cheb = anint(2*ap_cheb*10**Round_S)/10**Round_S;
         Nbcels_Dp = nint(Dp_cheb/Sc);        
         ! put back ap to r0 
-        ap = SimParticle%Dp/2.; 
+        ap = SimScatterer%dm/2.; 
         Nbcels_ext = ceiling((ap_cheb - (0.8*ap/sqrt(3.)))/Sc); 
         Nbcels_int = Nbcels_Dp - 2*Nbcels_ext;
         ap_int = (Nbcels_int*Sc)/2.; 
         ap_ext = ap_cheb;
     elseif (Type_Par == 1) then 
-        ap = SimParticle%Dp/2.; 
-        Nbcels_Dp = nint(SimParticle%Dp/Sc);
+        ap = SimScatterer%dm/2.; 
+        Nbcels_Dp = nint(SimScatterer%dm/Sc);
         Nbcels_ext = ceiling((ap - (0.8*ap/sqrt(3.)))/Sc); 
         Nbcels_int = Nbcels_Dp - 2*Nbcels_ext;
         ap_int = (Nbcels_int*Sc)/2.; 
@@ -670,10 +668,10 @@ SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,M
     
     curs_new_cel = 1;
     Allocate(New_Cells(Nbc));
-    Allocate(CBFM_Blocks_in(NbBlock_p_max))
+    Allocate(CBFM_Blocks_in(NbBlock_s_max))
     
-    ! For this type of particles, we have 7 domains to divide into blocks 
-    ! Start with the Cube inside the spherical particle 
+    ! For this type of scatterers, we have 7 domains to divide into blocks 
+    ! Start with the Cube inside the spherical scatterer 
     N1= Ncells_SphDomains(1); 
     
     if (N1 .le. Navg_cells) then 
@@ -721,7 +719,7 @@ SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,M
         d = ceiling((real(N1)/real(Navg_cells))**(1./3.));
         N = ceiling(N1/d**3.); h = h1/d;
         NbBl = d**3;
-        if (NbBl + 6 .le. NbBlock_p_max) then 
+        if (NbBl + 6 .le. NbBlock_s_max) then 
             Allocate(cells_in_blocks(NbBl,1+2*N)); ! the first column is to track cc per block ! 2*N here in case the division doesn't give equal blocks
             cells_in_blocks = 0;
             N1= Ncells_SphDomains(1);
@@ -766,7 +764,7 @@ SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,M
     Nblocks = NbBl;
     ! Now itertively divide into blocks the 6 other surrounding domains
     NbBl = 6;
-    Allocate(Blocks_extern(NbBl)); Allocate(Blocks_extern_tmp(NbBlock_p_max-NbBl));
+    Allocate(Blocks_extern(NbBl)); Allocate(Blocks_extern_tmp(NbBlock_s_max-NbBl));
     Blocks_extern(:)%Nbc_b = Ncells_SphDomains(2:7);
     Div_is_possible = .TRUE.;
     Do while (Div_is_possible)
@@ -789,7 +787,7 @@ SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,M
             ! check if the current block is 'divisable'
             CanDiv = (Nbc_block .gt. Navg_cells) .AND. &
                 (abs(Navg_cells-Nbc_block) .gt. abs(Navg_cells-Nbc_block/2)) .AND. & 
-                ((Nblocks + NbBl + 1) .le. NbBlock_p_max) ! Candidate to division
+                ((Nblocks + NbBl + 1) .le. NbBlock_s_max) ! Candidate to division
           
             if (CanDiv) Then                        
                 Div_is_possible = .TRUE.;
@@ -872,7 +870,7 @@ SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,M
                 Deallocate(cells_Block,positions,new_cells_Block);    
             Else
                 cursB = cursB +1; 
-                if (cursB .le. NbBlock_p_max) then 
+                if (cursB .le. NbBlock_s_max) then 
                     Blocks_extern_tmp(cursB) = Blocks_extern(iiB);                    
                     Blocks_extern_tmp(cursB)%num_block = Nblocks+cursB;   
                     Do num_cel=1,Nbc_block
@@ -903,8 +901,7 @@ SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,M
     deallocate(CBFM_Blocks_in,Blocks_extern);
     NbintBl = Nblocks;
     Nblocks = Nblocks + NbBl;
-    SimParticle%NbBl = Nblocks;  
-    
+        
     N = sum(CBFM_Blocks(1:Nblocks)%Nbc_b);
     if (N .NE. Nbc) then 
         error_division = 2;
@@ -912,7 +909,7 @@ SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,M
     endif
      
      
-    Type_Par = SimParticle%type_p 
+    Type_Par = SimScatterer%type_s 
     ! define a narrower contour for each block
     Do ii=1,Nblocks 
         CBFM_Blocks(ii)%num_block = ii;
@@ -939,7 +936,7 @@ SUBROUTINE Division_blocks_sph(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,M
         
 10  return; 
     
-    END SUBROUTINE Division_blocks_sph
+END SUBROUTINE Division_blocks_sph
 
     
 SUBROUTINE BlockCenter(NbcBlk,Blk,pos,BlkCent)
@@ -1089,7 +1086,7 @@ SUBROUTINE distributeCells(Nbc_td,NbBl,positions_td,dim_min,dim_step,Cells_td,ce
       Real(kind=8) :: cord     
   
       ! Now that the blocks are defined and ordred, we scan the cells 
-      ! belonging to the current particle to distribute them 
+      ! belonging to the current scatterer to distribute them 
       ! throughout the CBFM blocks (along Z for now)
       cells_in_blocks = 0;
       ! each row of cells_in_blocks contain in the first column the number of cells

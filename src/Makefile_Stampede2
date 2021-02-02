@@ -3,7 +3,7 @@ FC=mpif90
 LDFLAGS= -Wl,--start-group ${TACC_MKL_LIB}/libmkl_blas95_lp64.a ${TACC_MKL_LIB}/libmkl_lapack95_lp64.a \
         ${TACC_MKL_LIB}/libmkl_scalapack_lp64.a ${TACC_MKL_LIB}/libmkl_intel_lp64.a ${TACC_MKL_LIB}/libmkl_core.a \
         ${TACC_MKL_LIB}/libmkl_sequential.a  ${TACC_MKL_LIB}/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -ldl
-FFLAGS= -O3 -g -heap-arrays -warn noalignments -I${TACC_MKL_INC}/intel64/lp64 -I${TACC_MKL_INC}
+FFLAGS= -O0 -g -traceback -check all -heap-arrays -warn noalignments -I${TACC_MKL_INC}/intel64/lp64 -I${TACC_MKL_INC}
 
 SOURCES=${wildcard *.f90}
 OBJECTS=${SOURCES:.f90=.o}
@@ -19,4 +19,4 @@ clean:
 	@-rm *.o *.mod midas
 
 modules:
-	${FC} -c ${FFLAGS} Initialization.f90 common_variables.f90 stack_structure.f90 nrtype.f90 DiverseUtil.f90 precmod.f90 stringmod.f90
+	${FC} -c ${FFLAGS} Initialization.f90 Common_variables.f90 stack_structure.f90 nrtype.f90 DiverseUtil.f90 precmod.f90 stringmod.f90

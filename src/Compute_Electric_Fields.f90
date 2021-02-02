@@ -1,4 +1,4 @@
-SUBROUTINE Compute_Electric_Fields(SimParticle,Cells,Transmitters,Receivers,methods_names,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks)
+SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,methods_names,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks)
  
     USE Initialization
     USE common_variables
@@ -7,7 +7,7 @@ SUBROUTINE Compute_Electric_Fields(SimParticle,Cells,Transmitters,Receivers,meth
     Implicit none    
     
     !! IN/OUT
-    type (Particle), INTENT(IN) :: SimParticle
+    type (Scatterer), INTENT(IN) :: SimScatterer
     type (Cell), Dimension(Nbc), INTENT(IN) :: Cells
     type (Dipole), Dimension(NTr), INTENT(IN) :: Transmitters
     type (Dipole), Dimension(NRx_tot), INTENT(IN) :: Receivers
@@ -78,7 +78,7 @@ SUBROUTINE Compute_Electric_Fields(SimParticle,Cells,Transmitters,Receivers,meth
     !***************  CBFM-E  *********************
     !**********************************************    
     if (CBFM .NE. 0) Then
-        !! Compute Fields inside the particle *********************************
+        !! Compute Fields inside the scatterer *********************************
         Comp_time = 0
         call date_and_time(date_init,time_init,zone_init,values_init)
         !if (SR_Zc == 0) Then  
@@ -87,10 +87,7 @@ SUBROUTINE Compute_Electric_Fields(SimParticle,Cells,Transmitters,Receivers,meth
           else
               Call Compute_EFields_CBFME_ACA(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks,Transmitters,E_total);  
           EndIf
-        !Else   SR_Zc = 1 not implemented for now !
-            
-          !Call Compute_EFields_CBFME_SRZc(SimParticle,Cells,CBFM_Blocks,CBFM_Blocks_Ext,cp_CBFM_Blocks,&
-          !        Transmitters,E_total);          
+        !Else   SR_Zc = 1 not implemented for now !                   
         !Endif
         
         call date_and_time(date_final,time_final,zone_final,values_final)
@@ -125,9 +122,9 @@ SUBROUTINE Compute_Electric_Fields(SimParticle,Cells,Transmitters,Receivers,meth
             Write (10,*) ''  
         endif
         if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'tr') .OR. (NumIntType_t .eq. 'sm')) Then
-          call Compute_Scattering_Quantities_1('CBFM-E  ',SimParticle,Transmitters,Receivers,S_total,C_ext,C_abs)
+          call Compute_Scattering_Quantities_1('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
         else
-          call Compute_Scattering_Quantities_2('CBFM-E  ',SimParticle,Transmitters,Receivers,S_total,C_ext,C_abs)
+          call Compute_Scattering_Quantities_2('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
         endif
         Deallocate(E_total,S_total,C_ext,C_abs)  
     Endif
@@ -138,7 +135,7 @@ SUBROUTINE Compute_Electric_Fields(SimParticle,Cells,Transmitters,Receivers,meth
     !**********************************************    
     if (MoM .NE. 0) Then 
     !if ((MoM .NE. 0) .and. (rank .EQ. 0)) Then ! if we want to use/test with the single Task MoM   
-        !! Compute Fields inside the particle *********************************
+        !! Compute Fields inside the scatterer *********************************
         Comp_time = 0
         call date_and_time(date_init,time_init,zone_init,values_init)
         
@@ -160,9 +157,9 @@ SUBROUTINE Compute_Electric_Fields(SimParticle,Cells,Transmitters,Receivers,meth
         endif
                        
         if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'tr') .OR. (NumIntType_t .eq. 'sm')) Then
-          call Compute_Scattering_Quantities_1('CBFM-E  ',SimParticle,Transmitters,Receivers,S_total,C_ext,C_abs)
+          call Compute_Scattering_Quantities_1('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
         else
-          call Compute_Scattering_Quantities_2('CBFM-E  ',SimParticle,Transmitters,Receivers,S_total,C_ext,C_abs)
+          call Compute_Scattering_Quantities_2('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
         endif
         Deallocate(S_total,C_ext,C_abs)  
     Endif

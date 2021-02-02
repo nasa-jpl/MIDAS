@@ -1,4 +1,4 @@
-    SUBROUTINE Compute_Scattering_Quantities_1(nom_methode,SimParticle,Transmitters,Receivers,S_total,C_ext,C_abs)
+    SUBROUTINE Compute_Scattering_Quantities_1(nom_methode,SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
     
         USE Initialization
         USE common_variables
@@ -10,7 +10,7 @@
 
         !IN/OUT
         character(8), INTENT(IN):: nom_methode
-        type (Particle), INTENT(IN) :: SimParticle
+        type (Scatterer), INTENT(IN) :: SimScatterer
         type (Dipole), Dimension(NTr), INTENT(IN) :: Transmitters
         type (Dipole), Dimension(NRx_tot), INTENT(IN) :: Receivers
         COMPLEX(real64), Dimension(NRx_tot,4*NTr), INTENT(IN):: S_total
@@ -52,8 +52,8 @@
             Write (*,*) '-------------------- Scattered Quantities (',NumIntType_t,'/',NumIntType_r,') --------------------' 
             Write (*,*) ''
         EndIf
-        ap = SimParticle%Dp/2.;
-        X = K_air*SimParticle%Dp/2.
+        ap = SimScatterer%dm/2.;
+        X = K_air*SimScatterer%dm/2.
         Sfold_name = trim(SimOutfld_name)//Env_sep//'S_files';
         Qfold_name = trim(SimOutfld_name)//Env_sep//'Q_files';
 
@@ -616,7 +616,7 @@
     
     
     
-    SUBROUTINE Compute_Scattering_Quantities_2(nom_methode,SimParticle,Transmitters,Receivers,S_total,C_ext,C_abs)
+    SUBROUTINE Compute_Scattering_Quantities_2(nom_methode,SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
     
         USE Initialization
         USE common_variables
@@ -627,7 +627,7 @@
 
         !IN/OUT
         character(8), INTENT(IN):: nom_methode
-        type (Particle), INTENT(IN) :: SimParticle
+        type (Scatterer), INTENT(IN) :: SimScatterer
         type (Dipole), Dimension(NTr), INTENT(IN) :: Transmitters
         type (Dipole), Dimension(NRx_tot), INTENT(IN) :: Receivers
         COMPLEX(real64), Dimension(NRx_tot,4*NTr), INTENT(IN):: S_total
@@ -661,8 +661,8 @@
         Write (*,*) '-------------------- Scattred Quantities (',NumIntType_t,'/',NumIntType_r,') --------------------' 
         Write (*,*) ''
         
-        ap = SimParticle%Dp/2.;
-        X = K_air*SimParticle%Dp/2.
+        ap = SimScatterer%dm/2.;
+        X = K_air*SimScatterer%dm/2.
         
         Sfold_name = trim(SimOutfld_name)//Env_sep//'S_files';
         Qfold_name = trim(SimOutfld_name)//Env_sep//'Q_files';

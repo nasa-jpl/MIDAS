@@ -1,4 +1,4 @@
-SUBROUTINE Extend_blocks(SimParticle,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
+SUBROUTINE Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
 
     USE Initialization
     USE common_variables
@@ -7,7 +7,7 @@ SUBROUTINE Extend_blocks(SimParticle,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
     Implicit NONE
 
     !IN/OUT 
-    type(Particle), INTENT(IN) :: SimParticle
+    type(Scatterer), INTENT(IN) :: SimScatterer
     type(Cell), Dimension(Nbc), INTENT(IN) :: Cells
     type(CBFM_Block), Dimension(Nblocks), INTENT(INOUT) :: CBFM_Blocks
     Integer, Dimension(:,:), allocatable, INTENT(OUT) :: CBFM_Blocks_Ext
@@ -38,11 +38,11 @@ SUBROUTINE Extend_blocks(SimParticle,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
             
     ! Scan the blocks and determine the cells present in the peripheral of the block
     pp = 1
-    Type_Par = SimParticle%type_p  
+    Type_Par = SimScatterer%type_s  
     
     Block_init = 1;
-    Block_final = SimParticle%NbBl;
-    Sc = SimParticle%Sc_p;
+    Block_final = Nblocks;
+    Sc = SimScatterer%Sc;
     
     if ((Block_init .ne. Block_final) .and. (Nc_extended .ne. 0)) Then         
         Do BB=Block_init,Block_final
@@ -52,8 +52,8 @@ SUBROUTINE Extend_blocks(SimParticle,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
             yc_b1 = CBFM_Blocks(BB)%BSphCont(2);
             zc_b1 = CBFM_Blocks(BB)%BSphCont(3);
             ! determine the adjascent blocks based on the limit coordinate 
-            ! of each block belonging to this particle
-            Allocate(Badj(SimParticle%NbBl));
+            ! of each block belonging to this scatterer
+            Allocate(Badj(Nblocks));
             NbBadj = 0; Badj =0
           
             ! find the adjascent blocks 

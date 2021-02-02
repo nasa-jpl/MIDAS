@@ -60,7 +60,7 @@ SUBROUTINE Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_a
     Write (*,*) ''
     Write (*,*) ''
     Write (*,'(a)') '-------------------------------------------------------------------------------'
-    Write (*,'(a)') '-----Conventional MoM to Compute the Electric Fields Inside the Particles------'
+    Write (*,'(a)') '-----Conventional MoM to Compute the Electric Fields Inside the Scatterer------'
     Write (*,'(a)') '-------------------------------------------------------------------------------'           
     Write (*,*) ''
 

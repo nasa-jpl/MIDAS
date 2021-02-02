@@ -1,4 +1,4 @@
-SUBROUTINE UpdateCellsParameters(SimParticle,Cells,Upd_Cells)!,CBFM_Blocks,CBFM_Blocks_Ext,Upd_CBFM_Blocks_Ext)
+SUBROUTINE SetCellsParams(SimScatterer,Cells,Upd_Cells)!,CBFM_Blocks,CBFM_Blocks_Ext,Upd_CBFM_Blocks_Ext)
     
     ! Modifs 8/29/2019 : Here I started implementing adaptive mesh depending on the dielectric properties of each cell ! if Adapt_mesh == 1, each cell 
     ! which is not respecting the validity crieteari is divided to smaller cells, then the cells and the blocks parameters are updated accordingly
@@ -10,12 +10,9 @@ SUBROUTINE UpdateCellsParameters(SimParticle,Cells,Upd_Cells)!,CBFM_Blocks,CBFM_
     Implicit NONE
     
     ! IN/OUT
-    type (Particle), INTENT(INOUT) :: SimParticle
+    type (Scatterer), INTENT(INOUT) :: SimScatterer
     type (Cell), Dimension(Nbc), INTENT(INOUT):: Cells
     type (Cell), Dimension(:), allocatable, INTENT(OUT):: Upd_Cells
-    !type (CBFM_Block), Dimension(NBlocks), INTENT(INOUT):: CBFM_Blocks
-    !Integer, Dimension(NBlocks,Nbc_ext), INTENT(IN):: CBFM_Blocks_Ext
-    !Integer, Dimension(:,:),allocatable, INTENT(OUT):: Upd_CBFM_Blocks_Ext
 
     ! Local
     Integer :: ii, bb,curs_new, new_Nbc,fmr,Dlambda_min,ix,iy,iz
@@ -83,8 +80,6 @@ SUBROUTINE UpdateCellsParameters(SimParticle,Cells,Upd_Cells)!,CBFM_Blocks,CBFM_
             !endif
         EndDo
         Nbc = curs_new - 1;
-        SimParticle%Nbc_p = Nbc;
-        !Nbc_ext = maxval(CBFM_Blocks%Nbc_ext);
     EndIf
     
     
@@ -112,4 +107,4 @@ SUBROUTINE UpdateCellsParameters(SimParticle,Cells,Upd_Cells)!,CBFM_Blocks,CBFM_
     
         
 
-END SUBROUTINE UpdateCellsParameters
+END SUBROUTINE SetCellsParams

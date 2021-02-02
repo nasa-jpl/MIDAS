@@ -26,4 +26,4 @@ clean:
 	@-rm *.o *.mod midas
 
 modules:
-	${FC} -c ${FFLAGS} Initialization.f90 common_variables.f90 stack_structure.f90 nrtype.f90 DiverseUtil.f90 precmod.f90 stringmod.f90
+	${FC} -c ${FFLAGS} Initialization.f90 Common_variables.f90 stack_structure.f90 nrtype.f90 DiverseUtil.f90 precmod.f90 stringmod.f90

@@ -324,7 +324,7 @@
     endif
     ENDSUBROUTINE setNipws 
     
-    SUBROUTINE initializeNipws(SimParticle)
+    SUBROUTINE initializeNipws(SimScatterer)
     
         USE Initialization
         USE common_variables
@@ -332,7 +332,7 @@
         IMPLICIT NONE
         
         !IN/OUT 
-        type (Particle), INTENT(INOUT) :: SimParticle
+        type (Scatterer), INTENT(INOUT) :: SimScatterer
         
         ! local 
         integer :: rr 
@@ -341,7 +341,7 @@
         ! here decide Nipws for the generation of CBFs depending on hmax/lambda_s
         if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then
             If (set_Nipws==0) then
-            r_lambda = (hBlock/2.)/SimParticle%lambda_p_min 
+            r_lambda = (hBlock/2.)/SimScatterer%lambda_min 
             If (distr_ipws .eq. 3) then   ! spherical design
                 Do rr=1,8
                 If (r_lambda .le. rr) Then 

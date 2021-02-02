@@ -1,4 +1,4 @@
-Program Main_Scattering_by_Particle
+Program Main_Scattering
     
     USE Initialization
     USE common_variables
@@ -71,14 +71,13 @@ Program Main_Scattering_by_Particle
     character(7) :: st_th_Tx,st_th_Rx,st_ph_Tx,st_ph_Rx
     CHARACTER(LEN=3) :: path
     
-    type(Particle) :: SimParticle
+    type(Scatterer) :: SimScatterer
     type(Cell), Dimension(:),allocatable :: Cells, Upd_Cells
     type(Dipole), Dimension(:),allocatable :: Transmitters_Comp
     type(Dipole), Dimension(:),allocatable :: Receivers
     type(CBFM_Block), Dimension(:), allocatable :: CBFM_Blocks
     Integer, Dimension(7) :: Ncells_SphDomains
     Integer, Dimension(:,:), allocatable :: CBFM_Blocks_Ext,Upd_CBFM_Blocks_Ext, MLCBFM_BlDistr
-    Integer, Dimension(:,:), allocatable :: cp_CBFM_Blocks
     Integer, Dimension(:), allocatable :: Nbc_blocks,Diff_avg,NSims_bin,diel_comp_perc
     Real(kind=8), Dimension(:), allocatable :: hB_test,all_eps_r,all_eps_i,vals
     
@@ -94,16 +93,16 @@ Program Main_Scattering_by_Particle
     !! ***************************************************************************************************************************
     
     INTERFACE        
-        SUBROUTINE Particle_Discretization(SimParticle,Cells,Ncells_SphDomains)
+        SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
             USE Initialization   
             USE common_variables
             USE MPI
             implicit none
             
-            type (Particle), INTENT(INOUT) :: SimParticle
+            type (Scatterer), INTENT(INOUT) :: SimScatterer
             type (Cell), Dimension(:), allocatable, INTENT(OUT):: Cells
             Integer, Dimension(7), INTENT(OUT), OPTIONAL:: Ncells_SphDomains            
-        END SUBROUTINE Particle_Discretization
+        END SUBROUTINE Discretization
         
         SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)    
             USE Initialization
@@ -118,7 +117,7 @@ Program Main_Scattering_by_Particle
             Complex, Dimension(:,:), allocatable, INTENT(OUT) :: m_lambdas
             END SUBROUTINE get_diel_values_lambdas
         
-        SUBROUTINE Particle_DielComposition(m_lambdas,SimParticle,Cells)    
+        SUBROUTINE DielComposition(m_lambdas,Cells)    
             USE Initialization
             USE common_variables
             USE iso_fortran_env
@@ -127,38 +126,36 @@ Program Main_Scattering_by_Particle
     
             ! IN/OUT 
             Complex, Dimension(Ndiel,Nfreq), INTENT(IN) :: m_lambdas
-            type (Particle), INTENT(INOUT) :: SimParticle
             type (Cell), Dimension(Nbc), INTENT(INOUT):: Cells            
-        END SUBROUTINE Particle_DielComposition
+        END SUBROUTINE DielComposition
         
-        SUBROUTINE UpdateCellsParameters(SimParticle,Cells,Upd_Cells)!,CBFM_Blocks,CBFM_Blocks_Ext,Upd_CBFM_Blocks_Ext)
-    
+        SUBROUTINE SetCellsParams(SimScatterer,Cells,Upd_Cells)    
             USE Initialization
             USE common_variables
             USE iso_fortran_env
             Implicit NONE
     
             ! IN/OUT
-            type (Particle), INTENT(INOUT) :: SimParticle
+            type (Scatterer), INTENT(INOUT) :: SimScatterer
             type (Cell), Dimension(Nbc), INTENT(INOUT):: Cells
             type (Cell), Dimension(:), allocatable, INTENT(OUT):: Upd_Cells
-        END SUBROUTINE UpdateCellsParameters
+        END SUBROUTINE SetCellsParams
         
-        SUBROUTINE Division_blocks(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)
+        SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)
     
             USE Initialization
             USE common_variables
             USE MPI
     
             !IN/OUT 
-            type (Particle), INTENT(INOUT) :: SimParticle
+            type (Scatterer), INTENT(INOUT) :: SimScatterer
             type (Cell), Dimension(Nbc), INTENT(INOUT) :: Cells
             Integer, Dimension(7), INTENT(IN) :: Ncells_SphDomains
             type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
             Integer, Dimension(:,:), allocatable, INTENT(OUT):: MLCBFM_BlDistr
         END SUBROUTINE Division_blocks
         
-        SUBROUTINE Extend_blocks(SimParticle,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
+        SUBROUTINE Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
 
             USE Initialization
             USE common_variables
@@ -168,27 +165,11 @@ Program Main_Scattering_by_Particle
             Implicit NONE
         
             !IN/OUT 
-            type(Particle), INTENT(IN) :: SimParticle
+            type(Scatterer), INTENT(IN) :: SimScatterer
             type(Cell), Dimension(Nbc), INTENT(IN) :: Cells
             type(CBFM_Block), Dimension(Nblocks), INTENT(INOUT) :: CBFM_Blocks
             Integer, Dimension(:,:), allocatable, INTENT(OUT) :: CBFM_Blocks_Ext           
         END SUBROUTINE Extend_blocks 
-        
-        SUBROUTINE Set_cp_CBFM_Blocks(Cells,CBFM_Blocks,CBFM_Blocks_Ext,cp_CBFM_Blocks)
-        
-            USE Initialization
-            USE common_variables
-            USE iso_fortran_env
-        
-            IMPLICIT NONE
-    
-            !! IN/OUT ******************************************************************
-            type (Cell), Dimension(Nbc), INTENT(IN) :: Cells
-            type (CBFM_Block), Dimension(Nblocks), INTENT(IN) :: CBFM_Blocks
-            Integer, Dimension(Nblocks,Nbc_ext), INTENT(IN) :: CBFM_Blocks_Ext
-            Integer, Dimension(:,:), allocatable, INTENT(OUT) :: cp_CBFM_Blocks   
-            
-        END SUBROUTINE Set_cp_CBFM_Blocks
         
         SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,thitrans,thftrans,phitrans,phftrans,thiRecei,thfRecei,phiRecei,phfRecei,Transmitters_Comp,Receivers);
             USE Initialization
@@ -330,7 +311,7 @@ Program Main_Scattering_by_Particle
     EndIf
    
     read(11,*)    
-    !! Parameters of the particles 
+    !! Parameters of the scatterer 
     read(11,*)
     read(11,'(i1)');read(11,*), shape_list
     read(11,'(a)'), shape_folder_path
@@ -339,25 +320,25 @@ Program Main_Scattering_by_Particle
     if (shape_list == 0) then 
       ! type_p
       read(11,*);
-      read(11,'(i1,a)'), SimParticle%type_p,SimParticle%info_p
+      read(11,'(i1,a)'), SimScatterer%type_s,SimScatterer%info_s
       
       read(11,*);
-      if (SimParticle%type_p .eq. 3) then ! for the moment the only different type in reading param is the cylinder : we read a and L
+      if (SimScatterer%type_s .eq. 3) then ! for the moment the only different type in reading param is the cylinder : we read a and L
           read(11,*), ac_str, lc_str
           read(ac_str,*), r_cyl
           read(lc_str,*),l_cyl ; ! (mm)
-          SimParticle%ap = r_cyl/10**3
-          SimParticle%Dp = 2*r_cyl/10**3
-          SimParticle%pr_dy = SimParticle%Dp
-          SimParticle%pr_dz = SimParticle%Dp
-          SimParticle%pr_dx = l_cyl/10**3
-          SimParticle%info_p ='Cylin';
+          SimScatterer%a = r_cyl/10**3
+          SimScatterer%dm = 2*r_cyl/10**3
+          SimScatterer%dy = SimScatterer%dm
+          SimScatterer%dz = SimScatterer%dm
+          SimScatterer%dx = l_cyl/10**3
+          SimScatterer%info_s ='Cylin';
       else          
           ! ap
           read(11,'(a)'), ap_str
           read(ap_str,*), ap
-          SimParticle%ap = ap/10**3
-          SimParticle%Dp = 2*ap/10**3
+          SimScatterer%a = ap/10**3
+          SimScatterer%dm = 2*ap/10**3
       endif
     else
       read(11,*); read(11,*);
@@ -403,8 +384,8 @@ Program Main_Scattering_by_Particle
     endif    
         
     if (((trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'fromshapefile')) &
-        .AND. (SimParticle%type_p .ne. 2)) then 
-        Write(*,'(a,a)') 'Error : The requested dielectric decomposition option can only be used with type_particle = 2';
+        .AND. (SimScatterer%type_s .ne. 2)) then 
+        Write(*,'(a,a)') 'Error : The requested dielectric decomposition option can only be used with type_scatterer = 2';
         stop 1        
     Endif     
     
@@ -418,7 +399,7 @@ Program Main_Scattering_by_Particle
       read(11,*), Dlambda
     elseif (ch_tmp .eq. 'S') then
       read(11,*), Sc;
-      SimParticle%Sc_p = 1e-6*Sc;  
+      SimScatterer%Sc = 1e-6*Sc;  
       Dlambda = 1;
     else
         If (rank ==0) Then
@@ -589,18 +570,18 @@ Program Main_Scattering_by_Particle
             NbSimulations = 1;
     endif
     
-    ! HERE START PARTICLE   
+    ! HERE START SCATTERER  
     Do Sim=1, NbSimulations
         If (shape_list .eq. 1) then 
             ShapeFilePath = ShapesDirNames(Sim);
             ii = index(ShapeFilePath,'shape'//Env_sep);
-            SimParticle%type_p = 2;
+            SimScatterer%type_s = 2;
             if (ShapeFilePath(ii+6:ii+6) .eq. 'a') then 
-                SimParticle%info_p = ShapeFilePath(ii+6:ii+6)//ShapeFilePath(ii+8:ii+11);
+                SimScatterer%info_s = ShapeFilePath(ii+6:ii+6)//ShapeFilePath(ii+8:ii+11);
                 read(ShapeFilePath(ii+18:ii+30),'(a)') ap_str;
                 read(ShapeFilePath(ii+18:ii+30),'(f13.6)') ap;
             elseif (ShapeFilePath(ii+6:ii+6) .eq. 'p') then 
-                SimParticle%info_p = ShapeFilePath(ii+6:ii+6)//ShapeFilePath(ii+8:ii+9);
+                SimScatterer%info_s = ShapeFilePath(ii+6:ii+6)//ShapeFilePath(ii+8:ii+9);
                 read(ShapeFilePath(ii+16:ii+28),'(a)') ap_str;
                 read(ShapeFilePath(ii+16:ii+28),'(f13.6)') ap;
             else
@@ -611,36 +592,36 @@ Program Main_Scattering_by_Particle
             endif
             
             ap = ap*1e-3; ! ap (mm)
-            SimParticle%ap = ap/10**3
-            SimParticle%Dp = 2*ap/10**3
+            SimScatterer%a = ap/10**3
+            SimScatterer%dm = 2*ap/10**3
             ap_str(1:1) = ap_str(3:3); ap_str(2:2)='.';ap_str(3:11) = ap_str(4:6)//ap_str(8:13);ap_str(12:13) = ''; !to prepare the name of the output folder
             
             if (rank == 0) Then 
                 Write(*,'(a)')' '
                 Write(*,'(a)')  '+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++';
-                Write(*,'(a,i5,a,i5,a)') '++ PARTICLE ',Sim,' OUT OF ',NbSimulations,' ++++++++++++++++++++++++++++++++';
+                Write(*,'(a,i5,a,i5,a)') '++ SIM ',Sim,' OUT OF ',NbSimulations,' ++++++++++++++++++++++++++++++++';
                 Write(*,'(a)') '+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++';
                 Write(*,'(a)')' '
             endif            
         Else
             ShapeFilePath = 'inputs'//Env_sep//'shape.dat';          
         Endif
-        ! Particle Output Folder
+        ! Scatterer Output Folder
         !Write(ap_str,'(f11.9)') ap;
         If (shape_list .eq. 1) then 
-            if ((SimParticle%type_p == 2) .OR. (SimParticle%type_p == 6)) then 
-                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimParticle%info_p)//'-ap='//trim(ap_str)//'mm'; 
-            elseif (SimParticle%type_p == 3) then
-                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimParticle%info_p)//'-ac='//trim(ac_str)//'mm-lc='//trim(lc_str)//'mm';
-            elseif (SimParticle%type_p == 1) then
+            if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then 
+                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ap='//trim(ap_str)//'mm'; 
+            elseif (SimScatterer%type_s == 3) then
+                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ac='//trim(ac_str)//'mm-lc='//trim(lc_str)//'mm';
+            elseif (SimScatterer%type_s == 1) then
                 SimOutfld_name = trim(Outfld_name)//Env_sep//'Sphere-ap='//trim(ap_str)//'mm'; 
             endif
         else
-            if ((SimParticle%type_p == 2) .OR. (SimParticle%type_p == 6)) then 
-                SimOutfld_name = trim(SimParticle%info_p)//'-ap='//trim(ap_str)//'mm';
-            elseif (SimParticle%type_p == 3) then
-                SimOutfld_name = trim(SimParticle%info_p)//'-ac='//trim(ac_str)//'mm-lc='//trim(lc_str)//'mm';
-            elseif (SimParticle%type_p == 1) then
+            if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then 
+                SimOutfld_name = trim(SimScatterer%info_s)//'-ap='//trim(ap_str)//'mm';
+            elseif (SimScatterer%type_s == 3) then
+                SimOutfld_name = trim(SimScatterer%info_s)//'-ac='//trim(ac_str)//'mm-lc='//trim(lc_str)//'mm';
+            elseif (SimScatterer%type_s == 1) then
                 SimOutfld_name = 'Sphere-ap='//trim(ap_str)//'mm';
             endif               
         endif        
@@ -686,16 +667,16 @@ Program Main_Scattering_by_Particle
         K_air = (2*Pi)/Lambda_w 
     
         !! here we read a first time the m files to obtain, depending on the diel decomposition options 
-        !! just to initialize SimParticle%lambda_p. This code line is usefull if there is generation/discretization of sphere/cylinder/chebychev part ..., It
+        !! just to initialize SimScatterer%lambda. This code line is usefull if there is generation/discretization of sphere/cylinder/chebychev part ..., It
         !! is useless if the geometry is read from a shape file !
         !! Usefull for the sphere, cylinder or chebychev/GRD particle to be able to accurately discretize according to the higher frequency/refractive index, and this f
         call get_diel_values_lambdas(m_file_name,m_lambdas);
     
         ! to discretize for a multi-frequency simulation (applicable for type_part .ne. 2), for the moment we take into account the shortest lambda
-        ! even if now the discretization is needed based on the geometrical modeling of the particle (from Kuo)
+        ! even if now the discretization is needed based on the geometrical modeling of the scatterer (from Kuo)
         rp_min = 1e2; rp_max = 0;
-        SimParticle%lambda_p_min = Lambda_w;
-        SimParticle%lambda_p_max = 0;
+        SimScatterer%lambda_min = Lambda_w;
+        SimScatterer%lambda_max = 0;
         Do jj=1,Nfreq
             Do ii =1,Ndiel
                 mrp = real(m_lambdas(ii,jj)) 
@@ -705,21 +686,21 @@ Program Main_Scattering_by_Particle
                 
                 if (rp .ge. rp_max) then 
                     rp_max = rp;
-                    SimParticle%Eps_p_max = rp+J*ip
-                    SimParticle%m_p_max = m_lambdas(ii,jj);
+                    SimScatterer%Eps_max = rp+J*ip
+                    SimScatterer%m_max = m_lambdas(ii,jj);
                 endif 
                 
-                if (Wavesle(jj)*1e-3/sqrt(rp) .le. SimParticle%lambda_p_min) then 
-                    SimParticle%lambda_p_min = Wavesle(jj)*1e-3/sqrt(rp);
+                if (Wavesle(jj)*1e-3/sqrt(rp) .le. SimScatterer%lambda_min) then 
+                    SimScatterer%lambda_min = Wavesle(jj)*1e-3/sqrt(rp);
                 endif     
                 
                 if (rp .le. rp_min) then 
                     rp_min = rp;
-                    SimParticle%Eps_p_min = rp+J*ip
-                    SimParticle%m_p_min = m_lambdas(ii,jj);
+                    SimScatterer%Eps_min = rp+J*ip
+                    SimScatterer%m_min = m_lambdas(ii,jj);
                 endif                 
-                if (Wavesle(jj)*1e-3/sqrt(rp) .ge. SimParticle%lambda_p_max) then 
-                    SimParticle%lambda_p_max = Wavesle(jj)*1e-3/sqrt(rp);
+                if (Wavesle(jj)*1e-3/sqrt(rp) .ge. SimScatterer%lambda_max) then 
+                    SimScatterer%lambda_max = Wavesle(jj)*1e-3/sqrt(rp);
                 endif 
             EndDo       
         EndDo
@@ -733,10 +714,10 @@ Program Main_Scattering_by_Particle
         !*****************************************************************************************************
         If (NbSimulations .eq. 1) then 
             if (rank == 0) then 
-                Write (*,'(a)') '********************************************************************************'
-                Write (*,'(a)') '************* Computing of the Scattering by Complex Particle  *****************'
-                Write (*,'(a)') '********************** CODE VEFIE_MoM-CBFM_CubicMesh ***************************'
-                Write (*,'(a)') '********************************************************************************'
+                Write (*,'(a)') '**************************************************************************************'
+                Write (*,'(a)') '************* Computing of the Scattering by Complex-Shaped Scatterer *****************'
+                Write (*,'(a)') '************************** CODE VIEM_MoM-CBFM_VoxelMesh ******************************'
+                Write (*,'(a)') '*************************************************************************************'
             endif
         EndIf
         
@@ -744,24 +725,24 @@ Program Main_Scattering_by_Particle
         if (rank == 0) then 
     10      call date_and_time(date,time,zone,values);
             if (EqSph==0) then
-            	if ((SimParticle%type_p == 2) .OR. (SimParticle%type_p == 6)) then 
-                	file_name = trim(SimOutfld_name)//Env_sep//'Simulation_'//trim(SimParticle%info_p)//'_'//date(5:6)//&
+            	if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then 
+                	file_name = trim(SimOutfld_name)//Env_sep//'Simulation_'//trim(SimScatterer%info_s)//'_'//date(5:6)//&
                     '-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//'h'//time(3:4)//'.dat';   
-            	elseif (SimParticle%type_p == 1) then 
+            	elseif (SimScatterer%type_s == 1) then 
                 	file_name = trim(SimOutfld_name)//Env_sep//'Simulation_Sphere_'//date(5:6)//&
                 	'-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//'h'//time(3:4)//'.dat';  
             	else
-                	write(ch_tmp,'(i1)') SimParticle%type_p;
+                	write(ch_tmp,'(i1)') SimScatterer%type_s;
                 	file_name = trim(SimOutfld_name)//Env_sep//'Simulation_ty'//trim(ch_tmp)//'_'//date(5:6)//&
                 	'-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//'h'//time(3:4)//'.dat';  
             	endif        
             EndIf            
             Open(10,File = trim(file_name));
 
-            Write (10,'(a)') '*******************************************************************************'
-            Write (10,'(a)') '************ Computing of the Scattering by Complex Particle  *****************'
-            Write (10,'(a)') '********************** CODE VEFIE_MoM-CBFM_CubicMesh **************************'
-            Write (10,'(a)') '*******************************************************************************'       
+            Write (10,'(a)') '**************************************************************************************'
+            Write (10,'(a)') '************* Computing of the Scattering by Complex-Shaped Scatterer *****************'
+            Write (10,'(a)') '************************** CODE VIEM_MoM-CBFM_VoxelMesh ******************************'
+            Write (10,'(a)') '*************************************************************************************'      
     
     
             !! Once generated, all these informations should be written in the output file and Simulation_data_out 
@@ -814,16 +795,16 @@ Program Main_Scattering_by_Particle
         
         !! DISCRETIZATION & DIVISION INTO BLOCKS**************************************************************************
         ! Discretization
-        Type_Par = SimParticle%type_p
-        info_p_fl = trim(SimParticle%info_p);
+        Type_Par = SimScatterer%type_s
+        info_p_fl = trim(SimScatterer%info_s);
         !Comp_time_disc = 0; values_init=0; values_final =0;
         call date_and_time(date_init,time_init,zone_init,values_init); 
         
-        Call Particle_Discretization(SimParticle,Cells,Ncells_SphDomains); 
+        Call Discretization(SimScatterer,Cells,Ncells_SphDomains); 
         !! Remember that ap and dp refers to effective radius. ceci corrige quand necessaire ou garde la meme valeur si c bon
         if (Type_Par .ne. 1) then 
-        	SimParticle%ap = ((3*Nbc*SimParticle%Sc_p**3.)/(4*pi))**(1./3.)
-        	SimParticle%Dp = 2.*SimParticle%ap; 
+        	SimScatterer%a = ((3*Nbc*SimScatterer%Sc**3.)/(4*pi))**(1./3.)
+        	SimScatterer%dm = 2.*SimScatterer%a; 
         endif 
         
         call date_and_time(date_final,time_final,zone_final,values_final)
@@ -832,8 +813,8 @@ Program Main_Scattering_by_Particle
         ! Division into blocks     
         if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then 
             call date_and_time(date_init,time_init,zone_init,values_init); 
-            ! Division into blocks depending on the type of particle 
-            call Division_blocks(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)    
+            ! Division into blocks depending on the type of scatterer  
+            call Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)    
             call date_and_time(date_final,time_final,zone_final,values_final)
             call Calcul_time_spent(values_init,values_final,Comp_time_div)     
                             
@@ -841,11 +822,11 @@ Program Main_Scattering_by_Particle
             ! This step is the same for all types of shapes
             !Comp_time_ext = 0; values_init=0; values_final =0;
             call date_and_time(date_init,time_init,zone_init,values_init); 
-            Call Extend_blocks(SimParticle,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
+            Call Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
             call date_and_time(date_final,time_final,zone_final,values_final)
             call Calcul_time_spent(values_init,values_final,Comp_time_ext)   
             
-            !call Write_geometry_files(SimParticle,Cells,CBFM_Blocks,CBFM_Blocks_Ext,'NEW');   !! TO CHECK AND MPI OPTIMIZE FROM MPI Code 1/29/2019
+            !call Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,'NEW');   !! TO CHECK AND MPI OPTIMIZE FROM MPI Code 1/29/2019
             
             ! I will discard this step for the moment for my MPI code !!
             ! Now get the Number of blocks for which the CBFs will be calculated and save the numbers 
@@ -894,7 +875,7 @@ Program Main_Scattering_by_Particle
       
             if (Nbc .lt. 4e5) then 
             	call date_and_time(date_init,time_init,zone_init,values_init);             
-            	call Write_geometry_files(SimParticle,Cells,CBFM_Blocks,CBFM_Blocks_Ext,'NEW');   !! TO CHECK AND MPI OPTIMIZE  1/29/2019
+            	call Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,'NEW');   !! TO CHECK AND MPI OPTIMIZE  1/29/2019
             	call date_and_time(date_final,time_final,zone_final,values_final)
             	call Calcul_time_spent(values_init,values_final,Comp_time_write)     
 	        endif   
@@ -909,39 +890,37 @@ Program Main_Scattering_by_Particle
         
         if (rank == 0) Then        
             Write(10,'(a)') ''
-            Write(10,'(a)') 'Parameters of the particles : '
-            Write(10,'(a,a)') 'P :    Type    ap(mm)   dXp(mm)  dYp(mm)  dZp(mm)    Xp(m)     Yp(m)     Zp(m)        ',&
-            'm_p          lam_p(mm)  Sc_p(mm)   Nbc_p' 
-            p = SimParticle%ap*10**3
-            xp = SimParticle%pr_dx*10**3
-            yp = SimParticle%pr_dy*10**3
-            zp = SimParticle%pr_dz*10**3
+            Write(10,'(a)') 'Parameters of the scatterer : '
+            Write(10,'(a,a)') 'P :    Type    a(mm)    dX(mm)   dY(mm)   dZ(mm)     X(m)      Y(m)      Z(m)         ',&
+            'm           lam(mm)   Sc(mm)    Nbc' 
+            p = SimScatterer%a*10**3
+            xp = SimScatterer%dx*10**3
+            yp = SimScatterer%dy*10**3
+            zp = SimScatterer%dz*10**3
             ! type and effective radius
-            Write(10,'(a,i1,a6,f10.4,f9.4,f9.4,f9.4)',advance='no') 'P : ',SimParticle%type_p,trim(SimParticle%info_p),p,xp,yp,zp        
+            Write(10,'(a,i1,a6,f10.4,f9.4,f9.4,f9.4)',advance='no') 'P : ',SimScatterer%type_s,trim(SimScatterer%info_s),p,xp,yp,zp        
             ! Position
-            Write(10,'(e10.2)',advance='no') SimParticle%pr_xmin
-            Write(10,'(e10.2)',advance='no') SimParticle%pr_ymin
-            Write(10,'(e10.2)',advance='no') SimParticle%pr_zmin
+            Write(10,'(e10.2)',advance='no') SimScatterer%xmin
+            Write(10,'(e10.2)',advance='no') SimScatterer%ymin
+            Write(10,'(e10.2)',advance='no') SimScatterer%zmin
             !Refractive index
-            Write(10,'(a,f7.4,a,f7.4,a)',advance='no') '  (',real(SimParticle%m_p_max),',',&
-                imag(SimParticle%m_p_max),')  '
-            !Wavelength inside particles
-            p = SimParticle%lambda_p_min*10**3
+            Write(10,'(a,f7.4,a,f7.4,a)',advance='no') '  (',real(SimScatterer%m_max),',',&
+                imag(SimScatterer%m_max),')  '
+            !Wavelength inside scatterer
+            p = SimScatterer%lambda_min*10**3
             Write(10,'(f8.3)',advance='no') p
-            !Size of cell per particle (mm)
-            Sc = 1E3*SimParticle%Sc_p
-            Write(10,'(f8.3)',advance='no') Sc
-            ! Number of cells per particle
-            Write(10,'(I11)') SimParticle%Nbc_p        
+            !Size of cell per scatterer (mm)
+            Sc = 1E3*SimScatterer%Sc
+            Write(10,'(f8.3)',advance='no') Sc        
     
             Write(10,*) ''
             Write(10,*) ''
-            write (*,'(a)',advance='no') 'The dimensions of the particle = '
-            write (*,'(f5.2,a)',advance='no') 1e3*SimParticle%pr_dx,'; ' 
-            write (*,'(f5.2,a)',advance='no') 1e3*SimParticle%pr_dy,'; ' 
-            write (*,'(f5.2,a)') 1e3*SimParticle%pr_dz, ' mm'   
-            write (*,'(a)',advance='no') 'The effective radius of the particle = '
-            Write (*,'(f13.9,a)') SimParticle%ap*10**3, ' mm' 
+            write (*,'(a)',advance='no') 'The dimensions of the scatterer = '
+            write (*,'(f5.2,a)',advance='no') 1e3*SimScatterer%dx,'; ' 
+            write (*,'(f5.2,a)',advance='no') 1e3*SimScatterer%dy,'; ' 
+            write (*,'(f5.2,a)') 1e3*SimScatterer%dz, ' mm'   
+            write (*,'(a)',advance='no') 'The effective radius of the scatterer = '
+            Write (*,'(f13.9,a)') SimScatterer%a*10**3, ' mm' 
             if (Adapt_mesh .eq. 0) then 
                 Write(10,'(a,i7)') 'The Total Number of Cells =', Nbc
                 Write(*,'(a,i7)') 'Total Number of Cells =', Nbc
@@ -1092,7 +1071,7 @@ Program Main_Scattering_by_Particle
                     endif
                 
                     Write(*,*) '';
-                    Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to discretize the particle : ',Comp_time_disc(1),'j',Comp_time_disc(2)&
+                    Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to discretize : ',Comp_time_disc(1),'j',Comp_time_disc(2)&
                     ,'h',Comp_time_disc(3),'min', Comp_time_disc(4),'sec'
                     Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to divide into blocks: ',Comp_time_div(1),'j',Comp_time_div(2)&
                     ,'h',Comp_time_div(3),'min', Comp_time_div(4),'sec'
@@ -1135,9 +1114,7 @@ Program Main_Scattering_by_Particle
               Endif       
           endif  
         EndDo          
-        Call MPI_Barrier(MPI_COMM_WORLD,code); 
-        
-        
+        Call MPI_Barrier(MPI_COMM_WORLD,code);          
         
         
         !! START THE COMPUTING OF THE ELECTRIC FIELDS DEPENDING ON THE FREQUENCY     
@@ -1154,23 +1131,23 @@ Program Main_Scattering_by_Particle
             !K_air = Omega_w*sqrt(Eps0*Rmu0*Eps_air)
             K_air = (2*Pi)/Lambda_w 
             ! refractive index
-            SimParticle%m_p_max = m_lambdas(1,ii)  
+            SimScatterer%m_max = m_lambdas(1,ii)  
             mrp = real(m_lambdas(1,ii))
             mip = imag(m_lambdas(1,ii)) ; 
             rp = mrp**2-mip**2;
             ip = 2*mrp*mip;
-            SimParticle%Eps_p_max = rp+J*ip  
-            SimParticle%lambda_p_min = Lambda_w/sqrt(rp)
-            ! Update particle Dlam
-            SimParticle%Dlamb = SimParticle%lambda_p_min/SimParticle%Sc_p;
-            xmax = Pi*max(SimParticle%pr_dx,SimParticle%pr_dy,SimParticle%pr_dz)/Lambda_w; 
-            xeq = 2*Pi*SimParticle%ap/Lambda_w; 
+            SimScatterer%Eps_max = rp+J*ip  
+            SimScatterer%lambda_min = Lambda_w/sqrt(rp)
+            ! Update scatterer Dlam
+            SimScatterer%Dlamb = SimScatterer%lambda_min/SimScatterer%Sc;
+            xmax = Pi*max(SimScatterer%dx,SimScatterer%dy,SimScatterer%dz)/Lambda_w; 
+            xeq = 2*Pi*SimScatterer%a/Lambda_w; 
             
-            Call Particle_DielComposition(m_lambdas,SimParticle,Cells); !!!! ATTENTION : TRAVAIL INACHEVE INPUT Mice AND Mwater + CALCUL EM En fction de Cells%m et pas Particle%m
+            Call DielComposition(m_lambdas,Cells); !!!! ATTENTION : TRAVAIL INACHEVE INPUT Mice AND Mwater + CALCUL EM En fction de Cells%m et pas Scatterer%m
                     
-            ! here update the cells parameter that depend on k_air (so on lambda_p) and Eps_p
+            ! here Set the cells parameter that depend on k_air (so on lambda_p) and Eps_p
             old_Nbc = Nbc;
-            Call UpdateCellsParameters(SimParticle,Cells,Upd_Cells);
+            Call SetCellsParams(SimScatterer,Cells,Upd_Cells);
             deallocate(Cells); Allocate(Cells(Nbc)); Cells=Upd_Cells; Deallocate(Upd_Cells);            
             
             if (rank == 0) then 
@@ -1187,17 +1164,17 @@ Program Main_Scattering_by_Particle
                 write (*,'(a,a,a)') 'The frequency of simulation = ',stFreq,' GHz' 
                 write (*,'(a,F9.6,a)') ' -- > Wavelength = ',Lambda_w*1e3,' mm'    
                 if (homogs .eq. 1) then  
-                    write (*,'(a,F9.6,a)') ' -- > Wavelength inside particle = ',SimParticle%lambda_p_min*1e3,' mm'  
+                    write (*,'(a,F9.6,a)') ' -- > Wavelength inside scatterer = ',SimScatterer%lambda_min*1e3,' mm'  
                     write (*,'(a,F7.4,a,ES10.3)') ' -- > m = ',mrp,' + j*',mip  
                     write (*,'(a,F7.4,a,ES10.3)') ' -- > Eps = ',rp,' + j*',ip  
                     deallocate(stFreq);            
-                    Write(*,'(a,i4)') ' -- > Dlambda = ', SimParticle%Dlamb
-                    write (*,'(a,f6.4)') ' -- > d/aeff = ', SimParticle%Sc_p/SimParticle%ap
-                    write (*,'(a,f6.4)') ' -- > kd = ', K_air*SimParticle%Sc_p
-                    write (*,'(a,f6.4)') ' -- > |m|kd = ', abs(SimParticle%m_p_min)*K_air*SimParticle%Sc_p
+                    Write(*,'(a,i4)') ' -- > Dlambda = ', SimScatterer%Dlamb
+                    write (*,'(a,f6.4)') ' -- > d/aeff = ', SimScatterer%Sc/SimScatterer%a
+                    write (*,'(a,f6.4)') ' -- > kd = ', K_air*SimScatterer%Sc
+                    write (*,'(a,f6.4)') ' -- > |m|kd = ', abs(SimScatterer%m_min)*K_air*SimScatterer%Sc
                     
-                    xeq_m = 2*Pi*SimParticle%ap/SimParticle%lambda_p_min;
-                    xmax_m = Pi*max(SimParticle%pr_dx,SimParticle%pr_dy,SimParticle%pr_dz)/SimParticle%lambda_p_min;
+                    xeq_m = 2*Pi*SimScatterer%a/SimScatterer%lambda_min;
+                    xmax_m = Pi*max(SimScatterer%dx,SimScatterer%dy,SimScatterer%dz)/SimScatterer%lambda_min;
                     write (*,'(a,f6.2)') ' -- > xeq =', xeq                
                     write (*,'(a,f6.2)') ' -- > xmax =', xmax 
                     write (*,'(a,f6.2)') ' -- > xeq_m =', xeq_m
@@ -1205,7 +1182,7 @@ Program Main_Scattering_by_Particle
                 else
                     Allocate(vals(Nbc)); vals = Cells(1:Nbc)%lambda_cell;
                     r_min = minval(vals); r_max = maxval(vals);
-                    write (*,'(a,F9.6,a,F9.6,a)') ' -- > Wavelength inside particle = [',r_min*1e3,' - ',r_max*1e3,'] mm';
+                    write (*,'(a,F9.6,a,F9.6,a)') ' -- > Wavelength inside scatterer = [',r_min*1e3,' - ',r_max*1e3,'] mm';
                     vals = real(Cells(1:Nbc)%m_cell); r_min = minval(vals); r_max = maxval(vals);
                     vals = imag(Cells(1:Nbc)%m_cell); i_min = minval(vals); i_max = maxval(vals);
                     write (*,'(a,F7.4,a,ES10.3,a,F7.4,a,ES10.3,a)') ' -- > m = [',r_min,' + j*',i_min,' - ',r_max,' + j*',i_max,']';
@@ -1215,18 +1192,18 @@ Program Main_Scattering_by_Particle
                     deallocate(stFreq); 
                     vals = Cells(1:Nbc)%Dlamb_cell; r_min = minval(vals); r_max = maxval(vals); 
                     Write(*,'(a,f7.2,a,f7.2,a)') ' -- > Dlambda = [', r_min,' - ', r_max,']';
-                    write (*,'(a,f6.4)') ' -- > d/aeff = ', SimParticle%Sc_p/SimParticle%ap
-                    write (*,'(a,f6.4)') ' -- > kd = ', K_air*SimParticle%Sc_p
-                    vals = abs(Cells(1:Nbc)%m_cell); r_min = minval(vals)*K_air*SimParticle%Sc_p; r_max = maxval(vals)*K_air*SimParticle%Sc_p
+                    write (*,'(a,f6.4)') ' -- > d/aeff = ', SimScatterer%Sc/SimScatterer%a
+                    write (*,'(a,f6.4)') ' -- > kd = ', K_air*SimScatterer%Sc
+                    vals = abs(Cells(1:Nbc)%m_cell); r_min = minval(vals)*K_air*SimScatterer%Sc; r_max = maxval(vals)*K_air*SimScatterer%Sc
                     write (*,'(a,f6.4,a,f6.4,a)') ' -- > |m|kd = [', r_min,' - ', r_max,']'
                     write (*,'(a,f6.2)') ' -- > xeq =', xeq                
                     write (*,'(a,f6.2)') ' -- > xmax =', xmax 
                     vals = Cells(1:Nbc)%lambda_cell;
-                    r_max = 2*Pi*SimParticle%ap/minval(vals); 
-                    r_min = 2*Pi*SimParticle%ap/maxval(vals);
+                    r_max = 2*Pi*SimScatterer%a/minval(vals); 
+                    r_min = 2*Pi*SimScatterer%a/maxval(vals);
                     write (*,'(a,f6.2,a,f6.2,a)') ' -- > xeq_m = [',r_min,' - ',r_max,']';
-                    r_max = Pi*max(SimParticle%pr_dx,SimParticle%pr_dy,SimParticle%pr_dz)/minval(vals); 
-                    r_min = Pi*max(SimParticle%pr_dx,SimParticle%pr_dy,SimParticle%pr_dz)/maxval(vals);;
+                    r_max = Pi*max(SimScatterer%dx,SimScatterer%dy,SimScatterer%dz)/minval(vals); 
+                    r_min = Pi*max(SimScatterer%dx,SimScatterer%dy,SimScatterer%dz)/maxval(vals);;
                     write (*,'(a,f6.2,a,f6.2,a)') ' -- > xmax_m = [',r_min,' - ',r_max,']';
                     deallocate(vals);
                 endif
@@ -1251,10 +1228,9 @@ Program Main_Scattering_by_Particle
                 EndIf 
             
                 if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then 
-                    call Division_blocks(SimParticle,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)    
-                    Call Extend_blocks(SimParticle,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
-                    call Write_geometry_files(SimParticle,Cells,CBFM_Blocks,CBFM_Blocks_Ext,'UPD');   
-                    call Set_cp_CBFM_Blocks(Cells,CBFM_Blocks,CBFM_Blocks_Ext,cp_CBFM_Blocks);
+                    call Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)    
+                    Call Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
+                    call Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,'UPD');   
                     
                     deallocate(MPI_CBFM_Blocks);                
                     Call MPI_distribution_blocks(CBFM_Blocks,MPI_CBFM_Blocks);
@@ -1289,12 +1265,12 @@ Program Main_Scattering_by_Particle
                     endif
                     go to 30;   
                 else
-                    Call initializeNipws(SimParticle);                                                                           
+                    Call initializeNipws(SimScatterer);                                                                           
                 Endif                                                                       
             Endif        
                        
             ! START COMPUTING OF THE ELECTRIC FIELDS
-            Call Compute_Electric_Fields(SimParticle,Cells,Transmitters_Comp,Receivers,methods_names,&
+            Call Compute_Electric_Fields(SimScatterer,Cells,Transmitters_Comp,Receivers,methods_names,&
                 CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks);      
         EndDo
         deallocate(m_lambdas)
@@ -1320,6 +1296,6 @@ Program Main_Scattering_by_Particle
     
 30  Call MPI_FINALIZE (code);
         
-End PROGRAM Main_Scattering_by_Particle
+End PROGRAM Main_Scattering
 
 

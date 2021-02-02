@@ -65,7 +65,7 @@ CONTAINS
         call random_number(harvest=a)
         real_al = (a * (real_b - real_a)) + real_a
 
-        real_al = aint(10**(Round_Dp+1)*real_al)/10**(Round_Dp+1)
+        real_al = aint(10**(Round_D+1)*real_al)/10**(Round_D+1)
 
     End Subroutine RandomReal
 
