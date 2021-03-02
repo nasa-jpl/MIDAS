@@ -48,11 +48,6 @@ MODULE Initialization
     Real(kind=8),Parameter :: Ro= 1E6              !(g/m3) Density of water
     Real(kind=8),Parameter :: C0= 3E8; !299792458;
     
-    !! precision (to reconsider later)
-    Integer, Parameter :: Round_D = 4   ! while generating the diameter of the particles 
-                                         ! we keep 'Round_Dp' digit of precision (when Dp is expressed in mm) !
-    Integer, Parameter :: Round_S = 6  ! same for Sc, always expressed in mm, we keep 3 digits of precison
-    
     ! Parmeters used when discretizing the scatterer 
     Integer, Parameter :: NBc_max_alloc = 40000;
     

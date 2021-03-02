@@ -67,6 +67,12 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
     ! 5
     ! 6 : Chebyshev particle. Example : 6c09-0.20 
 
+    ! CHECK THAT THIS IS A GOOD PLACE TO INITIALIZE ROUND_S AND ROUND_D
+    if ((lamb_unit = 'mm') .OR. (lamb_unit = 'um';)) then 
+        Round_D= 4;  Round_S = 6;
+    else
+        Round_D= 2;  Round_S = 2;
+    endif
     ! general initialization to cover both Spherical and Arbitray shapes
     Ncells_SphDomains = 0;
     

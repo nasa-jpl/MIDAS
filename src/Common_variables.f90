@@ -17,7 +17,11 @@ MODULE common_variables
     
     ! Scatterer 
     Integer :: Nbc,homogs,Adapt_mesh,NbintBl
+    Integer :: Round_D,Round_S     
     SAVE Nbc,homogs,Adapt_mesh,NbintBl
+    SAVE Round_D, Round_S    ! while generating the diameter of the particles  ENHANCEMENT needed here !!!! 
+                             ! we keep 'Round_Dp' digit of precision (when Dp is expressed in mm) !
+                             ! same for Sc, always expressed in mm, we keep 3 digits of precison
      
     ! dielectric properties 
     CHARACTER(25) :: dielcomp_option
