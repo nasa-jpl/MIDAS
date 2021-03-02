@@ -2,6 +2,8 @@ SUBROUTINE RandomInteger(int_a,int_b, int_al)
  
     !! Generate a random number between the two integers int_a and int_b
     USE Initialization
+    USE common_variables
+    
     Implicit none
 
     integer, INTENT(IN) :: int_a
@@ -22,6 +24,7 @@ SUBROUTINE RandomReal(real_a,real_b, real_al)
  
     !! Generate a random real(kind=8) between real_a and real_b
     USE Initialization
+    USE common_variables
     Implicit none
     
     !IN/OUT
