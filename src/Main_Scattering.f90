@@ -360,11 +360,6 @@ Program Main_Scattering
         endif       
     EndIf
     
-    if (rank == 0) then 
-    Write(*,*) freq_unit
-    Write(*,*) lamb_unit
-    endif
-   
     read(11,*)    
     !! Parameters of the scatterer 
     read(11,*)

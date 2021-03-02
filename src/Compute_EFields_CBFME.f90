@@ -834,13 +834,14 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     EPSMCH = PSLAMCH(icontxt,'E'); 
     ! get Infinity NORM of ZredLoc 
     
-    LWORK = 2*K_total;
     ! LWORK >= 2*LOCr(N+MOD(IA-1,MB_A)) +  MAX( 2, MAX(NB_A*CEIL(NPROW-1,NPCOL),LOCc(N+MOD(JA-1,NB_A)) + NB_A*CEIL(NPCOL-1,NPROW)) ).
-    LIWORK = 2*K_total; !K_total; Here 2*K_total is enough for now, but needs to compute the exact LWORK and LIWORK for more accuracy/robustness
+    ! LRWORK >= MAX( 1, 2*LOCc(N+MOD(JA-1,NB_A)) ).
+    LWORK = 2*K_total; ! Here 2*K_total is enough for now, but needs to compute the exact LWORK and LIWORK for more accuracy/robustness
+    LIWORK = 2*K_total; !K_total; 
     Allocate(WORK(LWORK),IWORK(LIWORK));
     ANORM = PZLANGE( 'I', K_total,K_total, ZredLoc, IA,JA,DESCA,WORK);
     Allocate(IPIV(Mlocal+M_B))
-    ! solve system with PSGESV ; the solution X overwrites the RHS B
+    ! Solve system with PSGESV ; the solution X overwrites the RHS B
     CALL PZGESV(K_total,2*NTr,ZredLoc,IA,JA,DESCA,IPIV,VredLoc,IB,JB,DESCB,INFO);
     if (INFO .GT. 0) then 
         Write(*,'(a)') 'SINGULAR MATRIX';
