@@ -1,6 +1,7 @@
 MODULE DiverseUtil
     
     implicit none
+    USE common_variables
     
 CONTAINS
     SUBROUTINE unique_sort(N,val,val_final)
