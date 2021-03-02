@@ -30,7 +30,7 @@ Program Main_Scattering
     ! specific code Multi-frequency
     Integer :: Nwave, dd1,dd2
     logical :: dirExists
-    Real(kind=8) :: freq_min, freq_max, Wave_min, Wave_max, step_wave
+    Real(kind=8) :: freq_min, freq_max, Wave_min, Wave_max, step_wave, step_freq
     Real(kind=8), Dimension(:), allocatable :: Wavesle
     Complex, Dimension(:,:), allocatable :: m_lambdas
     
@@ -60,6 +60,8 @@ Program Main_Scattering
     
     Character(9) :: SR_Zc_type_ch 
     Character(1) :: ch_tmp
+    Character(11) :: freq_unit_tmp
+    Character(10) :: lamb_unit_tmp
     Character(4) :: DataType
     Character(9) :: wave_descr,info_p_fl
     CHARACTER(:) ,allocatable::methods_names(:),stFreq
@@ -250,45 +252,93 @@ Program Main_Scattering
     if (wave_descr == 'NFreq') Then 
         read(11,'(i3)'), Nfreq
         read(11,'(a6)'), tdata
-        read(11,*);
+        read(11,'(a)'), freq_unit_tmp
+        if (Len(trim(freq_unit_tmp)) .eq. 11) then
+            freq_unit = freq_unit_tmp(8:10);                
+        else 
+            If (rank .eq. 0) Then
+                Write(*,'(a)') 'Error : Enable to read frequency unit !'
+            endif
+            go to 30;
+        endif
+        if (freq_unit == 'MHz') then
+            lamb_unit = 'm'; 
+            freq_mag = 6; lamb_mag = 0;                         
+        elseif (freq_unit == 'GHz') then
+            lamb_unit = 'mm';
+            freq_mag = 9; lamb_mag = 3;
+        elseif (freq_unit == 'THz') then
+            lamb_unit = 'um';
+            freq_mag = 12; lamb_mag = 6;
+        else
+            If (rank .eq. 0) Then
+                Write(*,'(a)') 'Error : Invalid frequency unit !'
+            endif
+            go to 30;
+        endif           
         
-        Nwave = Nfreq; Allocate(Wavesle(Nwave))
-            
+        Nwave = Nfreq; Allocate(Wavesle(Nwave));            
         if (tdata == 'minmax') then
-            read(11,*), freq_min ;read(11,*), freq_max
-            wave_min = C0/(freq_max*1E9)*1e3; wave_max = C0/(freq_min*1E9)*1e3; 
-            If (Nwave .gt. 1) then           
-              step_wave = (wave_max-wave_min)/(Nwave-1)  
+            read(11,'(f7.3,a,f7.3)'), freq_min ,ch_tmp, freq_max
+            !wave_min = C0/(freq_max*1E6); wave_max = C0/(freq_min*1E6);
+            !wave_min = C0/(freq_max*1E6); wave_max = C0/(freq_min*1E6);  
+            If (Nfreq .gt. 1) then           
+              step_freq = (freq_max-freq_min)/(Nfreq-1)  
             Else
-              step_wave = 0;
+              step_freq = 0;
             EndIf                 
-            Do ii =1,Nwave
-                Wavesle(ii) = wave_max - (ii-1)*step_wave
+            Do ii =1,Nfreq
+                Wavesle(ii) = C0/((10.**freq_mag)*(freq_min + (ii-1)*step_freq))   
             EndDo
         else
             If (Nfreq == 1) Then 
                 read(11,'(f7.3,a)'), v_freq 
-                Wavesle(1) = C0/(v_freq*1E9)*1e3;    ! Wavesle is expressed inside the code in mm 
+                Wavesle(1) = C0/(v_freq*(10.**freq_mag))*(10.**lamb_mag);    ! Wavesle is expressed inside the code in m if MHz, mm if GHz, um if THz    
             Else                
                 Do ii=1, Nfreq-1
                   read(11,'(f7.3,a)',advance='no'), v_freq ,ch_tmp
-                  Wavesle(ii) = C0/(v_freq*1E9)*1e3;    ! Wavesle is expressed inside the code in mm 
+                  Wavesle(ii) = C0/(v_freq*(10.**freq_mag))*(10.**lamb_mag);    
                 EndDo
                 read(11,'(f7.3)',advance='no'), v_freq 
-                Wavesle(ii) = C0/(v_freq*1E9)*1e3;    ! Wavesle is expressed inside the code in mm   
+                Wavesle(ii) = C0/(v_freq*(10.**freq_mag))*(10.**lamb_mag);      
                 read(11,*)
             EndIf            
         endif       
     Else
         read(11,'(i3)'), Nwave
         read(11,'(a6)'), tdata      
-        read(11,*); 
+        read(11,'(a)'), lamb_unit_tmp
+        if (Len(trim(lamb_unit_tmp)) .eq. 9) then
+            lamb_unit = trim(lamb_unit_tmp(8:8));             
+        elseif (Len(trim(lamb_unit_tmp)) .eq. 10) then
+            lamb_unit = trim(lamb_unit_tmp(8:9));
+        else
+            If (rank .eq. 0) Then
+                Write(*,'(a)') 'Error : Enable to read wavelength unit !'
+            endif
+            go to 30;
+        endif
+        if (lamb_unit == 'm') then
+            freq_unit = 'MHz'; 
+            freq_mag = 6; lamb_mag = 0;                         
+        elseif (lamb_unit == 'mm') then
+            freq_unit = 'GHz';
+            freq_mag = 9; lamb_mag = 3;
+        elseif (lamb_unit == 'um') then
+            freq_unit = 'THz';
+            freq_mag = 12; lamb_mag = 6;
+        else
+            If (rank .eq. 0) Then
+                Write(*,'(a)') 'Error : Invalid wavelength unit !'
+            endif
+            go to 30;
+        endif  
         
-        Nfreq = Nwave; Allocate(Wavesle(Nwave))
-        
+        Nfreq = Nwave; Allocate(Wavesle(Nwave));        
         if (tdata == 'minmax') then
             read(11,*), wave_min ;read(11,*), wave_max 
-            freq_min = C0/(wave_max*1E-3); freq_max = C0/(wave_min*1E-3);
+            freq_min = C0/(wave_max*10.**(-lamb_mag)); 
+            freq_max = C0/(wave_min*10.**(-lamb_mag));
             If (Nwave .gt. 1) then           
               step_wave = (wave_max-wave_min)/(Nwave-1)  
             Else
@@ -309,6 +359,11 @@ Program Main_Scattering
             EndIf                        
         endif       
     EndIf
+    
+    if (rank == 0) then 
+    Write(*,*) freq_unit
+    Write(*,*) lamb_unit
+    endif
    
     read(11,*)    
     !! Parameters of the scatterer 
@@ -326,19 +381,19 @@ Program Main_Scattering
       if (SimScatterer%type_s .eq. 3) then ! for the moment the only different type in reading param is the cylinder : we read a and L
           read(11,*), ac_str, lc_str
           read(ac_str,*), r_cyl
-          read(lc_str,*),l_cyl ; ! (mm)
-          SimScatterer%a = r_cyl/10**3
-          SimScatterer%dm = 2*r_cyl/10**3
+          read(lc_str,*),l_cyl ; ! (m or mm or um)
+          SimScatterer%a = r_cyl/(10**lamb_mag)
+          SimScatterer%dm = 2*r_cyl/(10**lamb_mag)
           SimScatterer%dy = SimScatterer%dm
           SimScatterer%dz = SimScatterer%dm
-          SimScatterer%dx = l_cyl/10**3
+          SimScatterer%dx = l_cyl/(10**lamb_mag)
           SimScatterer%info_s ='Cylin';
       else          
           ! ap
           read(11,'(a)'), ap_str
           read(ap_str,*), ap
-          SimScatterer%a = ap/10**3
-          SimScatterer%dm = 2*ap/10**3
+          SimScatterer%a = ap/(10**lamb_mag)
+          SimScatterer%dm = 2*ap/(10**lamb_mag)
       endif
     else
       read(11,*); read(11,*);
@@ -399,7 +454,12 @@ Program Main_Scattering
       read(11,*), Dlambda
     elseif (ch_tmp .eq. 'S') then
       read(11,*), Sc;
-      SimScatterer%Sc = 1e-6*Sc;  
+      if ((freq_unit == 'THz') .OR. (freq_unit == 'GHz')) then 
+        SimScatterer%Sc = 1e-6*Sc;  
+      else
+        SimScatterer%Sc = Sc;
+      endif
+            
       Dlambda = 1;
     else
         If (rank ==0) Then
@@ -591,10 +651,11 @@ Program Main_Scattering
                 go to 30; 
             endif
             
-            ap = ap*1e-3; ! ap (mm)
-            SimScatterer%a = ap/10**3
-            SimScatterer%dm = 2*ap/10**3
-            ap_str(1:1) = ap_str(3:3); ap_str(2:2)='.';ap_str(3:11) = ap_str(4:6)//ap_str(8:13);ap_str(12:13) = ''; !to prepare the name of the output folder
+            ap = ap/(10**lamb_mag); ! ap (m/mm/um)
+            SimScatterer%a = ap/(10**lamb_mag)
+            SimScatterer%dm = 2*ap/(10**lamb_mag)
+            ap_str(1:1) = ap_str(3:3); ap_str(2:2)='.';
+            ap_str(3:11) = ap_str(4:6)//ap_str(8:13);ap_str(12:13) = ''; !to prepare the name of the output folder
             
             if (rank == 0) Then 
                 Write(*,'(a)')' '
@@ -610,19 +671,19 @@ Program Main_Scattering
         !Write(ap_str,'(f11.9)') ap;
         If (shape_list .eq. 1) then 
             if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then 
-                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ap='//trim(ap_str)//'mm'; 
+                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ap='//trim(ap_str)//lamb_unit; 
             elseif (SimScatterer%type_s == 3) then
-                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ac='//trim(ac_str)//'mm-lc='//trim(lc_str)//'mm';
+                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ac='//trim(ac_str)//lamb_unit//'-lc='//trim(lc_str)//lamb_unit;
             elseif (SimScatterer%type_s == 1) then
-                SimOutfld_name = trim(Outfld_name)//Env_sep//'Sphere-ap='//trim(ap_str)//'mm'; 
+                SimOutfld_name = trim(Outfld_name)//Env_sep//'Sphere-ap='//trim(ap_str)//lamb_unit; 
             endif
         else
             if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then 
-                SimOutfld_name = trim(SimScatterer%info_s)//'-ap='//trim(ap_str)//'mm';
+                SimOutfld_name = trim(SimScatterer%info_s)//'-ap='//trim(ap_str)//lamb_unit;
             elseif (SimScatterer%type_s == 3) then
-                SimOutfld_name = trim(SimScatterer%info_s)//'-ac='//trim(ac_str)//'mm-lc='//trim(lc_str)//'mm';
+                SimOutfld_name = trim(SimScatterer%info_s)//'-ac='//trim(ac_str)//lamb_unit//'-lc='//trim(lc_str)//lamb_unit;
             elseif (SimScatterer%type_s == 1) then
-                SimOutfld_name = 'Sphere-ap='//trim(ap_str)//'mm';
+                SimOutfld_name = 'Sphere-ap='//trim(ap_str)//lamb_unit;
             endif               
         endif        
         if (rank == 0) Then
@@ -661,7 +722,7 @@ Program Main_Scattering
         !! PREPARING THE SIMULATION SCENE (the same for all the frequencies)
         ! To simplify, Let us discretize the simulation scene according to the higher considered frequency***************************
         ! thus the simulation scene is discretized and divided into blocks once !
-        Lambda_w = maxval(Wavesle(:))*1E-3
+        Lambda_w = maxval(Wavesle(:))/(10**lamb_mag)
         Freq_w = C0/Lambda_w;
         Omega_w = 2*Pi*Freq_w         !! angular frequency
         K_air = (2*Pi)/Lambda_w 
@@ -676,7 +737,7 @@ Program Main_Scattering
         ! even if now the discretization is needed based on the geometrical modeling of the scatterer (from Kuo)
         rp_min = 1e2; rp_max = 0;
         SimScatterer%lambda_min = Lambda_w;
-        SimScatterer%lambda_max = 0;
+        SimScatterer%lambda_max = 0;    
         Do jj=1,Nfreq
             Do ii =1,Ndiel
                 mrp = real(m_lambdas(ii,jj)) 
@@ -690,8 +751,8 @@ Program Main_Scattering
                     SimScatterer%m_max = m_lambdas(ii,jj);
                 endif 
                 
-                if (Wavesle(jj)*1e-3/sqrt(rp) .le. SimScatterer%lambda_min) then 
-                    SimScatterer%lambda_min = Wavesle(jj)*1e-3/sqrt(rp);
+                if (Wavesle(jj)/(10**lamb_mag*sqrt(rp)) .le. SimScatterer%lambda_min) then 
+                    SimScatterer%lambda_min = Wavesle(jj)/((10**lamb_mag)*sqrt(rp));
                 endif     
                 
                 if (rp .le. rp_min) then 
@@ -699,8 +760,8 @@ Program Main_Scattering
                     SimScatterer%Eps_min = rp+J*ip
                     SimScatterer%m_min = m_lambdas(ii,jj);
                 endif                 
-                if (Wavesle(jj)*1e-3/sqrt(rp) .ge. SimScatterer%lambda_max) then 
-                    SimScatterer%lambda_max = Wavesle(jj)*1e-3/sqrt(rp);
+                if (Wavesle(jj)/((10**lamb_mag)*sqrt(rp)) .ge. SimScatterer%lambda_max) then 
+                    SimScatterer%lambda_max = Wavesle(jj)/((10**lamb_mag)*sqrt(rp));
                 endif 
             EndDo       
         EndDo
@@ -749,8 +810,8 @@ Program Main_Scattering
             Write(10,*) '' 
             write (10,'(a,i3,a)',advance='no') 'The number of frequencies = ', Nfreq,' : ['
             Do ii=1, Nfreq-1   
-                Freq_w = C0/(Wavesle(ii)*1E-3);
-                a = nint(Freq_w/1E9);
+                Freq_w = C0/(Wavesle(ii)/(10**lamb_mag));
+                a = nint(Freq_w/(10**freq_mag));
                 if (a < 10) Then 
                     Allocate(character(4) ::stFreq)
                     ty = '(f4.2)';
@@ -761,11 +822,12 @@ Program Main_Scattering
                     Allocate(character(6) ::stFreq)
                     ty = '(f6.2)';
                 EndIf    
-                Write(stFreq,ty) Freq_w/1E9
+                Write(stFreq,ty) Freq_w/(10**freq_mag)
                 write (10,'(a,a)',advance='no') stFreq,'; '        
                 Deallocate(stFreq);
             EndDo
-            Freq_w = C0/(Wavesle(ii)*1E-3); a = nint(Freq_w/1E9);
+            Freq_w = C0/(Wavesle(ii)/(10**lamb_mag)); 
+            a = nint(Freq_w/(10**freq_mag));
             if (a < 10) Then 
                 Allocate(character(4) ::stFreq)
                 ty = '(f4.2)';
@@ -776,8 +838,8 @@ Program Main_Scattering
                 Allocate(character(6) ::stFreq)
                 ty = '(f6.2)';
             EndIf    
-            Write(stFreq,ty) Freq_w/1E9  
-            write (10,'(a,a)') stFreq,'] GHz';
+            Write(stFreq,ty) Freq_w/(10**freq_mag)  
+            write (10,'(a,a,a)') stFreq,'] ',trim(freq_unit);
             Deallocate(stFreq);
     
             if (EqSph==1) then
@@ -892,11 +954,11 @@ Program Main_Scattering
             Write(10,'(a)') ''
             Write(10,'(a)') 'Parameters of the scatterer : '
             Write(10,'(a,a)') 'P :    Type    a(mm)    dX(mm)   dY(mm)   dZ(mm)     X(m)      Y(m)      Z(m)         ',&
-            'm           lam(mm)   Sc(mm)    Nbc' 
-            p = SimScatterer%a*10**3
-            xp = SimScatterer%dx*10**3
-            yp = SimScatterer%dy*10**3
-            zp = SimScatterer%dz*10**3
+            '  m           lam(mm)   Sc(mm)' 
+            p = SimScatterer%a*10**lamb_mag
+            xp = SimScatterer%dx*10**lamb_mag
+            yp = SimScatterer%dy*10**lamb_mag
+            zp = SimScatterer%dz*10**lamb_mag
             ! type and effective radius
             Write(10,'(a,i1,a6,f10.4,f9.4,f9.4,f9.4)',advance='no') 'P : ',SimScatterer%type_s,trim(SimScatterer%info_s),p,xp,yp,zp        
             ! Position
@@ -907,20 +969,20 @@ Program Main_Scattering
             Write(10,'(a,f7.4,a,f7.4,a)',advance='no') '  (',real(SimScatterer%m_max),',',&
                 imag(SimScatterer%m_max),')  '
             !Wavelength inside scatterer
-            p = SimScatterer%lambda_min*10**3
+            p = SimScatterer%lambda_min*10**lamb_mag
             Write(10,'(f8.3)',advance='no') p
-            !Size of cell per scatterer (mm)
-            Sc = 1E3*SimScatterer%Sc
+            !Size of cell per scatterer (m/mm/um)
+            Sc = SimScatterer%Sc*10**lamb_mag
             Write(10,'(f8.3)',advance='no') Sc        
     
             Write(10,*) ''
             Write(10,*) ''
             write (*,'(a)',advance='no') 'The dimensions of the scatterer = '
-            write (*,'(f5.2,a)',advance='no') 1e3*SimScatterer%dx,'; ' 
-            write (*,'(f5.2,a)',advance='no') 1e3*SimScatterer%dy,'; ' 
-            write (*,'(f5.2,a)') 1e3*SimScatterer%dz, ' mm'   
+            write (*,'(f9.4,a)',advance='no') xp,'; ' 
+            write (*,'(f9.4,a)',advance='no') yp,'; ' 
+            write (*,'(f9.4,a,a)') zp, ' ',lamb_unit   
             write (*,'(a)',advance='no') 'The effective radius of the scatterer = '
-            Write (*,'(f13.9,a)') SimScatterer%a*10**3, ' mm' 
+            Write (*,'(f12.6,a,a)') SimScatterer%a*10**lamb_mag, ' ',lamb_unit 
             if (Adapt_mesh .eq. 0) then 
                 Write(10,'(a,i7)') 'The Total Number of Cells =', Nbc
                 Write(*,'(a,i7)') 'Total Number of Cells =', Nbc
@@ -1062,7 +1124,7 @@ Program Main_Scattering
                     Write(*,*) ''; Write(*,*) ''
                     Write(*,'(a)')  '-------Division into blocks------'
                     Write(*,'(a,i6)') 'Total number of blocks = ',Nblocks
-                    Write(*,'(a,f5.3,a)') 'Maximum block height = ', hBlock*1e3, ' mm'
+                    Write(*,'(a,f9.4,a,a)') 'Maximum block height = ', hBlock*10**lamb_mag, ' ',lamb_unit
                     Write(*,'(a,i6)') 'Maximum block length = ', maxval(CBFM_Blocks(1:NBlocks)%Nbc_b)
                     Write(*,'(a,i2)') 'Nbcells_ext =', Nc_extended
                     Write(*,'(a,i6)') 'Maximum block extension length = ', maxval(CBFM_Blocks(1:NBlocks)%Nbc_ext)    
@@ -1125,7 +1187,7 @@ Program Main_Scattering
             endif
             !! here we define the wavelength of the current experience  
             num_freq = ii;
-            Lambda_w = Wavesle(ii)*1E-3
+            Lambda_w = Wavesle(ii)/10**lamb_mag
             Freq_w = C0/Lambda_w;
             Omega_w = 2*Pi*Freq_w         !! angular frequency
             !K_air = Omega_w*sqrt(Eps0*Rmu0*Eps_air)
@@ -1152,7 +1214,7 @@ Program Main_Scattering
             
             if (rank == 0) then 
                 Write(*,'(a,i3,a,i3,a)') '- SIMULATION ',ii,'/',Nfreq, ' : ****************************************'            
-                a = nint(Freq_w/1E9);
+                a = nint(Freq_w/10**freq_mag);
                 if (a < 10) Then 
                     Allocate(character(5) ::stFreq); ty = '(f5.3)';
                 ElseIf (a < 100) Then
@@ -1160,11 +1222,13 @@ Program Main_Scattering
                 Else
                     Allocate(character(7) ::stFreq); ty = '(f7.3)';
                 EndIf     
-                Write(stFreq,ty) Freq_w/1E9
-                write (*,'(a,a,a)') 'The frequency of simulation = ',stFreq,' GHz' 
-                write (*,'(a,F9.6,a)') ' -- > Wavelength = ',Lambda_w*1e3,' mm'    
+                Write(stFreq,ty) Freq_w/10**freq_mag
+                write (*,'(a,a,a,a)') 'The frequency of simulation = ',stFreq,' ',freq_unit 
+                !write (*,'(a,F9.6,a,a)') ' -- > Wavelength = ',Lambda_w*10**lamb_mag,' ',lamb_unit
+                write (*,*) ' -- > Wavelength = ',Lambda_w*10**lamb_mag,' ',lamb_unit    
                 if (homogs .eq. 1) then  
-                    write (*,'(a,F9.6,a)') ' -- > Wavelength inside scatterer = ',SimScatterer%lambda_min*1e3,' mm'  
+                    !write (*,'(a,F9.6,a,a)') ' -- > Wavelength inside scatterer = ',SimScatterer%lambda_min*10**lamb_mag,' ',lamb_unit 
+                    write (*,*) ' -- > Wavelength inside scatterer = ',SimScatterer%lambda_min*10**lamb_mag,' ',lamb_unit 
                     write (*,'(a,F7.4,a,ES10.3)') ' -- > m = ',mrp,' + j*',mip  
                     write (*,'(a,F7.4,a,ES10.3)') ' -- > Eps = ',rp,' + j*',ip  
                     deallocate(stFreq);            
@@ -1182,7 +1246,7 @@ Program Main_Scattering
                 else
                     Allocate(vals(Nbc)); vals = Cells(1:Nbc)%lambda_cell;
                     r_min = minval(vals); r_max = maxval(vals);
-                    write (*,'(a,F9.6,a,F9.6,a)') ' -- > Wavelength inside scatterer = [',r_min*1e3,' - ',r_max*1e3,'] mm';
+                    write (*,'(a,F9.6,a,F9.6,a,a)') ' -- > Wavelength inside scatterer = [',r_min*10**lamb_mag,' - ',r_max*10**lamb_mag,'] ',lamb_unit;
                     vals = real(Cells(1:Nbc)%m_cell); r_min = minval(vals); r_max = maxval(vals);
                     vals = imag(Cells(1:Nbc)%m_cell); i_min = minval(vals); i_max = maxval(vals);
                     write (*,'(a,F7.4,a,ES10.3,a,F7.4,a,ES10.3,a)') ' -- > m = [',r_min,' + j*',i_min,' - ',r_max,' + j*',i_max,']';
@@ -1215,7 +1279,7 @@ Program Main_Scattering
                 Write(10,'(a,i3,a,i3,a)') 'Simulation ',ii,'/',Nfreq, ' : ****************************************'             
                 Write(10,*) ''
                 Write(10,'(a,es12.2)') 'The frequency of simulation = ',Freq_w
-                Write(10,'(a,F10.6,a)') 'The wavelength of simulation = ',Lambda_w*1e3,' mm' 
+                Write(10,'(a,F10.6,a,a)') 'The wavelength of simulation = ',Lambda_w*10**lamb_mag,' ',lamb_unit 
             endif
             
             if ((Adapt_mesh .eq. 1) .AND. (Nbc .ne. old_Nbc)) then 

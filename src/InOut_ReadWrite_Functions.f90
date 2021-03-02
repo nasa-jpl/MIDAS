@@ -255,7 +255,7 @@ SUBROUTINE Write_jobs_sim_info(CBFM_Blocks,MPI_CBFM_Blocks,K_patchs_all)
     
     Call MPI_Barrier(MPI_COMM_WORLD,code);
     if (rank == 0) then         
-        a = nint(Freq_w/1E9);
+        a = nint(Freq_w/(10**freq_mag));
         if (a < 10) Then 
             Allocate(character(5) ::stFreq); ty = '(f5.3)';
         ElseIf (a < 100) Then
@@ -265,7 +265,7 @@ SUBROUTINE Write_jobs_sim_info(CBFM_Blocks,MPI_CBFM_Blocks,K_patchs_all)
         EndIf     
         Write(stFreq,ty) Freq_w/1E9
     
-        file_name = trim(analysis_fold_name)//Env_sep//'MPIjobs_loadinfo_'//stFreq//'GHz.dat'; 
+        file_name = trim(analysis_fold_name)//Env_sep//'MPIjobs_loadinfo_'//stFreq//trim(freq_unit)//'.dat'; 
     
         Open(14,File = trim(file_name))
         Write(14,'(a)') '   rank       Nblocks      Nbc          K';

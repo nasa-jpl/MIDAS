@@ -132,7 +132,11 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
                 
             if ((Dlambda .eq. 1)  .and.  (chgmt .eq. 1)) then
                 if (rank .eq. 0) then
-                Write(*,'(a,f6.2,a)') 'Attention : Sc was automatically changed to Sc = ',Sc_tmp*1e6,' um' 
+                    if (freq_unit == 'MHz') then 
+                        Write(*,'(a,f6.2,a)') 'Attention : Sc was automatically changed to Sc = ',Sc_tmp,' m';
+                    else
+                        Write(*,'(a,f6.2,a)') 'Attention : Sc was automatically changed to Sc = ',Sc_tmp*1e6,' um';
+                    endif 
                 endif
             endif
         
@@ -155,7 +159,13 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
             EndDo 
                 
             if ((Dlambda .eq. 1)  .and.  (chgmt .eq. 1)) then
-                Write(*,'(a,f6.2,a)') 'Attention : Sc was automatically changed to Sc = ',Sc_tmp*1e6,' um' 
+                if (rank .eq. 0) then
+                    if (freq_unit == 'MHz') then
+                        Write(*,'(a,f6.2,a)') 'Attention : Sc was automatically changed to Sc = ',Sc_tmp,' m';
+                    else
+                        Write(*,'(a,f6.2,a)') 'Attention : Sc was automatically changed to Sc = ',Sc_tmp*1e6,' um';
+                    endif
+                endif
             endif
         
             SimScatterer%Sc = Sc_tmp

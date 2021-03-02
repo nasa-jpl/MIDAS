@@ -44,7 +44,7 @@ SUBROUTINE Incident_Field(cel_init,size_Cells,Cells_in,Nb_transmitters,Transmitt
         Ey = exp(J*K11x*Rx)*exp(J*K11y*Ry)*exp(J*K11z*Rz)*cos(theta_transmit*Pi/180.)*cos(phi_transmit*Pi/180.)
         Ez = exp(J*K11x*Rx)*exp(J*K11y*Ry)*exp(J*K11z*Rz)*cos(theta_transmit*Pi/180.)*sin(phi_transmit*Pi/180.)
     
-	      E_ref_incident(3*(curs_cel-1)+1,num_Eref_v)= Ex
+	    E_ref_incident(3*(curs_cel-1)+1,num_Eref_v)= Ex
         E_ref_incident(3*(curs_cel-1)+2,num_Eref_v)= Ey
         E_ref_incident(3*(curs_cel-1)+3,num_Eref_v)= Ez 
 

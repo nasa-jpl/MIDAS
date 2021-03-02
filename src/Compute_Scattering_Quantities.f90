@@ -93,7 +93,7 @@
         TrTh_min = TrThetasVals(1)*Pi/180.; TrTh_max = TrThetasVals(Nths)*Pi/180.;
         TrPh_min = TrPhisVals(1)*Pi/180.; TrPh_max =TrPhisVals(Nphs)*Pi/180.;     
         
-        a = nint(Freq_w/1E9);
+        a = nint(Freq_w/10**freq_mag);
         if (a < 10) Then 
             Allocate(character(4) ::stFreq)
             ty = '(f4.2)';
@@ -120,7 +120,7 @@
                 Write(sim_name,'(a,i3,a)') 'Sim', num_freq, '_'
             EndIf        
         EndIf 
-        Write(stFreq,ty) Freq_w/1E9
+        Write(stFreq,ty) Freq_w/10**freq_mag
         
         
         if ((NumIntType_r .eq. 'sd') .OR. (NumIntType_r .eq. 'lb')) then
@@ -189,9 +189,9 @@
                         If ((kkt .gt. (rank*NTr_wr_proc)) .and. (kkt .le. (rank+1)*NTr_wr_proc)) then 
                           Write(kkt_st,'(a,i4.4)') 'kt',kkt;
                           if (EqSph == 0) then
-                              file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//'GHz_'//kkt_st//'_'//nom_meth_exact//'.dat';
+                              file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//freq_unit//'_'//kkt_st//'_'//nom_meth_exact//'.dat';
                           else
-                              file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//'GHz_'//kkt_st//'_'//nom_meth_exact//'.dat';
+                              file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//freq_unit//'_'//kkt_st//'_'//nom_meth_exact//'.dat';
                           endif
                           Open(unit=21+rank,File = file_name_s)    
                           Write(21+rank,'(a,a)') '      theta       phi       Re(Svv)        Im(Svv)         Re(Svh)       Im(Shv) ',&
@@ -221,9 +221,9 @@
                         If ((kkt .gt. (rank*NTr_wr_proc)) .and. (kkt .le. (rank+1)*NTr_wr_proc)) then 
                         Write(kkt_st,'(a,i4.4)') 'kt',kkt;
                         if (EqSph == 0) then
-                            file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//'GHz_'//kkt_st//'_'//nom_meth_exact//'.dat';
+                            file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//freq_unit//'_'//kkt_st//'_'//nom_meth_exact//'.dat';
                         else
-                            file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//'GHz_'//kkt_st//'_'//nom_meth_exact//'.dat';
+                            file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//freq_unit//'_'//kkt_st//'_'//nom_meth_exact//'.dat';
                         endif
                         Open(unit=21+rank,File = file_name_s)    
                         Write(21+rank,'(a,a)') '      theta       phi       Re(Svv)        Im(Svv)         Re(Svh)       Im(Shv) ',&
@@ -450,9 +450,9 @@
         ! WRT Q per id ----------------------------------------------------------------------------------------------------
         If ((rank .eq. 0) .and. (wr_Qij .eq. 1)) Then
             if (EqSph == 0) then
-                file_name_q = trim(Qfold_name)//Env_sep//sim_name//'Qidtable_'//stFreq//'GHz_'//nom_meth_exact//'.dat';
+                file_name_q = trim(Qfold_name)//Env_sep//sim_name//'Qidtable_'//stFreq//freq_unit//'_'//nom_meth_exact//'.dat';
             else
-                file_name_q = trim(Qfold_name)//Env_sep//sim_name//'QidtableES_'//stFreq//'GHz_'//nom_meth_exact//'.dat';
+                file_name_q = trim(Qfold_name)//Env_sep//sim_name//'QidtableES_'//stFreq//freq_unit//'_'//nom_meth_exact//'.dat';
             endif
             kkt=0;
             Open(unit=41,File = trim(file_name_q));    
@@ -598,10 +598,16 @@
                 endif
                 Write(41,'(a,a,a)') '      freq       aeff        wave',&
                     '       Q_ext        Q_abs      Q_scat      Q_bk      g(1)=<cos>   Ncels'        
-            EndIf        
-            Write(41,'(es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,i8)') &
-                Freq_w,ap*1E6, lambda_w*1E6, Q_ext_av, Q_abs_av, Q_sca_av, &
-                 Q_bks_av,g_av, Nbc
+            EndIf 
+            if ((freq_unit == 'THz') .OR. (freq_unit == 'GHz')) then        
+                Write(41,'(es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,i8)') &
+                    Freq_w,ap*1E6, lambda_w*1E6, Q_ext_av, Q_abs_av, Q_sca_av, &
+                    Q_bks_av,g_av, Nbc
+            else
+                Write(41,'(es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,i8)') &
+                    Freq_w,ap, lambda_w, Q_ext_av, Q_abs_av, Q_sca_av, &
+                    Q_bks_av,g_av, Nbc
+            endif
     
             Close(41)
             Write(*,'(a,es12.4,a)') '- Q_ext = ', Q_ext_av, trim(Qextintfst)
@@ -685,7 +691,7 @@
         Allocate(Q_bks(NTr))
         Allocate(g(NTr))
         
-        a = nint(Freq_w/1E9);
+        a = nint(Freq_w/10**freq_mag);
         if (a < 10) Then 
             Allocate(character(4) ::stFreq)
             ty = '(f4.2)';
@@ -712,7 +718,7 @@
                 Write(sim_name,'(a,i3,a)') 'Sim', num_freq, '_'
             EndIf        
         EndIf 
-        Write(stFreq,ty) Freq_w/1E9
+        Write(stFreq,ty) Freq_w/10**freq_mag
         
         ! prepare weight for Receivers if Lebedev (otherwise w = 1 everywhere)
         if (NumIntType_r == 'lb') Then !! Lebedev Qudrature
@@ -769,9 +775,9 @@
                     If ((kkt .gt. (rank*NTr_wr_proc)) .and. (kkt .le. (rank+1)*NTr_wr_proc)) then 
                       Write(kkt_st,'(a,i3.3)') 'kt',kkt;
                       if (EqSph == 0) then
-                          file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//'GHz_'//kkt_st//'_'//nom_meth_exact//'.dat';
+                          file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//trim(freq_unit)//'_'//kkt_st//'_'//nom_meth_exact//'.dat';
                       else
-                          file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//'GHz_'//kkt_st//'_'//nom_meth_exact//'.dat';
+                          file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//trim(freq_unit)//'_'//kkt_st//'_'//nom_meth_exact//'.dat';
                       endif
                   
                       Open(unit=21+rank,File = file_name_s)    
@@ -799,9 +805,9 @@
                 If (wr_Sij .eq. 1) Then 
                     Write(kkt_st,'(a,i4.4)') 'kt',kkt;
                     if (EqSph == 0) then
-                        file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//'GHz_'//kkt_st//'_'//nom_meth_exact//'.dat';
+                        file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//trim(freq_unit)//'_'//kkt_st//'_'//nom_meth_exact//'.dat';
                     else
-                        file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//'GHz_'//kkt_st//'_'//nom_meth_exact//'.dat';
+                        file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//trim(freq_unit)//'_'//kkt_st//'_'//nom_meth_exact//'.dat';
                     endif
                     Open(unit=20+id,File = file_name_s)    
                     Write(20+id,'(a,a)') '      theta       phi       Re(Svv)        Im(Svv)         Re(Svh)       Im(Shv) ',&
@@ -1005,9 +1011,9 @@
         ! WRT Q per id 
         If ((rank .eq. 0) .and. (wr_Qij .eq. 1)) Then
             if (EqSph == 0) then
-                file_name_q = trim(Qfold_name)//Env_sep//sim_name//'Qidtable_'//stFreq//'GHz_'//nom_meth_exact//'.dat'
+                file_name_q = trim(Qfold_name)//Env_sep//sim_name//'Qidtable_'//stFreq//trim(freq_unit)//'_'//nom_meth_exact//'.dat'
             else
-                file_name_q = trim(Qfold_name)//Env_sep//sim_name//'QidtableES_'//stFreq//'GHz_'//nom_meth_exact//'.dat'
+                file_name_q = trim(Qfold_name)//Env_sep//sim_name//'QidtableES_'//stFreq//trim(freq_unit)//'_'//nom_meth_exact//'.dat'
             endif
             Open(unit=41,File = trim(file_name_q));    
              Write(41,'(a,a)') '     theta    phi     ',&
@@ -1043,10 +1049,17 @@
                 endif
                 Write(41,'(a,a,a)') '      freq       aeff        wave',&
                     '       Q_ext        Q_abs      Q_scat      Q_bk      g(1)=<cos>   Ncels'        
-            EndIf        
-            Write(41,'(es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,i8)') &
-                Freq_w,ap*1E6, lambda_w*1E6, Q_ext_av, Q_abs_av, Q_sca_av, &
+            EndIf    
+            
+            if ( (freq_unit == 'THz') .OR. (freq_unit == 'GHz')) then   
+                Write(41,'(es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,i8)') &
+                    Freq_w,ap*1E6, lambda_w*1E6, Q_ext_av, Q_abs_av, Q_sca_av, &
+                    Q_bks_av,g_av, Nbc
+            else
+                Write(41,'(es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,es12.4,i8)') &
+                Freq_w,ap, lambda_w, Q_ext_av, Q_abs_av, Q_sca_av, &
                  Q_bks_av,g_av, Nbc
+            endif
     
             Close(41)
             Write(*,'(a,es12.4,a)') '- Q_ext = ', Q_ext_av, trim(Qextintfst)
