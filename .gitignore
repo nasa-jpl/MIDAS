@@ -18,6 +18,7 @@ Sim_MPI_MIDAS_*
 mpi_job.e*
 mpi_job.o*
 remora_*/ 
+impi_data.txt
 
 # Some common .gitignore configurations (keep even if na & uncomment if needed) #
 # Compiled source #
