@@ -161,6 +161,9 @@ SUBROUTINE Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs)
     Allocate(WORK(3*Nbc),IWORK(3*Nbc));
     ANORM = PZLANGE( 'I', 3*Nbc,3*Nbc, ZLoc, IA,JA,DESCA,WORK);
     Allocate(IPIV(Mlocal+M_B));
+    if (rank == 0) then 
+        Write(*,'(a)') 'PZGESV in progress ...' 
+    endif
     CALL PZGESV(3*Nbc,2*NTr,ZLoc,IA,JA,DESCA,IPIV,VLoc,IB,JB,DESCB,INFO);
     
     if (INFO .GT. 0) then 
