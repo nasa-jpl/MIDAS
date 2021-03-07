@@ -157,30 +157,37 @@ SUBROUTINE Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs)
     IA=1;JA=1;IB=1;JB=1;       
     ! Machine precision
     EPSMCH = PSLAMCH(icontxt,'E'); 
+    
+    ! LWORK >= 2*LOCr(N+MOD(IA-1,MB_A)) +  MAX( 2, MAX(NB_A*CEIL(NPROW-1,NPCOL),LOCc(N+MOD(JA-1,NB_A)) + NB_A*CEIL(NPCOL-1,NPROW)) ).
+    ! LRWORK >= MAX( 1, 2*LOCc(N+MOD(JA-1,NB_A)) ).
+    LWORK = 2*3*Nbc; ! Here 2*Matrix_size is enough for now (same as for CBFM-E), but needs to compute the exact LWORK and LIWORK for more accuracy/robustness
+    LIWORK = 2*3*Nbc; !K_total; 
+    Allocate(WORK(LWORK),IWORK(LIWORK));
+    
     ! get Infinity NORM of ZLoc 
-    Allocate(WORK(3*Nbc),IWORK(3*Nbc));
     ANORM = PZLANGE( 'I', 3*Nbc,3*Nbc, ZLoc, IA,JA,DESCA,WORK);
     Allocate(IPIV(Mlocal+M_B));
     if (rank == 0) then 
         Write(*,'(a)') 'PZGESV in progress ...' 
     endif
     CALL PZGESV(3*Nbc,2*NTr,ZLoc,IA,JA,DESCA,IPIV,VLoc,IB,JB,DESCB,INFO);
+    if (rank .eq. 0) then
+        Write(*,'(a,i4)') 'INFO = ',INFO
+    endif
     
     if (INFO .GT. 0) then 
         if (rank .eq. 0) then 
             Write(*,'(a)') 'SINGULAR MATRIX';
-            Write(*,'(a,i4)') 'INFO = ',INFO
         endif            
     elseif (3*Nbc .gt. 0) then 
         ! Get Reciprocal condition number RCOND of Zc
-        LWORK = 3*Nbc; LIWORK = 3*Nbc;
-        CALL PZGECON( 'I', 3*Nbc,ZLoc,IA,JA,DESCA, ANORM, RCOND,WORK,LWORK,IWORK,LIWORK,INFO);
+        !CALL PZGECON( 'I', 3*Nbc,ZLoc,IA,JA,DESCA, ANORM, RCOND,WORK,LWORK,IWORK,LIWORK,INFO);
         !RCOND = max(RCOND,EPSMCH);
-        ERRBD = EPSMCH/ RCOND
+        !ERRBD = EPSMCH/ RCOND
         if (rank == 0) then 
           Write(*,'(a,es10.3)') '--> ANORM(ZLoc) = ',ANORM  
-          Write(*,'(a,es12.5)') '--> RCOND = ',RCOND
-          Write(*,'(a,es12.5,a,es12.5)') '--> With EPSMCH =',EPSMCH,'; ERRBD =',ERRBD
+          !Write(*,'(a,es12.5)') '--> RCOND = ',RCOND
+          !Write(*,'(a,es12.5,a,es12.5)') '--> With EPSMCH =',EPSMCH,'; ERRBD =',ERRBD
         endif
     endif  
     
