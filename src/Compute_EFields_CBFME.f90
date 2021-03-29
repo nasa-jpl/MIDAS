@@ -39,7 +39,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     INTEGER, parameter :: ROW_SRC = 0, COL_SRC = 0
     INTEGER, parameter :: NDIMS = 2
     INTEGER,dimension(1:NDIMS) :: dims
-    INTEGER, dimension(:), allocatable :: K_patchs_eff, Curs_Kpatchs_all
+    INTEGER, dimension(:), allocatable :: Blocks_eff, K_patchs_eff, Curs_Kpatchs_all
     INTEGER, dimension(:), allocatable :: DESCA, DESCB, IPIV
     DOUBLE COMPLEX, Dimension(:,:), allocatable :: ZredLoc,VredLoc!,ZFredLoc
     DOUBLE COMPLEX, Dimension(:,:), allocatable :: AlphaProc!,AlphaLoc 
@@ -888,10 +888,11 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     Do pp=1, nber_procs
         Call MPI_SENDRECV_REPLACE(AlphaProc,2*size2,MPI_COMPLEX,prev_job,tag,next_job,tag,MPI_COMM_WORLD,status,code)
         Eff_rank = mod(rank+pp,nber_procs);
-	      K_proc = Ktot_procs(Eff_rank+1);
+	    K_proc = Ktot_procs(Eff_rank+1);
         NBlocks_eff = MPI_CBFM_Blocks(Eff_rank+1,1)
-        Allocate(K_patchs_eff(NBlocks_eff));
-        K_patchs_eff = K_patchs_all(MPI_CBFM_Blocks(Eff_rank+1,2:1+NBlocks_eff));        
+        Allocate(Blocks_eff(NBlocks_eff), K_patchs_eff(NBlocks_eff));
+        Blocks_eff(1:NBlocks_eff) = MPI_CBFM_Blocks(Eff_rank+1,2:1+NBlocks_eff)
+        K_patchs_eff(1:NBlocks_eff) = K_patchs_all(Blocks_eff);        
         Do iLoc=1, Mlocal
     	    iGlob = INDXL2G(iLoc,M_B,Myrow,0,NPROW)
             block_iGlob = minloc(Curs_Kpatchs_all, 1, mask = Curs_Kpatchs_all .gt. iGlob) - 1
@@ -904,7 +905,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
                 End do
             endif
         enddo 
-        deallocate(K_patchs_eff);
+        deallocate(Blocks_eff,K_patchs_eff);
     End do    
     deallocate(Curs_Kpatchs_all,K_patchs_all);!,AlphaLoc);
             
