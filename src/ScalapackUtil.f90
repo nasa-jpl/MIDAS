@@ -25,7 +25,7 @@ SUBROUTINE Block_Cyclic_Distribution_v1(M_Z,N_Z,NRHS_Z,Zred,Vred,K_patchs,K_patc
     INTEGER :: INDXL2G,INDXG2L, size1, size2, prev_job, next_job
     Integer :: Eff_rank, K_proc, NBlocks_eff
     INTEGER, dimension(MPI_STATUS_SIZE) :: status     
-    INTEGER, dimension(:), allocatable :: K_patchs_eff
+    INTEGER, dimension(:), allocatable :: K_patchs_eff, Blocks_eff
     
     
     ! here distribution of both Zred and Vred when needed
@@ -71,8 +71,9 @@ SUBROUTINE Block_Cyclic_Distribution_v1(M_Z,N_Z,NRHS_Z,Zred,Vred,K_patchs,K_patc
         Eff_rank = mod(rank+kk,nber_procs);            
         K_proc = Ktot_procs(Eff_rank+1);
         NBlocks_eff = MPI_CBFM_Blocks(Eff_rank+1,1)
-        Allocate(K_patchs_eff(NBlocks_eff));
-        K_patchs_eff = K_patchs_all(MPI_CBFM_Blocks(Eff_rank+1,2:1+NBlocks_eff));
+        Allocate(Blocks_eff(NBlocks_eff),K_patchs_eff(NBlocks_eff));
+        Blocks_eff(1:NBlocks_eff) = MPI_CBFM_Blocks(Eff_rank+1,2:1+NBlocks_eff)
+        K_patchs_eff(1:NBlocks_eff) = K_patchs_all(Blocks_eff);
         Do iLoc=1, Mlocal
     	iGlob = INDXL2G(iLoc,M_B,Myrow,0,NPROW)
         block_iGlob = minloc(Curs_Kpatchs_all, 1, mask = Curs_Kpatchs_all .gt. iGlob) - 1
@@ -91,7 +92,7 @@ SUBROUTINE Block_Cyclic_Distribution_v1(M_Z,N_Z,NRHS_Z,Zred,Vred,K_patchs,K_patc
        		End do
         end if
         End do
-        deallocate(K_patchs_eff);
+        deallocate(Blocks_eff,K_patchs_eff);
     EndDo        
     END SUBROUTINE Block_Cyclic_Distribution_v1
     
@@ -124,7 +125,7 @@ SUBROUTINE Block_Cyclic_Distribution_v1(M_Z,N_Z,NRHS_Z,Zred,Vred,K_patchs,K_patc
     INTEGER :: INDXL2G,INDXG2L, size1, size2, prev_job, next_job
     Integer :: Eff_rank, rank_j, K_proc, NBlocks_eff
     INTEGER, dimension(MPI_STATUS_SIZE) :: status     
-    INTEGER, dimension(:), allocatable :: K_patchs_j,K_patchs_eff
+    INTEGER, dimension(:), allocatable :: K_patchs_j,K_patchs_eff, Blocks_j,Blocks_eff
     
     ! dist_interaction = 0 
     ! So here distribution of both Zred and Vred after calculation of proper interaction inside 
@@ -183,14 +184,16 @@ SUBROUTINE Block_Cyclic_Distribution_v1(M_Z,N_Z,NRHS_Z,Zred,Vred,K_patchs,K_patc
             Eff_rank = mod(rank+kk,nber_procs);            
             K_proc = Ktot_procs(Eff_rank+1);
             NBlocks_eff = MPI_CBFM_Blocks(Eff_rank+1,1)
-            Allocate(K_patchs_eff(NBlocks_eff));
-            K_patchs_eff = K_patchs_all(MPI_CBFM_Blocks(Eff_rank+1,2:1+NBlocks_eff));
+            Allocate(Blocks_eff(NBlocks_eff), K_patchs_eff(NBlocks_eff));
+            Blocks_eff(1:NBlocks_eff) = MPI_CBFM_Blocks(Eff_rank+1,2:1+NBlocks_eff);
+            K_patchs_eff(1:NBlocks_eff) = K_patchs_all(Blocks_eff);
           
             ! the Zii which is spinning is the result of the interaction of the eff-rank with itself (meaning du distance interaction = 0)
             rank_j = Eff_rank ; ! rank_j = Eff_rank + dist_interaction ! rank_j here is also an effective rank_j 
             NBlocks_j = MPI_CBFM_Blocks(rank_j+1,1);
-            Allocate(K_patchs_j(NBlocks_j))
-            K_patchs_j = K_patchs_all(MPI_CBFM_Blocks(rank_j+1,2:1+NBlocks_j));
+            Allocate(Blocks_j(NBlocks_j), K_patchs_j(NBlocks_j));
+            Blocks_j(1:NBlocks_j) = MPI_CBFM_Blocks(rank_j+1,2:1+NBlocks_j)
+            K_patchs_j(1:NBlocks_j) = K_patchs_all(Blocks_j);
         
             Do iLoc=1, Mlocal
     	        iGlob = INDXL2G(iLoc,M_B,Myrow,0,NPROW)
@@ -215,7 +218,7 @@ SUBROUTINE Block_Cyclic_Distribution_v1(M_Z,N_Z,NRHS_Z,Zred,Vred,K_patchs,K_patc
        		        End do
                 endif
             Enddo
-            deallocate(K_patchs_eff,K_patchs_j);
+            deallocate(K_patchs_eff,K_patchs_j, Blocks_eff, Blocks_j);
         EndDo    
     Else ! here the distribution after calculation of Z (Rank i <-> j), the distance intercation gives us an idea about the effective rank j
          ! for this part NO Vred is distributed since it is not concerned by the interactions inter-jobs 
@@ -264,13 +267,15 @@ SUBROUTINE Block_Cyclic_Distribution_v1(M_Z,N_Z,NRHS_Z,Zred,Vred,K_patchs,K_patc
             Eff_rank = mod(rank+kk,nber_procs);            
             K_proc = Ktot_procs(Eff_rank+1);
             NBlocks_eff = MPI_CBFM_Blocks(Eff_rank+1,1)
-            Allocate(K_patchs_eff(NBlocks_eff));
-            K_patchs_eff = K_patchs_all(MPI_CBFM_Blocks(Eff_rank+1,2:1+NBlocks_eff));
+            Allocate(Blocks_eff(NBlocks_eff), K_patchs_eff(NBlocks_eff));
+            Blocks_eff(1:NBlocks_eff) = MPI_CBFM_Blocks(Eff_rank+1,2:1+NBlocks_eff);
+            K_patchs_eff(1:NBlocks_eff) = K_patchs_all(Blocks_eff);
           
             rank_j = mod(Eff_rank+dist_interaction,nber_procs)
             NBlocks_j = MPI_CBFM_Blocks(rank_j+1,1);
-            Allocate(K_patchs_j(NBlocks_j))
-            K_patchs_j = K_patchs_all(MPI_CBFM_Blocks(rank_j+1,2:1+NBlocks_j));          
+            Allocate(Blocks_j(NBlocks_j),K_patchs_j(NBlocks_j));
+            Blocks_j(1:NBlocks_j) = MPI_CBFM_Blocks(rank_j+1,2:1+NBlocks_j);
+            K_patchs_j(1:NBlocks_j) = K_patchs_all(Blocks_j);          
           
             Do iLoc=1, Mlocal
     	        iGlob = INDXL2G(iLoc,M_B,Myrow,0,NPROW)
@@ -290,7 +295,7 @@ SUBROUTINE Block_Cyclic_Distribution_v1(M_Z,N_Z,NRHS_Z,Zred,Vred,K_patchs,K_patc
         	        End do  
                 end if
             End do
-            deallocate(K_patchs_eff,K_patchs_j);
+            deallocate(K_patchs_eff,K_patchs_j,Blocks_eff,Blocks_j);
         EndDo        
     EndIf 
         
