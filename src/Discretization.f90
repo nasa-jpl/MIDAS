@@ -312,16 +312,17 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
         
         ! Start with updating the properties of the current scatterer according to the 
         ! information read from shape.dat (new Sc, Nbc_p and angle of rotation)
-        Sc = ((4*Pi)/(3*pr_NBcels))**(1./3.)*SimScatterer%a;        
+        Nbc = pr_NBcels
+        Sc = ((4*Pi)/(3*Nbc))**(1./3.)*SimScatterer%a;        
         SimScatterer%Sc = Sc;
-        
+    
         SimScatterer%Dlamb = anint((SimScatterer%lambda_min)/Sc)
-        Nbc = pr_NBcels   
+           
         
         ! Now, calculate the X, Y and Z coordiantes and other EM properties for each cell 
         ! we consider that the origin of the new coordinate system a1,a2 is the origin of the latice (0,0,0)
         
-        Do idip = 1,pr_NBcels
+        Do idip = 1,Nbc
             Comp_cel = Comp_cel + 1
             
             TmpCells(Comp_cel)%num_cell = Comp_cel
@@ -335,6 +336,7 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
         
         ! we recall that the scatterer attributes pb_xmin, pb_xmax,pb_ymin, pb_ymax 
         ! pb_zmin and pb_zmax of the current scatterer will be assigned in the subroutine Division_blocks  
+        
         
     ElseIf (Type_Par == 3) Then 
         ! the scatterer is a simple Cylinder of height h (mm) and radius r (mm) read from the simulation data input file
