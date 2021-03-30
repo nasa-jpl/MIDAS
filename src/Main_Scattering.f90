@@ -11,7 +11,7 @@ Program Main_Scattering
     !! LOCAL *****************************************************************************************************************
     !! ***********************************************************************************************************************
     !! Transmitters/Receivers 
-    Integer :: Ninc_sugg, Nscat_sugg
+    Integer :: Ninc_sugg, Nscat_sugg, sd_type
     real(kind=8) :: theta_init_trans_comp,theta_final_trans_comp,Step_theta_trans_comp
     real(kind=8) :: phi_init_trans_comp, phi_final_trans_comp, step_phi_trans_comp
     real(kind=8) :: theta_init_Recei,theta_final_Recei,step_theta_Recei
@@ -173,7 +173,7 @@ Program Main_Scattering
             Integer, Dimension(:,:), allocatable, INTENT(OUT) :: CBFM_Blocks_Ext           
         END SUBROUTINE Extend_blocks 
         
-        SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,thitrans,thftrans,phitrans,phftrans,thiRecei,thfRecei,phiRecei,phfRecei,Transmitters_Comp,Receivers);
+        SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,sd_type,thitrans,thftrans,phitrans,phftrans,thiRecei,thfRecei,phiRecei,phfRecei,Transmitters_Comp,Receivers);
             USE Initialization
             USE common_variables
     
@@ -182,6 +182,7 @@ Program Main_Scattering
             !! IN/OUT ******************************************************************
     
             Integer, INTENT(IN) :: Ninc_in,Nscat_in
+            Integer, INTENT(OUT) :: sd_type
             Real(kind=8), INTENT(IN) :: thftrans,thitrans,phftrans,phitrans 
             Real(kind=8), INTENT(IN) :: thfRecei,thiRecei,phfRecei,phiRecei
             type (Dipole), Dimension(:), allocatable, INTENT(OUT) :: Transmitters_Comp
@@ -512,7 +513,7 @@ Program Main_Scattering
     
     ! Get Transmitters/Scatterers depending on the type of the numerical integration used to average the scattering quantities
     ! over incident/scattering directions
-    call get_trans_Receiv(Ninc_sugg,Nscat_sugg,theta_init_trans_comp,theta_final_trans_comp,&
+    call get_trans_Receiv(Ninc_sugg,Nscat_sugg,sd_type,theta_init_trans_comp,theta_final_trans_comp,&
                           phi_init_trans_comp,phi_final_trans_comp, &
                           theta_init_Recei,theta_final_Recei, phi_init_Recei,phi_final_Recei,&
                           Transmitters_Comp,Receivers);
@@ -930,12 +931,12 @@ Program Main_Scattering
               go to 30;
             endif   
       
-            if (Nbc .lt. 4e5) then 
+            !if (Nbc .lt. 4e5) then 
             	call date_and_time(date_init,time_init,zone_init,values_init);             
             	call Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,'NEW');   !! TO CHECK AND MPI OPTIMIZE  1/29/2019
             	call date_and_time(date_final,time_final,zone_final,values_final)
             	call Calcul_time_spent(values_init,values_final,Comp_time_write)     
-	        endif   
+	        !endif   
             
         Else 
             ! to avoid segmentation fault errors at the input of Compute_Electric_Fields.
@@ -1008,6 +1009,15 @@ Program Main_Scattering
             Write(*,*) ''; Write(*,*) ''
             Write(*,'(a)')  '------Transmitters/Receivers-----'
             Write(*,'(a,a,a,a)') 'Config of Tx/Rx = ', NumIntType_t,'/',NumIntType_r
+            if ((NumIntType_t .eq. 'sd') .OR. (NumIntType_r .eq. 'sd')) then
+                if (sd_type .eq. 1) Then
+                    Write(*,'(a)') '-Type : FSU H&S St-d'                    
+                ElseIf (sd_type .eq. 2) Then    
+                    Write(*,'(a)') '-Type : W. St-d'             
+                Else 
+                    Write(*,'(a)') '-Type : W. Symm St-d'
+                EndIf 
+            endif
             Write(*,'(a,i5)') 'Nber of Tx = ', NTr
             if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl')) then 
                 Write(*,'(a,i3,a,i3)') 'Ntheta = ',NTrTheta,'; Nphi = ',NTrPhi
@@ -1048,7 +1058,17 @@ Program Main_Scattering
             Open(unit=41,File = trim(SimOutfld_name)//Env_sep//'IncScattDirs.dat');        
             Write(41,'(a)') 'INCIDENT DIRECTIONS : '
             Write(41,'(a,i5)') 'Ninc = ', NTr 
-            Write(41,'(a,a)') 'Dist Type = ', NumIntType_t
+            if (NumIntType_t .ne. 'sd') then 
+                Write(41,'(a,a)') 'Dist Type = ', NumIntType_t
+            else
+                if (sd_type .eq. 1) Then
+                    Write(41,'(a)') 'Dist Type = sd (FSU H&S St-d)'                    
+                ElseIf (sd_type .eq. 2) Then    
+                    Write(41,'(a)') 'Dist Type = sd (W. St-d)'             
+                Else 
+                    Write(41,'(a)') 'Dist Type = sd (W. Symm St-d)'
+                EndIf
+            endif
             if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl')) Then 
                 Write(41,'(a,i3,a,i3)') 'Ntheta = ',NTrTheta,'; Nphi = ',NTrPhi        
             EndIf   
@@ -1059,7 +1079,17 @@ Program Main_Scattering
             Write(41,'(a)') ''
             Write(41,'(a)') 'SCATTERING DIRECTIONS : '
             Write(41,'(a,i5)') 'Nscat = ', NRx 
-            Write(41,'(a,a)') 'Dist Type = ', NumIntType_r
+            if (NumIntType_r .ne. 'sd') then 
+                Write(41,'(a,a)') 'Dist Type = ', NumIntType_r
+            else
+                if (sd_type .eq. 1) Then
+                    Write(41,'(a)') 'Dist Type = sd (FSU H&S St-d)'                    
+                ElseIf (sd_type .eq. 2) Then    
+                    Write(41,'(a)') 'Dist Type = sd (W. St-d)'             
+                Else 
+                    Write(41,'(a)') 'Dist Type = sd (W. Symm St-d)'
+                EndIf
+            endif
             if ((NumIntType_r .eq. 'aq') .OR. (NumIntType_r .eq. 'gl')) Then 
                 Write(41,'(a,i3,a,i3)') 'Ntheta = ',NRxTheta,'; Nphi = ',NRxPhi         
             EndIf   
