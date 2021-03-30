@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -N MIDAS_mpi
+#PBS -q mpi-jpl
+#PBS -l select=10:ncpus=48:mpiprocs=24:mem=360gb
+#PBS -l walltime=120:00:00
+
+# Set your executable directory
+export RUN_DIR=/home/ifenni/MyCodes/SingleScatterer/MIDAS
+
+# run application
+cd $RUN_DIR
+source /cm/shared/apps/intel/vtune_profiler_2020/vtune-vars.sh
+time aps mpiexec -n 240 ./midas>Sim_SBody_MPI_3-29-2021_06h44
