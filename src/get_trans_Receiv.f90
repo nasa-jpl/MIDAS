@@ -1,4 +1,4 @@
-SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,thitrans,thftrans,phitrans,phftrans,thiRecei,thfRecei,phiRecei,phfRecei,Transmitters_Comp,Receivers);
+SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,sd_type,thitrans,thftrans,phitrans,phftrans,thiRecei,thfRecei,phiRecei,phfRecei,Transmitters_Comp,Receivers);
     ! modif 2-18-2020 : correction of the transformation (X,Y,Z) --> (theha, phi), It impacts the SD and LB configurations (line 118)
     ! We also replaced Phi+Pi by mod(Phi+2Pi,2Pi). thinking that +Pi doesn't change the outcoming result was wrong, mod(Phi+2Pi,2Pi) is the correct way to convert -Pi<Phi<Pi to 0<Phi<2Pi 
     ! modif 2-24-2020 : correction of the call to ld_by_order. a subroutine lb_get_closer_Npts was created in sphere_lebedev_rule.f90 et the changes impacted get_trans_Receiv.f90, 
@@ -12,6 +12,7 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,thitrans,thftrans,phitrans,phftrans
     !! IN/OUT ******************************************************************
     
     Integer, INTENT(IN) :: Ninc_in,Nscat_in
+    Integer, INTENT(OUT) :: sd_type
     Real(kind=8), INTENT(IN) :: thftrans,thitrans,phftrans,phitrans 
     Real(kind=8), INTENT(IN) :: thfRecei,thiRecei,phfRecei,phiRecei
     type (Dipole), Dimension(:), allocatable, INTENT(OUT) :: Transmitters_Comp
@@ -21,7 +22,6 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,thitrans,thftrans,phitrans,phftrans
     ! local    
     Integer :: ii,Ind, I,K,order,Npts,NRx_extra,Step_in_cosTh
     Integer :: RxExt_exists, RxBks_exists
-    Integer :: sd_type
     
     !! Transmitters/Receivers 
     Real(kind=8) :: Step_theta_trans_comp,step_phi_trans_comp
@@ -54,7 +54,7 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,thitrans,thftrans,phitrans,phftrans
     ! (to avoid the problem of concentration around the poles) 
     Step_in_cosTh = 0;
     
-    sd_type = 3 ; ! we implemented different versions of spehrical t-design 
+    sd_type = 2 ; ! we implemented different versions of spehrical t-design 
                  ! sd_type = 1 Hardin and Sloane Spherical Designs : http://people.sc.fsu.edu/~jburkardt%20/f_src/sphere_design_rule/sphere_design_rule.html
                  ! sd_type = 2 Efficient Spherical T-Designs : https://web.maths.unsw.edu.au/~rsw/Sphere/EffSphDes/index.html
                  ! sd_type = 3 Symmetric Efficient Spherical T-Designs : https://web.maths.unsw.edu.au/~rsw/Sphere/EffSphDes/index.html
@@ -84,6 +84,10 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,thitrans,thftrans,phitrans,phftrans
             call ESD_design_closer_order (Ninc_in,order,Npts); 
         elseif (sd_type .eq. 3) then
             call ESSD_design_closer_order (Ninc_in,order,Npts);
+        else 
+            write(*,'(a)') 'invalid value of sd_type; set automatically to 2'
+            sd_type = 2;
+            call ESD_design_closer_order (Ninc_in,order,Npts); 
         endif        
         NTr = Npts;                
         
