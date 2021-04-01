@@ -1,0 +1,36 @@
+\begin{thebibliography}{1}
+
+\bibitem{Nguyen2006model}
+H.~Nguyen, H.~Roussel, and W.~Tabbara.
+\newblock A coherent model of forest scattering and sar imaging in the vhf and
+  uhf-band.
+\newblock {\em IEEE Transactions on Geoscience and Remote Sensing},
+  44(4):838--848, April 2006.
+
+\bibitem{Bellez2009model}
+S.~Bellez, C.~Dahon, and H.~Roussel.
+\newblock Analysis of the main scattering mechanisms in forested areas: An
+  integral representation approach for monostatic radar configurations.
+\newblock {\em IEEE Transactions on Geoscience and Remote Sensing},
+  47(12):4153--4166, Dec 2009.
+
+\bibitem{penttila2007comparison}
+Antti Penttil{\"a}, Evgenij Zubko, Kari Lumme, Karri Muinonen, Maxim~A Yurkin,
+  Bruce Draine, Jussi Rahola, Alfons~G Hoekstra, and Yuri Shkuratov.
+\newblock Comparison between discrete dipole implementations and exact
+  techniques.
+\newblock {\em Journal of Quantitative Spectroscopy and Radiative Transfer},
+  106(1):417--436, 2007.
+
+\bibitem{mishchenko2002scattering}
+Michael~I Mishchenko, Larry~D Travis, and Andrew~A Lacis.
+\newblock {\em Scattering, absorption, and emission of light by small
+  particles}.
+\newblock Cambridge university press, 2002.
+
+\bibitem{draine2013user}
+Bruce~T Draine and Piotr~J Flatau.
+\newblock User guide for the discrete dipole approximation code ddscat 7.3.
+\newblock 2013.
+
+\end{thebibliography}
