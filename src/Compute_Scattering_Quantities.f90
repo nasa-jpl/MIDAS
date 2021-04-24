@@ -53,7 +53,7 @@
             Write (*,*) ''
         EndIf
         ap = SimScatterer%dm/2.;
-        X = K_air*SimScatterer%dm/2.
+        X = k_0*SimScatterer%dm/2.
         Sfold_name = trim(SimOutfld_name)//Env_sep//'S_files';
         Qfold_name = trim(SimOutfld_name)//Env_sep//'Q_files';
 
@@ -276,11 +276,11 @@
                 
                         ! Qscat 
                         q_sd = sum(fxy_1d); 
-                        c_sca = 1./(2*K_air**2)*q_sd; 
+                        c_sca = 1./(2*k_0**2)*q_sd; 
                         Q_sca(cc,dd) = (4*Pi)/(2*Pi*X*X)*q_sd;
      
                         ! g                            
-                        g(cc,dd) = 1./(2.*K_air**2.*c_sca)*sum(fxy_g_1d); 
+                        g(cc,dd) = 1./(2.*k_0**2.*c_sca)*sum(fxy_g_1d); 
                     elseif (NumIntType_r == 'sd') then ! SPHERICAL DESIGN
                         Do kkr =1, NRx
                             ! Q_scat
@@ -299,10 +299,10 @@
                 
                         ! Qscat 
                         q_sd = (4*Pi/NRx)*sum(fxy_1d); 
-                        c_sca = 1./(2*K_air**2)*q_sd; 
+                        c_sca = 1./(2*k_0**2)*q_sd; 
                         Q_sca(cc,dd) = 1/(2*Pi*X*X)*q_sd;
                         ! g           
-                        g(cc,dd) = 1./(2.*K_air**2.*c_sca)*(4*Pi/NRx)*sum(fxy_g_1d); 
+                        g(cc,dd) = 1./(2.*k_0**2.*c_sca)*(4*Pi/NRx)*sum(fxy_g_1d); 
                     endif      
                     Deallocate(fxy_1d,fxy_g_1d);
                 else
@@ -348,7 +348,7 @@
                                 q_int = q_int + wph(jj)*wth(ii)*fxy_2d(ii,jj);        
                             EndDo
                         EndDo 
-                        c_sca = 1./(2.*K_air**2.)*q_int; 
+                        c_sca = 1./(2.*k_0**2.)*q_int; 
                         Q_sca(cc,dd) = 2./(Sn*X*X)*q_int;  
                         
                         !g
@@ -358,7 +358,7 @@
                                 q_int = q_int + wph(jj)*wth(ii)*fxy_g_2d(ii,jj);        
                             EndDo
                         EndDo 
-                        g(cc,dd) = 1./(2*K_air**2.*c_sca)*q_int;   
+                        g(cc,dd) = 1./(2*k_0**2.*c_sca)*q_int;   
                         Deallocate(xth,wth,xph,wph);  
                     
                     elseif (NumIntType_r == 'aq') Then ! Adaptive Quadrature
@@ -378,7 +378,7 @@
                         endif
                     
                         Q_sca(cc,dd) = 2./(Sn*X*X)*q_int;
-                        c_sca = 1./(2*K_air**2)*q_int; 
+                        c_sca = 1./(2*k_0**2)*q_int; 
                         deallocate(fy);    
                         
                         !g
@@ -394,17 +394,17 @@
                         else
                             q_int = fy_g(1,1);                        
                         endif
-                        g(cc,dd) = 1./(2.*K_air**2.*c_sca)*q_int;   
+                        g(cc,dd) = 1./(2.*k_0**2.*c_sca)*q_int;   
                         deallocate(fy_g);                   
                     
                     elseif (NumIntType_r == 'tr') Then
                         ! Q_scat
                         call trap_2Dc(fxy_2d,RecTh_min,RecTh_max,RecPh_min,RecPh_max,q_int,NRxTheta,NRxPhi);
-                        c_sca = 1./(2*K_air**2)*q_int; 
+                        c_sca = 1./(2*k_0**2)*q_int; 
                         Q_sca(cc,dd) = 2./(Sn*X*X)*q_int; 
                         ! g 
                         call trap_2Dc(fxy_g_2d,RecTh_min,RecTh_max,RecPh_min,RecPh_max,q_int,NRxTheta,NRxPhi);
-                        g(cc,dd) = 1./(2.*K_air**2.*c_sca)*q_int;                
+                        g(cc,dd) = 1./(2.*k_0**2.*c_sca)*q_int;                
                     endIf
                     Deallocate(fxy_2d,fxy_g_2d);
                 EndIf
@@ -670,7 +670,7 @@
         endif
         
         ap = SimScatterer%dm/2.;
-        X = K_air*SimScatterer%dm/2.
+        X = k_0*SimScatterer%dm/2.
         
         Sfold_name = trim(SimOutfld_name)//Env_sep//'S_files';
         Qfold_name = trim(SimOutfld_name)//Env_sep//'Q_files';
@@ -856,11 +856,11 @@
                 EndDo                                 
                 ! Qscat 
                 q_sd = sum(fxy_1d); 
-                c_sca = 1./(2*K_air**2)*q_sd; 
+                c_sca = 1./(2*k_0**2)*q_sd; 
                 Q_sca(kkt) = (4*Pi)/(2*Pi*X*X)*q_sd;
      
                 ! g                            
-                g(kkt) = 1./(2.*K_air**2.*c_sca)*sum(fxy_g_1d);
+                g(kkt) = 1./(2.*k_0**2.*c_sca)*sum(fxy_g_1d);
 		Deallocate(fxy_1d,fxy_g_1d); 
             elseif (NumIntType_r == 'sd') then ! SPHERICAL DESIGN
                 Allocate(fxy_1d(NRx));Allocate(fxy_g_1d(NRx));     
@@ -881,10 +881,10 @@
                 
                 ! Qscat 
                 q_sd = (4*Pi/NRx)*sum(fxy_1d); 
-                c_sca = 1./(2*K_air**2)*q_sd; 
+                c_sca = 1./(2*k_0**2)*q_sd; 
                 Q_sca(kkt) = 1/(2*Pi*X*X)*q_sd;
                 ! g           
-                g(kkt) = 1./(2.*K_air**2.*c_sca)*(4*Pi/NRx)*sum(fxy_g_1d); 
+                g(kkt) = 1./(2.*k_0**2.*c_sca)*(4*Pi/NRx)*sum(fxy_g_1d); 
                 
                 Deallocate(fxy_1d,fxy_g_1d);
             else
@@ -922,7 +922,7 @@
                 endif
                     
                 Q_sca(kkt) = 2./(Sn*X*X)*q_int;
-                c_sca = 1./(2*K_air**2)*q_int; 
+                c_sca = 1./(2*k_0**2)*q_int; 
                                         
                 !g
                 q_int=0
@@ -937,7 +937,7 @@
                 else
                     q_int = fy_g(1,1);                        
                 endif
-                g(kkt) = 1./(2.*K_air**2.*c_sca)*q_int;   
+                g(kkt) = 1./(2.*k_0**2.*c_sca)*q_int;   
                 deallocate(fy,fy_g); 
                 Deallocate(fxy_2d,fxy_g_2d);
             endif  

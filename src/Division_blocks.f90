@@ -265,13 +265,13 @@ SUBROUTINE Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,err
             Do num_cel=1,Nbcels
                 cel = cells_in_blocks(numB_cel,1+num_cel)
                 New_Cells(curs_new_cel) = Cells(cel)
-                New_Cells(curs_new_cel)%num_block = numB_gl;       
+                New_Cells(curs_new_cel)%n_block = numB_gl;       
                 curs_new_cel = curs_new_cel + 1
             EndDo            
         EndDo
           
         Do num_cel=1,ncp
-            New_Cells(num_cel)%num_cell = num_cel                    
+            New_Cells(num_cel)%n_cell = num_cel                    
         EndDo
         Cells(1:ncp) = New_Cells(1:ncp);
         Deallocate(cells_in_blocks) 
@@ -454,7 +454,7 @@ SUBROUTINE Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,err
                         Do num_cel=1,Nbcels
                             cel = cells_in_blocks(numB_cel,1+num_cel)   
                             New_cells_Block(curs_new_cel) = cells_Block(cel)
-                            New_Cells_Block(curs_new_cel)%num_block = numB_gl;   
+                            New_Cells_Block(curs_new_cel)%n_block = numB_gl;   
                             curs_new_cel = curs_new_cel + 1
                         EndDo            
                     EndDo
@@ -474,7 +474,7 @@ SUBROUTINE Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,err
                         CBFM_Blocks_p_tmp(cursB) = CBFM_Blocks_p(iiB);                    
                         CBFM_Blocks_p_tmp(cursB)%num_block = numB_gl;   
                         Do num_cel=1,Nbc_block
-                            cells_Block(num_cel)%num_block = numB_gl; 
+                            cells_Block(num_cel)%n_block = numB_gl; 
                         EndDo   
                         New_Cells(cel_init:cel_final) = cells_Block(1:Nbc_block)
                         Deallocate(cells_Block,positions);
@@ -490,7 +490,7 @@ SUBROUTINE Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,err
               
             ! update the num_cell field, then put New_Cells_p in Cells_p 
             Do num_cel=1,ncp
-                New_Cells(num_cel)%num_cell = num_cel                    
+                New_Cells(num_cel)%n_cell = num_cel                    
             EndDo
             Cells(1:ncp) = New_Cells(1:ncp);    
           
@@ -678,8 +678,8 @@ SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,
         NbBl = 1;
         Allocate(cells_in_blocks(NbBl,1+N1)); 
         cells_in_blocks = 0; cells_in_blocks(1,1) = N1
-        cells_in_blocks(1,2:1+N1) = Cells(1:N1)%num_cell; ! or cel  
-        Cells(1:N1)%num_block = 1;     
+        cells_in_blocks(1,2:1+N1) = Cells(1:N1)%n_cell; ! or cel  
+        Cells(1:N1)%n_block = 1;     
     elseif ((N1/2) .le. Navg_cells) then 
         NbBl = 2; N = N1/NbBl; h = ap_int;
         Allocate(cells_in_blocks(NbBl,1+2*N)); ! the first column is to track cc per block
@@ -693,8 +693,8 @@ SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,
             ! add this information to the table cells_in_blocks
             cc = cells_in_blocks(numB_cel,1) + 2; ! first column number of cells for the block numB_cel
             cells_in_blocks(numB_cel,1) = cells_in_blocks(numB_cel,1) +1
-            cells_in_blocks(numB_cel,cc) = Cells(cel)%num_cell; ! or cel  
-            Cells(cel)%num_block = numB_cel; 
+            cells_in_blocks(numB_cel,cc) = Cells(cel)%n_cell; ! or cel  
+            Cells(cel)%n_block = numB_cel; 
         EndDo
     elseif ((N1/4) .le. Navg_cells) then 
         NbBl = 4; N = N1/NbBl; h = ap_int;d=2;
@@ -711,8 +711,8 @@ SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,
             ! add this information to the table cells_in_blocks
             cc = cells_in_blocks(numB_cel,1) + 2; ! first column number of cells for the block numB_cel
             cells_in_blocks(numB_cel,1) = cells_in_blocks(numB_cel,1) +1
-            cells_in_blocks(numB_cel,cc) = Cells(cel)%num_cell; ! or cel  
-            Cells(cel)%num_block = numB_cel; 
+            cells_in_blocks(numB_cel,cc) = Cells(cel)%n_cell; ! or cel  
+            Cells(cel)%n_block = numB_cel; 
         EndDo
     else   
         N = N1; h1 = 2*ap_int; mod = 0;
@@ -736,8 +736,8 @@ SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,
                 ! add this information to the table cells_in_blocks
                 cc = cells_in_blocks(numB_cel,1) + 2; ! first column number of cells for the block numB_cel
                 cells_in_blocks(numB_cel,1) = cells_in_blocks(numB_cel,1) +1
-                cells_in_blocks(numB_cel,cc) = Cells(cel)%num_cell; ! or cel  
-                Cells(cel)%num_block = numB_cel; 
+                cells_in_blocks(numB_cel,cc) = Cells(cel)%n_cell; ! or cel  
+                Cells(cel)%n_block = numB_cel; 
             EndDo
         Else
             error_division = 1;
@@ -753,7 +753,7 @@ SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,
         CBFM_Blocks_in(numB_cel)%Nbc_b= Nbcels
         Do num_cel=1,Nbcels
             cel = cells_in_blocks(numB_cel,1+num_cel)
-            Cells(cel)%num_cell = curs_new_cel 
+            Cells(cel)%n_cell = curs_new_cel 
             New_Cells(curs_new_cel) = Cells(cel)
             curs_new_cel = curs_new_cel + 1
         EndDo            
@@ -858,7 +858,7 @@ SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,
                     Do num_cel=1,Nbcels
                         cel = cells_in_blocks(numB_cel,1+num_cel)   
                         New_cells_Block(curs_new_cel) = cells_Block(cel)
-                        New_Cells_Block(curs_new_cel)%num_block = Nblocks+curB_extern;  
+                        New_Cells_Block(curs_new_cel)%n_block = Nblocks+curB_extern;  
                         curs_new_cel = curs_new_cel + 1
                     EndDo            
                 EndDo
@@ -874,7 +874,7 @@ SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,
                     Blocks_extern_tmp(cursB) = Blocks_extern(iiB);                    
                     Blocks_extern_tmp(cursB)%num_block = Nblocks+cursB;   
                     Do num_cel=1,Nbc_block
-                        cells_Block(num_cel)%num_block = Nblocks+cursB; ! Don't forget the internal blocks num_block
+                        cells_Block(num_cel)%n_block = Nblocks+cursB; ! Don't forget the internal blocks num_block
                     EndDo   
                     New_Cells(cel_init:cel_final) = cells_Block(1:Nbc_block)
                     Deallocate(cells_Block,positions);
@@ -890,7 +890,7 @@ SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,
               
         ! update the num_cell field, then put New_Cells_p in Cells_p 
         Do num_cel=N1+1,Nbc
-            New_Cells(num_cel)%num_cell = num_cel                    
+            New_Cells(num_cel)%n_cell = num_cel                    
         EndDo
         Cells(N1+1:Nbc) = New_Cells(N1+1:Nbc);                         
     EndDo       

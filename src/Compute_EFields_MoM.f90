@@ -50,14 +50,14 @@ SUBROUTINE Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs)
     Integer, Dimension(:), allocatable  :: IWORK 
     
     !! Local Scattered Fields
-    Integer :: I,Ic,cel_beg,cel_end,num_emetteur, num_capteur
+    Integer :: I,Ic,ix,iy,iz,cel_beg,cel_end,num_emetteur,num_capteur
     Integer, Dimension(nber_procs) :: all_Nbc_procs    
     Real(kind=8) :: theta_capteur, phi_capteur
     Real(kind=8) :: Cext_e_V,Cext_e_H, Cabs_e_V,Cabs_e_H;
-    COMPLEX(real64), Dimension(:,:), allocatable :: Green_dt_app,S_total_all
-    COMPLEX(real64), Dimension(:), allocatable ::S_total_capteur,S_total_capteur_all
+    COMPLEX(real64), Dimension(:,:), allocatable :: S_total_all
+    COMPLEX(real64), Dimension(:), allocatable :: ff_coeffs, S_total_capteur,S_total_capteur_all
     COMPLEX(real64), Dimension(3) :: E_v, E_h, E_v_p, E_h_p
-    COMPLEX(real64) :: Vv, Vh, Hv, Hh     
+    COMPLEX(real64) :: ff_coef, Vv, Vh, Hv, Hh     
     COMPLEX(real64), Dimension(:), allocatable :: C_ext_all,C_abs_all
     COMPLEX(real64), Dimension(:,:),allocatable:: E_ref_incident
     type(Cell), Dimension(:), allocatable :: Cells_proc     
@@ -293,23 +293,28 @@ SUBROUTINE Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs)
     
     DO num_capteur =1,NRx_tot  
 	    Allocate(S_total_capteur(4*NTr),S_total_capteur_all(4*NTr));   
-        Allocate(Green_dt_app(3,3*Nbc_proc))
+        Allocate(ff_coeffs(Nbc_proc))
         !! Dyade de Greene singuliere
         theta_capteur = Receivers(num_capteur)%theta
         phi_capteur = Receivers(num_capteur)%phi
         
-        Call Green_ff_dt(Nbc_proc,Cells_proc,Receivers,num_capteur,theta_capteur,phi_capteur,Green_dt_app)            
+        Call GetFFieldCoeff(Nbc_proc,Cells_proc,theta_capteur,phi_capteur,ff_coeffs)             
         DO num_emetteur=1,NTr
             E_v = 0
             E_h = 0      
-            DO I=1,3*Nbc_proc ! This the difference with the serial OpenMP code, Here each process computes S based on its part of E_total
-                E_v(1)=E_v(1)+Green_dt_app(1,I)*E_total(I,num_emetteur)
-                E_v(2)=E_v(2)+Green_dt_app(2,I)*E_total(I,num_emetteur)
-                E_v(3)=E_v(3)+Green_dt_app(3,I)*E_total(I,num_emetteur)
+            DO Ic=1,Nbc_proc ! This the difference with the serial OpenMP code, Here each process computes S based on its part of E_total            
+                ff_coef = ff_coeffs(Ic);
+                ix = 3*(Ic-1)+1
+                iy = 3*(Ic-1)+2
+                iz = 3*Ic;
+                
+                E_v(1)=E_v(1)+ ff_coef*E_total(ix,num_emetteur)
+                E_v(2)=E_v(2)+ ff_coef*E_total(iy,num_emetteur)
+                E_v(3)=E_v(3)+ ff_coef*E_total(iz,num_emetteur)
             
-                E_h(1)=E_h(1)+Green_dt_app(1,I)*E_total(I,num_emetteur+NTr)
-                E_h(2)=E_h(2)+Green_dt_app(2,I)*E_total(I,num_emetteur+NTr)
-                E_h(3)=E_h(3)+Green_dt_app(3,I)*E_total(I,num_emetteur+NTr)    
+                E_h(1)=E_h(1)+ ff_coef*E_total(ix,num_emetteur+NTr)
+                E_h(2)=E_h(2)+ ff_coef*E_total(iy,num_emetteur+NTr)
+                E_h(3)=E_h(3)+ ff_coef*E_total(iz,num_emetteur+NTr)                    
             ENDDO
             
             !! ---------------------------------------------------------------------------------!!
@@ -344,7 +349,7 @@ SUBROUTINE Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs)
             S_total_capteur(4*(num_emetteur-1)+3)  = Hv; 
             S_total_capteur(4*(num_emetteur-1)+4)  = Hh; 
         ENDDO      
-        Deallocate(Green_dt_app);        
+        Deallocate(ff_coeffs);        
         Nelts = 4*NTr;
         Call MPI_ALLREDUCE(S_total_capteur,S_total_capteur_all,Nelts,MPI_DOUBLE_COMPLEX,MPI_SUM,MPI_COMM_WORLD,code);
         S_total(num_capteur,1:4*NTr) = S_total_capteur_all(1:4*NTr);
@@ -372,18 +377,18 @@ SUBROUTINE Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs)
         Call Incident_Field(1,Nbc_proc,Cells_proc,NTr,Transmitters,num_emetteur,num_emetteur,E_ref_incident);
     
         DO I=1,Nbc_proc
-            Cabs_e_V = Cabs_e_V + imag(Cells_proc(I)%parameter_Ce)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur)))**2.*Cells_proc(I)%Sc**3. ;  
-            Cabs_e_H = Cabs_e_H + imag(Cells_proc(I)%parameter_Ce)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur+ &
+            Cabs_e_V = Cabs_e_V + imag(Cells_proc(I)%Che_n)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur)))**2.*Cells_proc(I)%Sc**3. ;  
+            Cabs_e_H = Cabs_e_H + imag(Cells_proc(I)%Che_n)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur+ &
                 NTr)))**2.*Cells_proc(I)%Sc**3. ;  
             
-            Cext_e_V = Cext_e_V + imag(Cells_proc(I)%parameter_Ce*sum(E_total(3*(I-1)+1:3*I,num_emetteur))&
+            Cext_e_V = Cext_e_V + imag(Cells_proc(I)%Che_n*sum(E_total(3*(I-1)+1:3*I,num_emetteur))&
                 *conjg(sum(E_ref_incident(3*(I-1)+1:3*I,1))))*Cells_proc(I)%Sc**3. ;  
-            Cext_e_H = Cext_e_H + imag(Cells_proc(I)%parameter_Ce*sum(E_total(3*(I-1)+1:3*I,num_emetteur+NTr))*&
+            Cext_e_H = Cext_e_H + imag(Cells_proc(I)%Che_n*sum(E_total(3*(I-1)+1:3*I,num_emetteur+NTr))*&
                 conjg(sum(E_ref_incident(3*(I-1)+1:3*I,2))))*Cells_proc(I)%Sc**3. ;            
         ENDDO 
         ! pas de 4pi ici car j'ai simplifie par le 4pi de Xi a l'interieur de la somme
-        C_ext(num_emetteur) = K_air*(Cext_e_V+Cext_e_H)/2.  
-        C_abs(num_emetteur) = K_air*(Cabs_e_V+Cabs_e_H)/2. 
+        C_ext(num_emetteur) = k_0*(Cext_e_V+Cext_e_H)/2.  
+        C_abs(num_emetteur) = k_0*(Cabs_e_V+Cabs_e_H)/2. 
         
         Deallocate(E_ref_incident)
     ENDDO      
@@ -426,9 +431,9 @@ SUBROUTINE compute_Green_s_tr_single_element(Cells,ii,jj,Zmom_i_j)
     
     ! local
     INTEGER Is, Isc,Io, Ioc     
-    COMPLEX(KIND=8) :: Term1, Term2, Term3
+    COMPLEX(KIND=8) :: Gr_mn, Tau_mn, f_kapChe
     COMPLEX(KIND=8) :: Fxx, Fyy, Fzz, Fxy, Fyz,Fxz,Fyx,Fzy,Fzx
-    REAL(kind=8) :: Distx, Disty, Distz, Dist
+    REAL(kind=8) :: rx, ry, rz, r_mn
     
     !! commencons par connaitre la cellule concernee par la ligne ii, colonne jj  de la matrice MoM 
     Ioc = mod(ii,3)
@@ -448,55 +453,55 @@ SUBROUTINE compute_Green_s_tr_single_element(Cells,ii,jj,Zmom_i_j)
     
     if (Io .eq. Is)then
         If (Ioc .eq. Isc) Then
-            Zmom_i_j = 1 - Cells(Is)%parameter_Sing
+            Zmom_i_j = 1 - Cells(Is)%Znnpp
         Else
             Zmom_i_j = 0;
         EndIf                 
 	else
   
-        Distx = Cells(Io)%Xc - Cells(Is)%Xc
-        Disty = Cells(Io)%Yc - Cells(Is)%Yc
-        Distz = Cells(Io)%Zc - Cells(Is)%Zc
-        Dist = sqrt(Distx*Distx+Disty*Disty+Distz*Distz)
+        rx = Cells(Io)%Xc - Cells(Is)%Xc
+        ry = Cells(Io)%Yc - Cells(Is)%Yc
+        rz = Cells(Io)%Zc - Cells(Is)%Zc
+        r_mn = sqrt(rx**2. + ry**2. + rz**2.)
     
-        Term1 = exp(J*K_air*Dist)/Dist**2.
-        Term2 = J*K_air-1/Dist
-        Term3 = Cells(Is)%parameter_Const*Cells(Is)%parameter_Ce
+        Gr_mn = exp(J*k_0*r_mn)/(4*Pi*r_mn**2.)
+        Tau_mn = J*k_0 - 1/r_mn
+        f_kapChe = Cells(Is)%Kappa_n*Cells(Is)%Che_n
       
         If (Isc == 1) Then !! .X
             if (Ioc == 1) Then !! XX
-                Fxx = (Term2 + K_air**2.*(Dist - Distx**2./Dist)-3.*Term2*Distx**2./Dist**2.)*Term1;
-                Zmom_i_j = - Fxx*Term3; 
+                Fxx = Gr_mn * (Tau_mn + k_0**2.*(r_mn - rx**2./r_mn) -3.*rx**2./r_mn**2. *Tau_mn);
+                Zmom_i_j = - Fxx*f_kapChe; 
             Elseif (Ioc == 2) Then !! YX
-                Fxy = (Distx*Disty*(-K_air**2.-3.*Term2/Dist)/Dist)*Term1;
-                Zmom_i_j = - Fxy*Term3 
+                Fxy = Gr_mn/r_mn * (rx*ry) *(-k_0**2. -3.*Tau_mn/r_mn);
+                Zmom_i_j = - Fxy*f_kapChe 
             Else                !! ZX
-                Fxz = (Distx*Distz*(-K_air**2.-3.*Term2/Dist)/Dist)*Term1;
-                Zmom_i_j = - Fxz*Term3; 
+                Fxz = Gr_mn/r_mn * (rx*rz) *(-k_0**2. -3.*Tau_mn/r_mn);
+                Zmom_i_j = - Fxz*f_kapChe; 
             EndIf
             
         ElseIf (Isc==2) Then !! .Y
             if (Ioc == 1) Then !! XY
-                Fxy = (Distx*Disty*(-K_air**2.-3.*Term2/Dist)/Dist)*Term1
-                Zmom_i_j = - Fxy*Term3;
+                Fxy = Gr_mn/r_mn * (rx*ry) *(-k_0**2. -3.*Tau_mn/r_mn)
+                Zmom_i_j = - Fxy*f_kapChe;
             Elseif (Ioc == 2) Then !! YY
-                Fyy = (Term2 + K_air**2.*(Dist - Disty**2./Dist)-3.*Term2*Disty**2./Dist**2.)*Term1
-                Zmom_i_j = - Fyy*Term3;
+                Fyy = Gr_mn * (Tau_mn + k_0**2.*(r_mn - ry**2./r_mn) -3.*ry**2./r_mn**2. *Tau_mn)
+                Zmom_i_j = - Fyy*f_kapChe;
             Else                !! ZY
-                Fyz = (Disty*Distz*(-K_air**2.-3.*Term2/Dist)/Dist)*Term1
-                Zmom_i_j = - Fyz*Term3;   
+                Fyz = Gr_mn/r_mn * (ry*rz) *(-k_0**2. -3.*Tau_mn/r_mn)
+                Zmom_i_j = - Fyz*f_kapChe;   
             EndIf  
                       
         Else  !! .Z
             if (Ioc == 1) Then !! XZ
-                Fxz = (Distx*Distz*(-K_air**2.-3.*Term2/Dist)/Dist)*Term1
-                Zmom_i_j = -Fxz*Term3;            
+                Fxz = Gr_mn/r_mn * (rx*rz) *(-k_0**2.-3.*Tau_mn/r_mn)
+                Zmom_i_j = -Fxz*f_kapChe;            
             Elseif (Ioc == 2) Then !! YZ
-                Fyz = (Disty*Distz*(-K_air**2.-3.*Term2/Dist)/Dist)*Term1
-                Zmom_i_j = -Fyz*Term3;             
+                Fyz = Gr_mn/r_mn * (ry*rz) *(-k_0**2. -3.*Tau_mn/r_mn)
+                Zmom_i_j = -Fyz*f_kapChe;             
             Else                !! ZZ
-                Fzz = (Term2 + K_air**2.*(Dist - Distz**2./Dist)-3.*Term2*Distz**2./Dist**2.)*Term1
-                Zmom_i_j = -Fzz*Term3;            
+                Fzz = Gr_mn * (Tau_mn + k_0**2.*(r_mn - rz**2./r_mn) -3.*rz**2./r_mn**2. *Tau_mn)
+                Zmom_i_j = -Fzz*f_kapChe;            
             EndIf
             
         EndIf
@@ -548,9 +553,9 @@ SUBROUTINE compute_Green_s_tr_single_element(Cells,ii,jj,Zmom_i_j)
     theta_transmit = Transmitters(num_trans)%theta
     phi_transmit = Transmitters(num_trans)%phi
 
-    K11x = K_air*cos(theta_transmit*Pi/180.); 
-    K11y = K_air*sin(theta_transmit*Pi/180.)*cos(phi_transmit*Pi/180.)
-    K11z = K_air*sin(theta_transmit*Pi/180.)*sin(phi_transmit*Pi/180.) 
+    K11x = k_0*cos(theta_transmit*Pi/180.); 
+    K11y = k_0*sin(theta_transmit*Pi/180.)*cos(phi_transmit*Pi/180.)
+    K11z = k_0*sin(theta_transmit*Pi/180.)*sin(phi_transmit*Pi/180.) 
 
     Rx = Cells(num_cel)%Xc
     Ry = Cells(num_cel)%Yc

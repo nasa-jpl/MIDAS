@@ -19,11 +19,9 @@ MODULE Initialization
 
     !! Definition of the object cell
     type Cell 
-        Integer :: num_cell, num_block, num_diel,Dlamb_cell
-        COMPLEX(real64) :: m_cell, Eps_cell
-        COMPLEX(real64) ::  parameter_Ce, parameter_Sing
-        Real(kind=8) :: parameter_Rad, parameter_Const
-        Real(kind=8) :: lambda_cell,Sc, Xc, Yc, Zc
+        Integer :: n_cell, n_block, n_diel, Dlamb_n
+        Real(kind=8) :: lambda_n, Sc, Xc, Yc, Zc, a_n, kappa_n
+        COMPLEX(real64) :: m_n, Eps_n, Che_n, Znnpp
     end type Cell 
     
     type CBFM_Block

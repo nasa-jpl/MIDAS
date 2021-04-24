@@ -140,8 +140,8 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
         call date_and_time(date_init,time_init,zone_init,values_init)
         
         Allocate(S_total(NRx_tot,4*NTr),C_ext(NTr),C_abs((NTr)));
-        Call Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs);  ! MPI MoM
-        !Call Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs) ! MPI single-task MoM (equivalent to OpenMP MoM)
+        !Call Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs);  ! MPI MoM
+        Call Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs) ! MPI single-task MoM (equivalent to OpenMP MoM)
         
         call date_and_time(date_final,time_final,zone_final,values_final)
         call Calcul_time_spent(values_init,values_final,Comp_time)

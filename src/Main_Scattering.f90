@@ -721,7 +721,7 @@ Program Main_Scattering
         Lambda_w = maxval(Wavesle(:))/(10**lamb_mag)
         Freq_w = C0/Lambda_w;
         Omega_w = 2*Pi*Freq_w         !! angular frequency
-        K_air = (2*Pi)/Lambda_w 
+        k_0 = (2*Pi)/Lambda_w 
     
         !! here we read a first time the m files to obtain, depending on the diel decomposition options 
         !! just to initialize SimScatterer%lambda. This code line is usefull if there is generation/discretization of sphere/cylinder/chebychev part ..., It
@@ -1215,8 +1215,8 @@ Program Main_Scattering
             Lambda_w = Wavesle(ii)/10**lamb_mag
             Freq_w = C0/Lambda_w;
             Omega_w = 2*Pi*Freq_w         !! angular frequency
-            !K_air = Omega_w*sqrt(Eps0*Rmu0*Eps_air)
-            K_air = (2*Pi)/Lambda_w 
+            !k_0 = Omega_w*sqrt(Eps0*Rmu0*Eps_air)
+            k_0 = (2*Pi)/Lambda_w 
             ! refractive index
             SimScatterer%m_max = m_lambdas(1,ii)  
             mrp = real(m_lambdas(1,ii))
@@ -1232,7 +1232,7 @@ Program Main_Scattering
             
             Call DielComposition(m_lambdas,Cells); !!!! ATTENTION : TRAVAIL INACHEVE INPUT Mice AND Mwater + CALCUL EM En fction de Cells%m et pas Scatterer%m
                     
-            ! here Set the cells parameter that depend on k_air (so on lambda_p) and Eps_p
+            ! here Set the cells parameter that depend on k_0 (so on lambda_p) and Eps_p
             old_Nbc = Nbc;
             Call SetCellsParams(SimScatterer,Cells,Upd_Cells);
             deallocate(Cells); Allocate(Cells(Nbc)); Cells=Upd_Cells; Deallocate(Upd_Cells);            
@@ -1259,8 +1259,8 @@ Program Main_Scattering
                     deallocate(stFreq);            
                     Write(*,'(a,i4)') ' -- > Dlambda = ', SimScatterer%Dlamb
                     write (*,'(a,f6.4)') ' -- > d/aeff = ', SimScatterer%Sc/SimScatterer%a
-                    write (*,'(a,f6.4)') ' -- > kd = ', K_air*SimScatterer%Sc
-                    write (*,'(a,f6.4)') ' -- > |m|kd = ', abs(SimScatterer%m_min)*K_air*SimScatterer%Sc
+                    write (*,'(a,f6.4)') ' -- > kd = ', k_0*SimScatterer%Sc
+                    write (*,'(a,f6.4)') ' -- > |m|kd = ', abs(SimScatterer%m_min)*k_0*SimScatterer%Sc
                     
                     xeq_m = 2*Pi*SimScatterer%a/SimScatterer%lambda_min;
                     xmax_m = Pi*max(SimScatterer%dx,SimScatterer%dy,SimScatterer%dz)/SimScatterer%lambda_min;
@@ -1269,25 +1269,25 @@ Program Main_Scattering
                     write (*,'(a,f6.2)') ' -- > xeq_m =', xeq_m
                     write (*,'(a,f6.2)') ' -- > xmax_m =', xmax_m
                 else
-                    Allocate(vals(Nbc)); vals = Cells(1:Nbc)%lambda_cell;
+                    Allocate(vals(Nbc)); vals = Cells(1:Nbc)%lambda_n;
                     r_min = minval(vals); r_max = maxval(vals);
                     write (*,'(a,F9.6,a,F9.6,a,a)') ' -- > Wavelength inside scatterer = [',r_min*10**lamb_mag,' - ',r_max*10**lamb_mag,'] ',lamb_unit;
-                    vals = real(Cells(1:Nbc)%m_cell); r_min = minval(vals); r_max = maxval(vals);
-                    vals = imag(Cells(1:Nbc)%m_cell); i_min = minval(vals); i_max = maxval(vals);
+                    vals = real(Cells(1:Nbc)%m_n); r_min = minval(vals); r_max = maxval(vals);
+                    vals = imag(Cells(1:Nbc)%m_n); i_min = minval(vals); i_max = maxval(vals);
                     write (*,'(a,F7.4,a,ES10.3,a,F7.4,a,ES10.3,a)') ' -- > m = [',r_min,' + j*',i_min,' - ',r_max,' + j*',i_max,']';
-                    vals = real(Cells(1:Nbc)%Eps_cell); r_min = minval(vals); r_max = maxval(vals); 
-                    vals = imag(Cells(1:Nbc)%Eps_cell); i_min = minval(vals); i_max = maxval(vals);
+                    vals = real(Cells(1:Nbc)%Eps_n); r_min = minval(vals); r_max = maxval(vals); 
+                    vals = imag(Cells(1:Nbc)%Eps_n); i_min = minval(vals); i_max = maxval(vals);
                     write (*,'(a,F7.4,a,ES10.3,a,F7.4,a,ES10.3,a)') ' -- > Eps = [',r_min,' + j*',i_min,' - ',r_max,' + j*',i_max,']'   
                     deallocate(stFreq); 
-                    vals = Cells(1:Nbc)%Dlamb_cell; r_min = minval(vals); r_max = maxval(vals); 
+                    vals = Cells(1:Nbc)%Dlamb_n; r_min = minval(vals); r_max = maxval(vals); 
                     Write(*,'(a,f7.2,a,f7.2,a)') ' -- > Dlambda = [', r_min,' - ', r_max,']';
                     write (*,'(a,f6.4)') ' -- > d/aeff = ', SimScatterer%Sc/SimScatterer%a
-                    write (*,'(a,f6.4)') ' -- > kd = ', K_air*SimScatterer%Sc
-                    vals = abs(Cells(1:Nbc)%m_cell); r_min = minval(vals)*K_air*SimScatterer%Sc; r_max = maxval(vals)*K_air*SimScatterer%Sc
+                    write (*,'(a,f6.4)') ' -- > kd = ', k_0*SimScatterer%Sc
+                    vals = abs(Cells(1:Nbc)%m_n); r_min = minval(vals)*k_0*SimScatterer%Sc; r_max = maxval(vals)*k_0*SimScatterer%Sc
                     write (*,'(a,f6.4,a,f6.4,a)') ' -- > |m|kd = [', r_min,' - ', r_max,']'
                     write (*,'(a,f6.2)') ' -- > xeq =', xeq                
                     write (*,'(a,f6.2)') ' -- > xmax =', xmax 
-                    vals = Cells(1:Nbc)%lambda_cell;
+                    vals = Cells(1:Nbc)%lambda_n;
                     r_max = 2*Pi*SimScatterer%a/minval(vals); 
                     r_min = 2*Pi*SimScatterer%a/maxval(vals);
                     write (*,'(a,f6.2,a,f6.2,a)') ' -- > xeq_m = [',r_min,' - ',r_max,']';

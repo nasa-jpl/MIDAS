@@ -29,9 +29,9 @@ SUBROUTINE Incident_Field(cel_init,size_Cells,Cells_in,Nb_transmitters,Transmitt
         phi_transmit = Transmitters(num_trans)%phi
   
 	! The incident wave is propagating in positive x (if theta_i=phi_i=0)
-        K11x = K_air*cos(theta_transmit*Pi/180.); 
-        K11y = K_air*sin(theta_transmit*Pi/180.)*cos(phi_transmit*Pi/180.)
-        K11z = K_air*sin(theta_transmit*Pi/180.)*sin(phi_transmit*Pi/180.) 
+        K11x = k_0*cos(theta_transmit*Pi/180.); 
+        K11y = k_0*sin(theta_transmit*Pi/180.)*cos(phi_transmit*Pi/180.)
+        K11z = k_0*sin(theta_transmit*Pi/180.)*sin(phi_transmit*Pi/180.) 
   
         curs_cel = 1
         DO num_cel = cel_init, cel_init+size_Cells-1

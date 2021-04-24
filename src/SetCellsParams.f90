@@ -1,4 +1,4 @@
-SUBROUTINE SetCellsParams(SimScatterer,Cells,Upd_Cells)!,CBFM_Blocks,CBFM_Blocks_Ext,Upd_CBFM_Blocks_Ext)
+SUBROUTINE SetCellsParams(SimScatterer,Cells,UCells)
     
     ! Modifs 8/29/2019 : Here I started implementing adaptive mesh depending on the dielectric properties of each cell ! if Adapt_mesh == 1, each cell 
     ! which is not respecting the validity crieteari is divided to smaller cells, then the cells and the blocks parameters are updated accordingly
@@ -12,13 +12,13 @@ SUBROUTINE SetCellsParams(SimScatterer,Cells,Upd_Cells)!,CBFM_Blocks,CBFM_Blocks
     ! IN/OUT
     type (Scatterer), INTENT(INOUT) :: SimScatterer
     type (Cell), Dimension(Nbc), INTENT(INOUT):: Cells
-    type (Cell), Dimension(:), allocatable, INTENT(OUT):: Upd_Cells
+    type (Cell), Dimension(:), allocatable, INTENT(OUT):: UCells ! Updated Cells 
 
     ! Local
-    Integer :: ii, bb,curs_new, new_Nbc,fmr,Dlambda_min,ix,iy,iz
+    Integer :: nn, bb,cn, new_Nbc,fmr,Dlambda_min,ix,iy,iz
     Integer :: num_B, found,pos_cellii_here,N
-    real(kind=8) :: Sc,A,B,C,Sc_o,Sc_n,x_o,y_o,z_o,x_n,y_n,z_n
-    COMPLEX(real64) :: Eps_c,Ac,Ai, Bi, Ci
+    real(kind=8) :: Sc,a_n,Sc_o,Sc_n,x_o,y_o,z_o,x_n,y_n,z_n
+    COMPLEX(real64) :: Eps_c,Che_n
     
     ! let us start with a simple constant fmr at 2 (every cell not respecting the validity criteria is divided into 8 cells)
     fmr = 2;
@@ -28,25 +28,25 @@ SUBROUTINE SetCellsParams(SimScatterer,Cells,Upd_Cells)!,CBFM_Blocks,CBFM_Blocks
     ! parameter_Ce, parameter_Sing and parameter_Const  of the cells because they depend on k_air and Eps_p        
     
     if (Adapt_mesh .eq. 0) then 
-        Allocate(Upd_Cells(Nbc)); 
-        Upd_Cells = Cells;  
+        Allocate(UCells(Nbc)); 
+        UCells = Cells;  
     Else
         new_Nbc = 0;
-        Do ii=1,Nbc
+        Do nn=1,Nbc
             !if (Cells(ii)%Dlamb_cell .lt. Dlambda_min) then 
                 new_Nbc = new_Nbc + fmr**3;
             !else
             !    new_Nbc = new_Nbc + 1;                
             !endif
         EndDo
-        Allocate(Upd_Cells(new_Nbc));
-        curs_new = 1;
-        Do ii=1,Nbc
-            !if (Cells(ii)%Dlamb_cell .lt. Dlambda_min) then 
-                x_o = Cells(ii)%Xc;
-                y_o = Cells(ii)%Yc;
-                z_o = Cells(ii)%Zc;
-                Sc_o = Cells(ii)%Sc;
+        Allocate(UCells(new_Nbc));
+        cn = 1;
+        Do nn=1,Nbc
+            !if (Cells(nn)%Dlamb_n .lt. Dlambda_min) then 
+                x_o = Cells(nn)%Xc;
+                y_o = Cells(nn)%Yc;
+                z_o = Cells(nn)%Zc;
+                Sc_o = Cells(nn)%Sc;
                 Sc_n = Sc_o/fmr;
                 Do ix=1,fmr
                     Do iy = 1,fmr
@@ -55,22 +55,22 @@ SUBROUTINE SetCellsParams(SimScatterer,Cells,Upd_Cells)!,CBFM_Blocks,CBFM_Blocks
                             y_n = y_o-0.5*Sc_o + (iy-0.5)*Sc_n;
                             z_n = z_o-0.5*Sc_o + (iz-0.5)*Sc_n;
                         
-                            Upd_Cells(curs_new)%num_cell = curs_new
-                            Upd_Cells(curs_new)%Xc = x_n
-                            Upd_Cells(curs_new)%Yc = y_n
-                            Upd_Cells(curs_new)%Zc = z_n
-                            Upd_Cells(curs_new)%Sc = Sc_n
+                            UCells(cn)%n_cell = cn
+                            UCells(cn)%Xc = x_n
+                            UCells(cn)%Yc = y_n
+                            UCells(cn)%Zc = z_n
+                            UCells(cn)%Sc = Sc_n
                             
-                            Upd_Cells(curs_new)%m_cell = Cells(ii)%m_cell;
-                            Upd_Cells(curs_new)%Eps_cell = Cells(ii)%Eps_cell;
-                            Upd_Cells(curs_new)%lambda_cell = Cells(ii)%lambda_cell ;
+                            UCells(cn)%m_n = Cells(nn)%m_n;
+                            UCells(cn)%Eps_n = Cells(nn)%Eps_n;
+                            UCells(cn)%lambda_n = Cells(nn)%lambda_n ;
                             ! Update cell Dlam
-                            Upd_Cells(curs_new)%Dlamb_cell = Cells(ii)%lambda_cell/Sc_n;
+                            UCells(cn)%Dlamb_n = Cells(nn)%lambda_n/Sc_n;
                             
-                            Upd_Cells(curs_new)%num_block = Cells(ii)%num_block
-                            Upd_Cells(curs_new)%num_diel = Cells(ii)%num_diel
+                            UCells(cn)%n_block = Cells(nn)%n_block
+                            UCells(cn)%n_diel = Cells(nn)%n_diel
                             
-                            curs_new = curs_new + 1;
+                            cn = cn + 1;
                         EndDo
                     EndDo
                 EndDo
@@ -79,32 +79,28 @@ SUBROUTINE SetCellsParams(SimScatterer,Cells,Upd_Cells)!,CBFM_Blocks,CBFM_Blocks
             !    curs_new = curs_new + 1;            
             !endif
         EndDo
-        Nbc = curs_new - 1;
+        Nbc = cn - 1;
     EndIf
     
     
-    Do ii =1,Nbc                    
-        Sc = Upd_Cells(ii)%Sc 
-        Eps_c = Upd_Cells(ii)%Eps_cell
+    Do nn = 1, Nbc                    
+        Sc = UCells(nn)%Sc 
+        Eps_c = UCells(nn)%Eps_n
         
-        ! update parameter_Ce, parameter_Sing and parameter_Const 
-        ! with regard to the current k0=2pi/lambda and Eps_cell (depends also on the wavelength)
-        ! parameter_Ce
-        Upd_Cells(ii)%parameter_Rad = Sc*(0.75/Pi)**(1./3.)
-        Upd_Cells(ii)%parameter_Ce = Eps_c - 1.
-        ! parameter_Sing
-        Ac = J*K_air*Upd_Cells(ii)%parameter_Rad
-        Ai = (2./3.)*exp(Ac)
-        Bi = 1. -J*K_air*Upd_Cells(ii)%parameter_Rad
-        Ci = Upd_Cells(ii)%parameter_Ce
-        Upd_Cells(ii)%parameter_Sing = (Ai*Bi-1)*Ci
-        ! parameter_Const 
-        A = sin(K_air*Upd_Cells(ii)%parameter_Rad)
-        B = K_air*Upd_Cells(ii)%parameter_Rad*cos(K_air*Upd_Cells(ii)%parameter_Rad)
-        C = K_air**3.        
-        Upd_Cells(ii)%parameter_Const = (A-B)/C   
-    EndDo
-    
+        ! update parameters with regard to the current k0=2pi/lambda and Eps_cell (depends also on the wavelength)
+        ! radius of equivalent sphere a_n, and dielectric constrast Che for each cell n
+        a_n = Sc*(0.75/Pi)**(1./3.)
+        UCells(nn)%a_n = a_n
         
+        Che_n = Eps_c - 1.
+        UCells(nn)%Che_n = Che_n
+        
+        ! Zmn,pq with m=n & p=q
+        UCells(nn)%Znnpp = ((2./3.)*exp(J*k_0*a_n) * (1. - J*k_0*a_n) - 1) * Che_n
+        
+        ! kappa = coefficient for the approximation of the integration of the green's function term over
+        ! a cubical cell of size Sc by an integral over a sphere of equivalent radius a_n       
+        UCells(nn)%Kappa_n = 4*Pi*(sin(k_0*a_n) - k_0*a_n*cos(k_0*a_n) )/k_0**3.  
+    EndDo      
 
 END SUBROUTINE SetCellsParams

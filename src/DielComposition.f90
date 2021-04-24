@@ -23,25 +23,25 @@ SUBROUTINE DielComposition(m_lambdas,Cells)
     ! cell%num_diel (in case if was not already initialized in Write_geometry_files.f90)
     ! if 'fromshapefile' : num_diel is read from shapefile and if 'random2' num_diel is initialized in get_diel_values_lambdas (below)
     If (trim(dielcomp_option) == 'fromonlymfile') then 
-        Cells(1:Nbc)%num_diel = 1;
+        Cells(1:Nbc)%n_diel = 1;
     ElseIf ((trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'random1')) then
-        Cells(1:Nbc)%num_diel = (/1:Nbc/); ! for the other option ('fromshapefile') is read from shape file ! 
+        Cells(1:Nbc)%n_diel = (/1:Nbc/); ! for the other option ('fromshapefile') is read from shape file ! 
     endif
     
     !! Since Cell.m_cell and Cell.Eps_cell can vary with the frequency this subroutine should be called inside the loop on lambda!
     if ((trim(dielcomp_option) == 'fromshapefile') .OR. (trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'fromonlymfile')) then
         Do ii= 1,Nbc
-            ii_diel = Cells(ii)%num_diel;
-            Cells(ii)%m_cell = m_lambdas(ii_diel,num_freq);
+            ii_diel = Cells(ii)%n_diel;
+            Cells(ii)%m_n = m_lambdas(ii_diel,num_freq);
             
             mrp = real(m_lambdas(ii_diel,num_freq))
             mip = imag(m_lambdas(ii_diel,num_freq)) ; 
             rp = mrp**2-mip**2;
             ip = 2*mrp*mip;
-            Cells(ii)%Eps_cell = rp+J*ip  
-            Cells(ii)%lambda_cell = Lambda_w/sqrt(rp)
+            Cells(ii)%Eps_n = rp+J*ip  
+            Cells(ii)%lambda_n = Lambda_w/sqrt(rp)
             ! Update scatterer Dlam
-            Cells(ii)%Dlamb_cell = Cells(ii)%lambda_cell/Cells(ii)%Sc;
+            Cells(ii)%Dlamb_n = Cells(ii)%lambda_n/Cells(ii)%Sc;
         EndDo        
     else ! I think it will be the same as fromshapefile and fromdielcompositionfile as we will use also Cells(ii)%num_diel and m_lambdas properly generated for
         ! the two random options in get_diel_values_lambdas

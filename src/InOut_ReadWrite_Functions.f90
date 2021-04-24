@@ -116,9 +116,9 @@ SUBROUTINE Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,o
     
         ! cell%num_diel to be written in Cells.dat file
         If (trim(dielcomp_option) == 'fromonlymfile') then 
-            Cells(1:Nbc)%num_diel = 1;
+            Cells(1:Nbc)%n_diel = 1;
         ElseIf ((trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'random1')) then
-            Cells(1:Nbc)%num_diel = (/1:Nbc/); ! for the other option ('fromshapefile') is read from shape file !         
+            Cells(1:Nbc)%n_diel = (/1:Nbc/); ! for the other option ('fromshapefile') is read from shape file !         
         endif
         Open(14,File = trim(file_name))
         Do ii=1, Nbc
@@ -127,7 +127,7 @@ SUBROUTINE Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,o
             !    real(Cells(ii)%m_cell),' + j*',imag(Cells(ii)%m_cell),';', real(Cells(ii)%Eps_cell),' + j*',imag(Cells(ii)%Eps_cell);
         
             Write(14,'(f12.6,a,f12.6,a,f12.6,a,f12.6,a,i6,a,i8)') Cells(ii)%Xc,';',Cells(ii)%Yc, &
-                ';',Cells(ii)%Zc,';',Cells(ii)%Sc,';',Cells(ii)%num_block,';',Cells(ii)%num_diel;
+                ';',Cells(ii)%Zc,';',Cells(ii)%Sc,';',Cells(ii)%n_block,';',Cells(ii)%n_diel;
         EndDo
         Close(14);
     endif

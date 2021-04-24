@@ -230,7 +230,7 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
                     Comp_cel = Comp_cel + 1
                     Nbc_p = Nbc_p + 1
                     
-                    TmpCells(Comp_cel)%num_cell = Comp_cel
+                    TmpCells(Comp_cel)%n_cell = Comp_cel
                     TmpCells(Comp_cel)%Xc = start_x(1) + (Ix-0.5)*Sc
                     TmpCells(Comp_cel)%Yc = start_y(1) + (Iy-0.5)*Sc
                     TmpCells(Comp_cel)%Zc = start_z(1) + (Iz-0.5)*Sc 
@@ -256,7 +256,7 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
                             Nbc_p = Nbc_p + 1;
                             Nbc_p_dom = Nbc_p_dom + 1;
                     
-                            TmpCells(Comp_cel)%num_cell = Comp_cel
+                            TmpCells(Comp_cel)%n_cell = Comp_cel
                             TmpCells(Comp_cel)%Xc = x
                             TmpCells(Comp_cel)%Yc = y
                             TmpCells(Comp_cel)%Zc = z
@@ -325,13 +325,13 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
         Do idip = 1,Nbc
             Comp_cel = Comp_cel + 1
             
-            TmpCells(Comp_cel)%num_cell = Comp_cel
+            TmpCells(Comp_cel)%n_cell = Comp_cel
             TmpCells(Comp_cel)%Xc = Sc*Part_in_lat(idip,1) + Sc/2.
             TmpCells(Comp_cel)%Yc = Sc*Part_in_lat(idip,2) + Sc/2.
             TmpCells(Comp_cel)%Zc = Sc*Part_in_lat(idip,3) + Sc/2.
             
             TmpCells(Comp_cel)%Sc = Sc     
-            TmpCells(Comp_cel)%num_diel = Part_in_lat(idip,4); ! we only consider isotropic scatterers for the moment         
+            TmpCells(Comp_cel)%n_diel = Part_in_lat(idip,4); ! we only consider isotropic scatterers for the moment         
         EndDo            
         
         ! we recall that the scatterer attributes pb_xmin, pb_xmax,pb_ymin, pb_ymax 
@@ -356,7 +356,7 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
                         Comp_cel = Comp_cel + 1
                         Nbc_p = Nbc_p + 1
                     
-                        TmpCells(Comp_cel)%num_cell = Comp_cel
+                        TmpCells(Comp_cel)%n_cell = Comp_cel
                         TmpCells(Comp_cel)%Xc = x
                         TmpCells(Comp_cel)%Yc = y
                         TmpCells(Comp_cel)%Zc = z
@@ -396,7 +396,7 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
                     Comp_cel = Comp_cel + 1
                     Nbc_p = Nbc_p + 1
                     
-                    TmpCells(Comp_cel)%num_cell = Comp_cel
+                    TmpCells(Comp_cel)%n_cell = Comp_cel
                     TmpCells(Comp_cel)%Xc = start_x(1) + (Ix-0.5)*Sc
                     TmpCells(Comp_cel)%Yc = start_y(1) + (Iy-0.5)*Sc
                     TmpCells(Comp_cel)%Zc = start_z(1) + (Iz-0.5)*Sc 
@@ -430,7 +430,7 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
                             Nbc_p = Nbc_p + 1;
                             Nbc_p_dom = Nbc_p_dom + 1;
                     
-                            TmpCells(Comp_cel)%num_cell = Comp_cel
+                            TmpCells(Comp_cel)%n_cell = Comp_cel
                             TmpCells(Comp_cel)%Xc = x
                             TmpCells(Comp_cel)%Yc = y
                             TmpCells(Comp_cel)%Zc = z

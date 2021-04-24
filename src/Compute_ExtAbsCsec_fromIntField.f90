@@ -50,18 +50,18 @@ SUBROUTINE Compute_ExtAbsCsec_fromIntField(nom_methode,Cells,E_total,Transmitter
         Call Incident_Field(1,Nbc_proc,Cells_proc,NTr,Transmitters,num_emetteur,num_emetteur,E_ref_incident);
     
         DO I=1,Nbc_proc
-            Cabs_e_V = Cabs_e_V + imag(Cells_proc(I)%parameter_Ce)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur)))**2.*Cells_proc(I)%Sc**3. ;  
-            Cabs_e_H = Cabs_e_H + imag(Cells_proc(I)%parameter_Ce)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur+ &
+            Cabs_e_V = Cabs_e_V + imag(Cells_proc(I)%Che_n)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur)))**2.*Cells_proc(I)%Sc**3. ;  
+            Cabs_e_H = Cabs_e_H + imag(Cells_proc(I)%Che_n)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur+ &
                 NTr)))**2.*Cells_proc(I)%Sc**3. ;  
             
-            Cext_e_V = Cext_e_V + imag(Cells_proc(I)%parameter_Ce*sum(E_total(3*(I-1)+1:3*I,num_emetteur))&
+            Cext_e_V = Cext_e_V + imag(Cells_proc(I)%Che_n*sum(E_total(3*(I-1)+1:3*I,num_emetteur))&
                 *conjg(sum(E_ref_incident(3*(I-1)+1:3*I,1))))*Cells_proc(I)%Sc**3. ;  
-            Cext_e_H = Cext_e_H + imag(Cells_proc(I)%parameter_Ce*sum(E_total(3*(I-1)+1:3*I,num_emetteur+NTr))*&
+            Cext_e_H = Cext_e_H + imag(Cells_proc(I)%Che_n*sum(E_total(3*(I-1)+1:3*I,num_emetteur+NTr))*&
                 conjg(sum(E_ref_incident(3*(I-1)+1:3*I,2))))*Cells_proc(I)%Sc**3. ;            
         ENDDO 
         ! pas de 4pi ici car j'ai simplifie par le 4pi de Xi a l'interieur de la somme
-        C_ext(num_emetteur) = K_air*(Cext_e_V+Cext_e_H)/2.  
-        C_abs(num_emetteur) = K_air*(Cabs_e_V+Cabs_e_H)/2. 
+        C_ext(num_emetteur) = k_0*(Cext_e_V+Cext_e_H)/2.  
+        C_abs(num_emetteur) = k_0*(Cabs_e_V+Cabs_e_H)/2. 
         
         Deallocate(E_ref_incident)
     ENDDO      

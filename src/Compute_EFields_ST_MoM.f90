@@ -20,7 +20,7 @@ SUBROUTINE Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_a
     COMPLEX(real64), Dimension(NTr), INTENT(OUT) :: C_ext,C_abs
     
     !Local
-    Integer :: I,jj,II,K,kk,ll,lig,Ic
+    Integer :: I,jj,II,K,kk,ll,lig,Ic,ix,iy,iz
     Integer :: NMB,iii,jjj,cur_i_st,cur_i_end,cur_j_st,cur_j_end
     Integer :: taille_block_diffu, NBlocksEmetteurs, num_cel_fichier, num_fichier
     REAL(kind=8) :: RCOND
@@ -40,8 +40,8 @@ SUBROUTINE Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_a
     Real(kind=8) :: theta_capteur, phi_capteur
     COMPLEX(real64), Dimension(:,:),allocatable::E_ref_incident
     COMPLEX(real64), Dimension(:,:),allocatable:: Mat_Green,Mat_Green_dr
-    COMPLEX(real64) :: Vv, Vh, Hv, Hh
-    COMPLEX(real64), Dimension(:,:), allocatable :: Green_dt_app
+    COMPLEX(real64) :: ff_coef, Vv, Vh, Hv, Hh
+    COMPLEX(real64), Dimension(:), allocatable :: ff_coeffs
     COMPLEX(real64), Dimension(3) :: E_v, E_h
     COMPLEX(real64), Dimension(3*Nbc,2*NTr) :: E_total
     
@@ -82,65 +82,65 @@ SUBROUTINE Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_a
    
     !! ***********************************************************************
     ! Write Mat_Green (par block de M_B,N_B = 32)
-    file_name = trim(SimOutfld_name)//Env_sep//'MoM_M_B.dat' 
-    Open(unit=61,File = trim(file_name)); 
-    NMB = 3*Nbc/M_B;
-    Do ii=1, NMB
-        cur_i_st = (ii-1)*M_B+1;
-        cur_i_end = ii*M_B;
-        Do jj=1, NMB
-            cur_j_st = (jj-1)*M_B+1;
-            cur_j_end = jj*M_B;
-            Write(61,'(a,i2,a,i2,a)') ' ';
-            Write(61,'(a,i2,a,i2,a,i2,a,i2,a)') 'Block : ',ii,',',jj,' (',M_B,';',M_B,')';
-            Do iii=cur_i_st, cur_i_end
-                Do jjj= cur_j_st,cur_j_end
-                    Write(61,'(e12.4,a,e12.4)')  Real(Mat_Green(iii,jjj)),'; ',Imag(Mat_Green(iii,jjj))
-                EndDo
-            EndDo                 
-        EndDo
-        Write(61,'(a,i2,a,i2,a)') ' ';
-        Write(61,'(a,i2,a,i2,a,i2,a,i2,a)') 'Block : ',ii,',',jj,' (',M_B,';',3*Nbc-NMB*M_B,')';
-        cur_j_st = cur_j_end + 1;
-        Do iii=cur_i_st, cur_i_end
-            Do jjj= cur_j_st,3*Nbc
-                Write(61,'(e12.4,a,e12.4)')  Real(Mat_Green(iii,jjj)),'; ',Imag(Mat_Green(iii,jjj))
-            EndDo
-        EndDo 
-    EndDo
-    !! Last row
-    cur_i_st = cur_i_end+1;
-    cur_i_end = 3*Nbc;
-    Do jj=1, NMB
-        cur_j_st = (jj-1)*M_B+1;
-        cur_j_end = jj*M_B;
-        Write(61,'(a,i2,a,i2,a)') ' ';
-        Write(61,'(a,i2,a,i2,a,i2,a,i2,a)') 'Block : ',ii,',',jj,' (',3*Nbc-NMB*M_B,';',M_B,')';
-        Do iii=cur_i_st, cur_i_end
-            Do jjj= cur_j_st,cur_j_end
-                Write(61,'(e12.4,a,e12.4)')  Real(Mat_Green(iii,jjj)),'; ',Imag(Mat_Green(iii,jjj))
-            EndDo
-        EndDo                 
-    EndDo
-    Write(61,'(a,i2,a,i2,a)') ' ';
-    Write(61,'(a,i2,a,i2,a,i2,a,i2,a)') 'Block : ',ii,',',jj,' (',3*Nbc-NMB*M_B,';',3*Nbc-NMB*M_B,')';
-    cur_j_st = cur_j_end + 1;
-    Do iii=cur_i_st, cur_i_end
-        Do jjj= cur_j_st,3*Nbc
-            Write(61,'(e12.4,a,e12.4)')  Real(Mat_Green(iii,jjj)),'; ',Imag(Mat_Green(iii,jjj))
-        EndDo
-    EndDo 
-    Close(61);  
+    !file_name = trim(SimOutfld_name)//Env_sep//'MoM_M_B.dat' 
+    !Open(unit=61,File = trim(file_name)); 
+    !NMB = 3*Nbc/M_B;
+    !Do ii=1, NMB
+    !    cur_i_st = (ii-1)*M_B+1;
+    !    cur_i_end = ii*M_B;
+    !    Do jj=1, NMB
+    !        cur_j_st = (jj-1)*M_B+1;
+    !        cur_j_end = jj*M_B;
+    !        Write(61,'(a,i2,a,i2,a)') ' ';
+    !        Write(61,'(a,i2,a,i2,a,i2,a,i2,a)') 'Block : ',ii,',',jj,' (',M_B,';',M_B,')';
+    !        Do iii=cur_i_st, cur_i_end
+    !            Do jjj= cur_j_st,cur_j_end
+    !                Write(61,'(e12.4,a,e12.4)')  Real(Mat_Green(iii,jjj)),'; ',Imag(Mat_Green(iii,jjj))
+    !            EndDo
+    !        EndDo                 
+    !    EndDo
+    !    Write(61,'(a,i2,a,i2,a)') ' ';
+    !    Write(61,'(a,i2,a,i2,a,i2,a,i2,a)') 'Block : ',ii,',',jj,' (',M_B,';',3*Nbc-NMB*M_B,')';
+    !    cur_j_st = cur_j_end + 1;
+    !    Do iii=cur_i_st, cur_i_end
+    !        Do jjj= cur_j_st,3*Nbc
+    !            Write(61,'(e12.4,a,e12.4)')  Real(Mat_Green(iii,jjj)),'; ',Imag(Mat_Green(iii,jjj))
+    !        EndDo
+    !    EndDo 
+    !EndDo
+    !!! Last row
+    !cur_i_st = cur_i_end+1;
+    !cur_i_end = 3*Nbc;
+    !Do jj=1, NMB
+    !    cur_j_st = (jj-1)*M_B+1;
+    !    cur_j_end = jj*M_B;
+    !    Write(61,'(a,i2,a,i2,a)') ' ';
+    !    Write(61,'(a,i2,a,i2,a,i2,a,i2,a)') 'Block : ',ii,',',jj,' (',3*Nbc-NMB*M_B,';',M_B,')';
+    !    Do iii=cur_i_st, cur_i_end
+    !        Do jjj= cur_j_st,cur_j_end
+    !            Write(61,'(e12.4,a,e12.4)')  Real(Mat_Green(iii,jjj)),'; ',Imag(Mat_Green(iii,jjj))
+    !        EndDo
+    !    EndDo                 
+    !EndDo
+    !Write(61,'(a,i2,a,i2,a)') ' ';
+    !Write(61,'(a,i2,a,i2,a,i2,a,i2,a)') 'Block : ',ii,',',jj,' (',3*Nbc-NMB*M_B,';',3*Nbc-NMB*M_B,')';
+    !cur_j_st = cur_j_end + 1;
+    !Do iii=cur_i_st, cur_i_end
+    !    Do jjj= cur_j_st,3*Nbc
+    !        Write(61,'(e12.4,a,e12.4)')  Real(Mat_Green(iii,jjj)),'; ',Imag(Mat_Green(iii,jjj))
+    !    EndDo
+    !EndDo 
+    !Close(61);  
     
     !! Write MoM matrix (3Nbc,3Nbc) as is to check the previous file
-    file_name = trim(SimOutfld_name)//Env_sep//'MoM_tot.dat' 
-    Open(unit=61,File = trim(file_name)); 
-    Do iii=1, 3*Nbc
-      Do jjj=1, 3*Nbc
-        Write(61,'(e12.4,a,e12.4)')  Real(Mat_Green(iii,jjj)),'; ',Imag(Mat_Green(iii,jjj))
-      EndDo
-    EndDo
-    Close(61);
+    !file_name = trim(SimOutfld_name)//Env_sep//'MoM_tot.dat' 
+    !Open(unit=61,File = trim(file_name)); 
+    !Do iii=1, 3*Nbc
+    !  Do jjj=1, 3*Nbc
+    !    Write(61,'(e12.4,a,e12.4)')  Real(Mat_Green(iii,jjj)),'; ',Imag(Mat_Green(iii,jjj))
+    !  EndDo
+    !EndDo
+    !Close(61);
     
     !! ***********************************************************************
     !! ***********************************************************************
@@ -198,24 +198,28 @@ SUBROUTINE Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_a
     
     DO num_capteur =1,NRx_tot
             
-        Allocate(Green_dt_app(3,3*Nbc))
-        !! Dyade de Greene singuliere
         theta_capteur = Receivers(num_capteur)%theta
         phi_capteur = Receivers(num_capteur)%phi
         
-        Call Green_ff_dt(Nbc,Cells,Receivers,num_capteur,theta_capteur,phi_capteur,Green_dt_app);    
+        Allocate(ff_coeffs(Nbc))
+        Call GetFFieldCoeff(Nbc,Cells,theta_capteur,phi_capteur,ff_coeffs)    
                              
         DO num_emetteur=1,NTr
             E_v = 0
             E_h = 0      
-            DO I=1,3*Nbc
-                E_v(1)=E_v(1)+Green_dt_app(1,I)*E_total(I,num_emetteur)
-                E_v(2)=E_v(2)+Green_dt_app(2,I)*E_total(I,num_emetteur)
-                E_v(3)=E_v(3)+Green_dt_app(3,I)*E_total(I,num_emetteur)
+            DO Ic=1,Nbc           
+                ff_coef = ff_coeffs(Ic);
+                ix = 3*(Ic-1)+1
+                iy = 3*(Ic-1)+2
+                iz = 3*Ic;
+                
+                E_v(1)=E_v(1)+ ff_coef*E_total(ix,num_emetteur)
+                E_v(2)=E_v(2)+ ff_coef*E_total(iy,num_emetteur)
+                E_v(3)=E_v(3)+ ff_coef*E_total(iz,num_emetteur)
             
-                E_h(1)=E_h(1)+Green_dt_app(1,I)*E_total(I,num_emetteur+NTr)
-                E_h(2)=E_h(2)+Green_dt_app(2,I)*E_total(I,num_emetteur+NTr)
-                E_h(3)=E_h(3)+Green_dt_app(3,I)*E_total(I,num_emetteur+NTr)    
+                E_h(1)=E_h(1)+ ff_coef*E_total(ix,num_emetteur+NTr)
+                E_h(2)=E_h(2)+ ff_coef*E_total(iy,num_emetteur+NTr)
+                E_h(3)=E_h(3)+ ff_coef*E_total(iz,num_emetteur+NTr)                    
             ENDDO
         
             !! ---------------------------------------------------------------------------------!!
@@ -251,7 +255,7 @@ SUBROUTINE Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_a
             S_total(num_capteur,4*(num_emetteur-1)+3) = Hv
             S_total(num_capteur,4*(num_emetteur-1)+4) = Hh               
         ENDDO            
-        Deallocate(Green_dt_app);        
+        Deallocate(ff_coeffs);        
     Enddo
     
     
@@ -264,18 +268,18 @@ SUBROUTINE Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_a
         Call Incident_Field(1,Nbc,Cells,NTr,Transmitters,num_emetteur,num_emetteur,E_ref_incident);
     
         DO I=1,Nbc
-            Cabs_e_V = Cabs_e_V + imag(Cells(I)%parameter_Ce)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur)))**2.*Cells(I)%Sc**3. ;  
-            Cabs_e_H = Cabs_e_H + imag(Cells(I)%parameter_Ce)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur+ &
+            Cabs_e_V = Cabs_e_V + imag(Cells(I)%Che_n)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur)))**2.*Cells(I)%Sc**3. ;  
+            Cabs_e_H = Cabs_e_H + imag(Cells(I)%Che_n)*abs(sum(E_total(3*(I-1)+1:3*I,num_emetteur+ &
                 NTr)))**2.*Cells(I)%Sc**3. ;  
             
-            Cext_e_V = Cext_e_V + imag(Cells(I)%parameter_Ce*sum(E_total(3*(I-1)+1:3*I,num_emetteur))&
+            Cext_e_V = Cext_e_V + imag(Cells(I)%Che_n*sum(E_total(3*(I-1)+1:3*I,num_emetteur))&
                 *conjg(sum(E_ref_incident(3*(I-1)+1:3*I,1))))*Cells(I)%Sc**3. ;  
-            Cext_e_H = Cext_e_H + imag(Cells(I)%parameter_Ce*sum(E_total(3*(I-1)+1:3*I,num_emetteur+NTr))*&
+            Cext_e_H = Cext_e_H + imag(Cells(I)%Che_n*sum(E_total(3*(I-1)+1:3*I,num_emetteur+NTr))*&
                 conjg(sum(E_ref_incident(3*(I-1)+1:3*I,2))))*Cells(I)%Sc**3. ;            
         ENDDO 
         ! pas de 4pi ici car j'ai simplifie par le 4pi de Xi a l'interieur de la somme
-        C_ext(num_emetteur) = K_air*(Cext_e_V+Cext_e_H)/2.  
-        C_abs(num_emetteur) = K_air*(Cabs_e_V+Cabs_e_H)/2. 
+        C_ext(num_emetteur) = k_0*(Cext_e_V+Cext_e_H)/2.  
+        C_abs(num_emetteur) = k_0*(Cabs_e_V+Cabs_e_H)/2. 
         
         deallocate(E_ref_incident);
     ENDDO
