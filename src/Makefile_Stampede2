@@ -2,8 +2,10 @@ FC=mpif90
 
 LDFLAGS= -Wl,--start-group ${TACC_MKL_LIB}/libmkl_blas95_lp64.a ${TACC_MKL_LIB}/libmkl_lapack95_lp64.a \
         ${TACC_MKL_LIB}/libmkl_scalapack_lp64.a ${TACC_MKL_LIB}/libmkl_intel_lp64.a ${TACC_MKL_LIB}/libmkl_core.a \
-        ${TACC_MKL_LIB}/libmkl_sequential.a  ${TACC_MKL_LIB}/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -ldl
-FFLAGS= -O0 -g -traceback -check all -heap-arrays -warn noalignments -I${TACC_MKL_INC}/intel64/lp64 -I${TACC_MKL_INC}
+        ${TACC_MKL_LIB}/libmkl_sequential.a  ${TACC_MKL_LIB}/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group \
+        -Wl,--start-group ${TACC_HDF5_LIB}/libsz.a ${TACC_HDF5_LIB}/libhdf5hl_fortran.a ${TACC_HDF5_LIB}/libhdf5.a ${TACC_HDF5_LIB}/libhdf5_fortran.a -Wl,--end-group \
+        -L$TACC_ZLIB_LIB -lz -lpthread -lm -ldl
+FFLAGS= -O0 -g -traceback -check all -heap-arrays -warn noalignments -I${TACC_MKL_INC}/intel64/lp64 -I${TACC_MKL_INC} -I${TACC_HDF5_INC} -I$TACC_ZLIB_INC
 
 SOURCES=${wildcard *.f90}
 OBJECTS=${SOURCES:.f90=.o}
