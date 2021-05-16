@@ -1,4 +1,19 @@
 SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,sd_type,thitrans,thftrans,phitrans,phftrans,thiRecei,thfRecei,phiRecei,phfRecei,Transmitters_Comp,Receivers);
+    
+    ! Calculates Transmitters and Receivers directions (theta_i, Phi_i) and (Theta_s, Phi_s) respectively
+    ! Inputs : 
+    ! Ninc_in  (Integer) : number of incident directions 
+    ! Nscat_in (Integer) : number of scattering directions 
+    ! sd_type  (Integer) : when applicable, type of used spherical design 
+    !                     sd_type = 1 Hardin and Sloane Spherical Designs : http://people.sc.fsu.edu/~jburkardt%20/f_src/sphere_design_rule/sphere_design_rule.html
+    !                     sd_type = 2 Efficient Spherical T-Designs : https://web.maths.unsw.edu.au/~rsw/Sphere/EffSphDes/index.html
+    !                     sd_type = 3 Symmetric Efficient Spherical T-Designs : https://web.maths.unsw.edu.au/~rsw/Sphere/EffSphDes/index.html
+    ! thitrans,thftrans, phitrans,phftrans (Real kind=8) : limit values of theta_i, phi_i, theta_s and phi_s (theta_i/s = 0:180 and phi_i/s=0:360 when averaging over the entire sphere surface)
+    
+    ! Outputs 
+    ! Transmitters_Comp (Dipole type) : transmitters (theta_i,phi_i)
+    ! Receivers         (Dipole type) : Receivers (theta_s,phi_s)
+    
     ! modif 2-18-2020 : correction of the transformation (X,Y,Z) --> (theha, phi), It impacts the SD and LB configurations (line 118)
     ! We also replaced Phi+Pi by mod(Phi+2Pi,2Pi). thinking that +Pi doesn't change the outcoming result was wrong, mod(Phi+2Pi,2Pi) is the correct way to convert -Pi<Phi<Pi to 0<Phi<2Pi 
     ! modif 2-24-2020 : correction of the call to ld_by_order. a subroutine lb_get_closer_Npts was created in sphere_lebedev_rule.f90 et the changes impacted get_trans_Receiv.f90, 
