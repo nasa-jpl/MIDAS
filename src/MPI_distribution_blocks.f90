@@ -26,7 +26,12 @@ SUBROUTINE MPI_distribution_blocks(CBFM_Blocks,MPI_CBFM_Blocks)
     Allocate(MPI_CBFM_Blocks(nber_procs,Nblocks)); ! TMP
     MPI_CBFM_Blocks = 0;
     
-    If (Nblocks .gt. nber_procs) Then 
+    If (nber_procs .eq. 1) Then ! inefficient but to consider
+        Write(*,'(a)') 'Please Note that Nb_procs == 1 !! ';
+        MPI_CBFM_Blocks(1,1) = Nblocks;
+        MPI_CBFM_Blocks(1,2:2+Nblocks-1) = (/(ii, ii=1,Nblocks)/);
+         
+    ElseIf (Nblocks .gt. nber_procs) Then 
       Nblks_min_proc = Nblocks/nber_procs;            
       !if (Doption == 1) then
       !    ! we start by attributing Nblks_min_proc to each proc
@@ -84,7 +89,7 @@ SUBROUTINE MPI_distribution_blocks(CBFM_Blocks,MPI_CBFM_Blocks)
             pp = p_sort_out(1);
             MPI_CBFM_Blocks(pp,1) = MPI_CBFM_Blocks(pp,1) + 1;
             nbb = MPI_CBFM_Blocks(pp,1)
-            bb = b_sort_out(nber_procs+ii) 
+            bb = b_sort_out(nber_procs+ii)
             MPI_CBFM_Blocks(pp,1+nbb) = bb
             procs_nbc(pp) = procs_nbc(pp) + CBFM_Blocks(bb)%Nbc_b + CBFM_Blocks(bb)%Nbc_ext; 
           EndDo
