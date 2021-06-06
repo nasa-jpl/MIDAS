@@ -176,7 +176,7 @@
                 !ki = sqrt(Kix**2.+Kiy**2.+Kiz**2.); !! logically equal to 1 but added just to check g 
                      
                 ! Recovering S matrix elements taking into account
-                ! ddscat and Mie code angle convention (forward direction <-->theta=0)
+                ! ddscat and Mie code angle convention (forward direction <-->theta=0)   
                 if ((NumIntType_r .eq. 'sd') .OR. (NumIntType_r .eq. 'lb')) then 
                     Do kkr=1, NRx      !! LOOP ON RECEIVERS/SCATTERERS
                         Svv_1d(kkr)= S_total(kkr,4*(kkt-1)+1); 
@@ -185,6 +185,7 @@
                         Shh_1d(kkr)= S_total(kkr,4*(kkt-1)+4);      
                     EndDo 
                     
+                    ! Comment here if PHDF5 S_files successful
                     If (wr_Sij .eq. 1) Then
                         If ((kkt .gt. (rank*NTr_wr_proc)) .and. (kkt .le. (rank+1)*NTr_wr_proc)) then 
                           Write(kkt_st,'(a,i4.4)') 'kt',kkt;
@@ -205,7 +206,8 @@
                           EndDo
                           Close(21+rank);  
                         endif  
-                    EndIf                  
+                    EndIf        
+          
                 else                                    
                     Do jj=1, NRxPhi                   
                         Do ii=1, NRxTheta                        
