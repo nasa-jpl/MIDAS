@@ -231,6 +231,253 @@ SUBROUTINE Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,o
 END SUBROUTINE Write_geometry_files
 
 
+SUBROUTINE Write_Sfiles(nom_methode,Transmitters,Receivers,S_total)
+
+    ! PHDF5 instructions copied from ph5example.f90 : https://github.com/mokus0/hdf5/blob/master/fortran/examples/ph5example.f90
+    
+    ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+    !   Copyright by The HDF Group.                                               *
+    !   Copyright by the Board of Trustees of the University of Illinois.         *
+    !   All rights reserved.                                                      *
+    !                                                                             *
+    !   This file is part of HDF5.  The full HDF5 copyright notice, including     *
+    !   terms governing use, modification, and redistribution, is contained in    *
+    !   the files COPYING and Copyright.html.  COPYING can be found at the root   *
+    !   of the source code distribution tree; Copyright.html can be found at the  *
+    !   root level of an installed copy of the electronic HDF5 document set and   *
+    !   is linked from the top-level documents page.  It can also be found at     *
+    !   http://hdfgroup.org/HDF5/doc/Copyright.html.  If you do not have          *
+    !   access to either file, you may request a copy from help@hdfgroup.org.     *
+    ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+    !
+    ! Fortran parallel example.  Copied from Tutorial's example program of
+    ! dataset.f90.
+
+     !PROGRAM DATASET
+     
+    USE Initialization
+    USE common_variables
+    USE MPI
+    USE HDF5 ! This module contains all necessary modules
+    
+    IMPLICIT NONE
+
+    !IN/OUT 
+    character(8), INTENT(IN):: nom_methode
+    type (Dipole), Dimension(NTr), INTENT(IN) :: Transmitters
+    type (Dipole), Dimension(NRx_tot), INTENT(IN) :: Receivers
+    COMPLEX(real64), Dimension(NRx_tot,4*NTr), INTENT(IN):: S_total
+
+
+    ! Local 
+    Integer :: a,kkt,kkr,NTr_wr_proc,Nths,Nphs
+    Real(kind=8) :: th_i,ph_i
+    CHARACTER(6) :: ty, kkt_st 
+    CHARACTER(200) :: file_name_s, Sfold_name
+    
+    
+    Real(kind=8), Dimension(:), allocatable :: Thetas,Phis,RecThetasVals,RecPhisVals
+    Real(kind=8), Dimension(:,:), allocatable :: S_towrite
+    CHARACTER(:), allocatable:: nom_meth_exact,stFreq,sim_name     
+    COMPLEX(real64), Dimension(:,:), allocatable :: Svv_2d,Shh_2d,Svh_2d,Shv_2d
+    COMPLEX(real64), Dimension(:), allocatable :: Svv_1d,Shh_1d,Svh_1d,Shv_1d
+    
+    ! PHDF5
+    CHARACTER(LEN=10), PARAMETER :: default_fname = "sds.h5"  ! Default name
+    CHARACTER(LEN=9), PARAMETER :: dsetname = "Smatrices" ! Dataset name
+
+    CHARACTER(LEN=100) :: filename  ! File name
+    INTEGER        :: fnamelen	     ! File name length
+    INTEGER(HID_T) :: file_id       ! File identifier
+    INTEGER(HID_T) :: dset_id       ! Dataset identifier
+    INTEGER(HID_T) :: filespace     ! Dataspace identifier in file
+    INTEGER(HID_T) :: plist_id      ! Property list identifier
+
+    INTEGER(HSIZE_T), DIMENSION(2) :: dimsf = (/5,8/) ! Dataset dimensions.
+!     INTEGER, DIMENSION(7) :: dimsfi = (/5,8,0,0,0,0,0/)
+!     INTEGER(HSIZE_T), DIMENSION(2) :: dimsfi = (/5,8/)
+    INTEGER(HSIZE_T), DIMENSION(2) :: dimsfi
+
+    INTEGER, ALLOCATABLE :: data(:,:)   ! Data to write
+    INTEGER :: data_rank = 2 ! Dataset rank
+
+    INTEGER :: error, error_n  ! Error flags
+    INTEGER :: ii, jj
+    
+    Sfold_name = trim(SimOutfld_name)//Env_sep//'S_files';
+    
+    NTr_wr_proc = (NTr/nber_procs)+1;
+    
+    If (nom_methode=='CBFM-E  ') Then
+        Allocate(character(6) ::nom_meth_exact)
+        nom_meth_exact = trim(nom_methode)
+    Elseif ((nom_methode=='MoM     ') .OR. (nom_methode=='RGE     ')) Then 
+        Allocate(character(3) ::nom_meth_exact)
+        nom_meth_exact = trim(nom_methode)
+    Endif
+     
+    a = nint(Freq_w/10**freq_mag);
+    if (a < 10) Then 
+        Allocate(character(4) ::stFreq)
+        ty = '(f4.2)';
+    ElseIf (a < 100) Then
+        Allocate(character(5) ::stFreq)
+        ty = '(f5.2)';
+    Else
+        Allocate(character(6) ::stFreq)
+        ty = '(f6.2)';
+    EndIf   
+
+    If (Nfreq == 1) Then
+        Allocate(character(1)::sim_name)
+        sim_name= ''
+    Else
+        if (num_freq < 10) Then
+            Allocate(character(5)::sim_name)
+            Write(sim_name,'(a,i1,a)') 'Sim', num_freq, '_'
+        ElseIf (num_freq < 100) Then
+            Allocate(character(6)::sim_name)
+            Write(sim_name,'(a,i2,a)') 'Sim', num_freq, '_'
+        Else
+            Allocate(character(7)::sim_name)
+            Write(sim_name,'(a,i3,a)') 'Sim', num_freq, '_'
+        EndIf        
+    EndIf 
+    Write(stFreq,ty) Freq_w/10**freq_mag
+    
+    if (EqSph == 0) then
+        file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//trim(freq_unit)//'_'//nom_meth_exact//'.h5';
+    else
+        file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//trim(freq_unit)//'_'//nom_meth_exact//'.h5';
+    endif
+
+    Allocate(S_towrite(NRx,8*NTr));
+    S_towrite(1:NRx,1:8*NTr) = 0.45       
+     
+     ! Let's try to write S_total(NRx,4*NTr)
+     ! S_towrite(NRx,4*NTr) for data
+     dimsf(1) = NRx
+     dimsf(2) = 4*NTr
+     
+     !
+     ! Initialize FORTRAN interface
+     !
+     if (rank == 0) then 
+     Write(*,*) 'Here 1'
+     endif
+     CALL h5open_f(error)
+     if (rank == 0) then 
+     Write(*,*) 'Here 2'
+     endif
+     !
+     ! Setup file access property list with parallel I/O access.
+     !
+     CALL h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
+     if (rank == 0) then 
+     Write(*,*) 'Here 3'
+     endif
+     CALL h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, error)
+     if (rank == 0) then 
+     Write(*,*) 'Here 4'
+     endif
+     !
+     ! Figure out the filename to use.  If your system does not support
+     ! getenv, comment that statement with this,
+     ! filename = ""
+!     CALL getenv("HDF5_PARAPREFIX", filename)
+!     fnamelen = LEN_TRIM(filename)
+!     if ( fnamelen == 0 ) then
+!	filename = default_fname
+!     else
+!	filename = filename(1:fnamelen) // "/" // default_fname
+!     endif
+!     print *, "Using filename = ", filename
+
+     !
+     ! Create the file collectively.
+     !
+     if (rank == 0) then 
+        Write(*,*) 'file_name_s = ',file_name_s
+     endif
+     CALL h5fcreate_f(file_name_s, H5F_ACC_TRUNC_F, file_id, error, access_prp = plist_id)
+     if (rank == 0) then 
+     Write(*,*) 'Here 5'
+     endif
+     CALL h5pclose_f(plist_id, error)
+     !
+     ! Create the data space for the  dataset.
+     !
+     if (rank == 0) then 
+     Write(*,*) 'Here 6'
+     endif
+     CALL h5screate_simple_f(data_rank, dimsf, filespace, error)
+     if (rank == 0) then 
+     Write(*,*) 'Here 7'
+     endif
+     !
+     ! Create the dataset with default properties.
+     !
+     if (rank == 0) then 
+     Write(*,*) 'Here 8'
+     endif
+     CALL h5dcreate_f(file_id, dsetname, H5T_NATIVE_DOUBLE, filespace, &
+                      dset_id, error)
+     !
+     ! Create property list for collective dataset write
+     !
+     if (rank == 0) then 
+     Write(*,*) 'Here 9'
+     endif
+     CALL h5pcreate_f(H5P_DATASET_XFER_F, plist_id, error)
+     if (rank == 0) then 
+     Write(*,*) 'Here 10'
+     endif
+     CALL h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, error)
+     if (rank == 0) then 
+     Write(*,*) 'Here 11'
+     endif
+     !
+     ! For independent write use
+     ! CALL h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_INDEPENDENT_F, error)
+     !
+
+     !
+     ! Write the dataset collectively.
+     !
+     if (rank == 0) then 
+     Write(*,*) 'Here 12'
+     endif
+     CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, S_towrite, dimsfi, error, &
+                      xfer_prp = plist_id)
+     !
+     ! Deallocate data buffer.
+     !
+     if (rank == 0) then 
+     Write(*,*) 'Here 13'
+     endif
+     DEALLOCATE(S_towrite)
+
+     !
+     ! Close resources.
+     !
+     CALL h5sclose_f(filespace, error)
+     CALL h5dclose_f(dset_id, error)
+     CALL h5pclose_f(plist_id, error)
+     CALL h5fclose_f(file_id, error)
+     ! Attempt to remove the data file.  Remove the line if the compiler
+     ! does not support it.
+     !CALL unlink(filename)
+
+     !
+     ! Close FORTRAN interface
+     !
+     CALL h5close_f(error)
+
+     !CALL MPI_FINALIZE(mpierror)   
+
+END SUBROUTINE Write_Sfiles
+
+
 SUBROUTINE Write_jobs_sim_info(CBFM_Blocks,MPI_CBFM_Blocks,K_patchs_all)
 
     USE Initialization
