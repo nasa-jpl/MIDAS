@@ -103,11 +103,28 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
         endif
                        
         ! Compute scattered fields ************************************************** 
-        Comp_time = 0; call date_and_time(date_init,time_init,zone_init,values_init); 
+        Comp_time = 0; call date_and_time(date_init,time_init,zone_init,values_init) 
         
+        ! compute and write only scattered fields (if Scattered fields == 1)
+          
+        ! Scattering matrices (if scattered fields == 0)
         Allocate(S_total(NRx_tot,4*NTr),C_ext(NTr),C_abs((NTr)));
         Call Compute_Scattering_Matrices('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
+        
+        ! uncomment here if Writing Sfiles in PHDF5 successful
+        ! here S files refer to Smatrices or scattering fields depending on what was used above (Compute_Scattering_Matrices or Compute_Scattered_Fields)
+        !If (wr_Sij .eq. 1) Then
+        !    Call Write_Sfiles('CBFM-E  ',Transmitters,Receivers,S_total)
+        !EndIf       
+        
+        ! Scattering cross sections and efficiency factors 
         Call Compute_ExtAbsCsec_fromIntField('CBFM-E  ',Cells,E_total,Transmitters,C_ext,C_abs);
+        if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'tr') .OR. (NumIntType_t .eq. 'sm')) Then
+          call Compute_Scattering_Quantities_1('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
+        else
+          call Compute_Scattering_Quantities_2('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
+        endif
+        Deallocate(E_total,S_total,C_ext,C_abs);
         
         if (rank == 0) then 
             call date_and_time(date_final,time_final,zone_final,values_final)
@@ -120,13 +137,7 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
             Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),'min', Comp_time(4),'sec'
             Write (10,*) ''
             Write (10,*) ''  
-        endif
-        if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'tr') .OR. (NumIntType_t .eq. 'sm')) Then
-          call Compute_Scattering_Quantities_1('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
-        else
-          call Compute_Scattering_Quantities_2('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
-        endif
-        Deallocate(E_total,S_total,C_ext,C_abs)  
+        endif  
     Endif
     
     
