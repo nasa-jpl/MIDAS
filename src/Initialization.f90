@@ -12,6 +12,7 @@ MODULE Initialization
     type Scatterer
         Integer :: type_s, Dlamb
         Character*9 :: info_s
+        Character*5 :: ty_shape_in
         Real(kind=8) :: dm, a, Sc, lambda_min,lambda_max ! Sc will be the original, or largest uniform cell size : needed for some division into blocks measurments
         Real(kind=8) :: dx,dy,dz,xmin,xmax,ymin,ymax,zmin,zmax
         COMPLEX(real64) :: m_min,Eps_min,m_max, Eps_max
