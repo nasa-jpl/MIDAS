@@ -109,7 +109,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
             type (Dipole), Dimension(:), allocatable, INTENT(OUT) :: Transmitters_CBFM           
         END SUBROUTINE getTransmitters_CBFM        
     END INTERFACE 
-    
+       
     SMWA = 0;
     
     If (rank == 0) Then 
