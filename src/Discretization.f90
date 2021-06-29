@@ -19,19 +19,18 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
     Integer :: tot_count,pr_NBcels,Nbc_x,Nbc_y,Nbc_z
     Integer :: Nbcelsx, Nbcelsy, Nbcelsz, hcy_rcy, Nbcelsz_sphe
     Integer :: ncp,Nbc_bef,Nbc_aft,chgmt,Nbc_p_dom
-    Integer :: cheb_l,Nbcels_int,Nbcels_ext
-    Integer :: Nbcels_d, Nbcels_h
+    Integer :: cheb_l,Nbcels_int,Nbcels_ext,Nbcels_d, Nbcels_h
     Real(kind=8) :: Sc_max,Sc_tmp,Sc,Dp,ap,pas,lambda_p
     Real(kind=8) :: X,Y,Z,Rc,A,B,C,alphaz,alphay,hcy,rcy,z_ref
-    Real(kind=8) :: x0,y0,z0
-    Real(kind=8) :: cheb_eps,hypotxy,theta_rd,phi_rd,Rlim,ap_cheb,ap_int,Dp_cheb 
+    Real(kind=8) :: x0,y0,z0,cheb_eps,hypotxy
+    Real(kind=8) :: theta_rd,phi_rd,Rlim,ap_cheb,ap_int,Dp_cheb 
     Real(kind=8) :: h_cyl, d_cyl, Lp
     
     Integer, Dimension(:,:), allocatable :: Part_in_lat
-    Integer, Dimension(:), allocatable :: Nbcels_x,Nbcels_y,Nbcels_z
+    Integer, Dimension(:), allocatable :: Nbcels_x,Nbcels_y,Nbcels_z,Cells_m_ind
     type (Cell), Dimension(:), allocatable :: TmpCells,TmpCellsPerm
     Real(kind=8), Dimension(3) :: a1,a2
-    Real(kind=8), dimension(:,:), allocatable :: positions
+    Real(kind=8), dimension(:,:), allocatable :: positions, Cells_xyz_Sc
     Real(kind=8), dimension(:), allocatable :: start_x, start_y, start_z
     COMPLEX(real64) :: Ac,Ai, Bi, Ci
     
@@ -56,9 +55,48 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
             Integer, INTENT(OUT) :: pr_NBcels
             Integer, Dimension(:,:), allocatable, INTENT(OUT):: pr_lattice
             
-        END SUBROUTINE Read_ShapeFile    
+        END SUBROUTINE Read_ShapeFile
+        
+        SUBROUTINE Read_CellsFile(N,Cells_xyz_Sc,Cells_m_ind)      
+            USE Initialization
+            USE common_variables             
+            Implicit NONE        
+            !IN/OUT 
+            Integer, INTENT(OUT) :: N
+            Real(kind=8), Dimension(:,:), allocatable, INTENT(OUT):: Cells_xyz_Sc
+            Integer, Dimension(:), allocatable, INTENT(OUT):: Cells_m_ind 
+        END SUBROUTINE Read_CellsFile   
     END INTERFACE
     
+    
+    
+    
+    !! FIRST THE EASIEST CONFIG 
+    if (SimScatterer%ty_shape_in == 'cells') then 
+        ! first in case there is any mistake here : 
+        ! if cells.dat as input, there is not an option of Adapt_mesh
+        Adapt_mesh = 0;            
+        ! simply read Cells.dat to fill in the Intent(out) Cells 
+        Call Read_CellsFile(Nbc,Cells_xyz_Sc,Cells_m_ind); 
+       
+        Allocate(Cells(Nbc));           
+        
+        ! Now, calculate the X, Y and Z coordiantes and other EM properties for each cell 
+        ! we consider that the origin of the new coordinate system a1,a2 is the origin of the latice (0,0,0)
+        
+        Do ii = 1,Nbc
+            Cells(ii)%n_cell = ii
+            Cells(ii)%Xc = Cells_xyz_Sc(ii,1)
+            Cells(ii)%Yc = Cells_xyz_Sc(ii,2)
+            Cells(ii)%Zc = Cells_xyz_Sc(ii,3)
+            
+            Cells(ii)%Sc = Cells_xyz_Sc(ii,4)     
+            Cells(ii)%n_diel = Cells_m_ind(ii)         
+        EndDo        
+        go to 30;      
+    endif 
+    
+       
     ! REMEMBER Type_Par indidates the type of geometry of the simulated scatterer :
     ! 1 : Simple Sphere : just 1 
     ! 2 : Read pristine or aggregate complex geometry from Shape file. Example :" 2a-0006 or 2p-08
@@ -456,7 +494,7 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
     Sc = SimScatterer%Sc;    
     ! before defining the box containing the scatterer, we should bring it back 
     ! to the vertical position (theta =0; Phi =0)
-    SimScatterer%xmin= minval(Cells(1:Nbc)%Xc) - Sc/2.
+30  SimScatterer%xmin= minval(Cells(1:Nbc)%Xc) - Sc/2.
     SimScatterer%xmax= maxval(Cells(1:Nbc)%Xc) + Sc/2.
     SimScatterer%ymin= minval(Cells(1:Nbc)%Yc) - Sc/2.
     SimScatterer%ymax= maxval(Cells(1:Nbc)%Yc) + Sc/2.
