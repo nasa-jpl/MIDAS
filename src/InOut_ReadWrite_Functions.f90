@@ -1,5 +1,6 @@
 !! SUBROUTINES : 
 !! - Read_ShapeFile
+!! - Read_CellsFile
 !! - Write_geometry_files
 !! - Write_jobs_sim_info
 !! - Write_memory_info : system_mem_usage & print_allocate
@@ -54,6 +55,45 @@ SUBROUTINE Read_ShapeFile(info_p,pr_NBcels,pr_lattice)
     EndDo   
 
 END SUBROUTINE Read_ShapeFile
+
+SUBROUTINE Read_CellsFile(N,Cells_xyz_Sc,Cells_m_ind)
+
+    USE Initialization
+    USE common_variables
+    
+    Implicit NONE
+
+    !IN/OUT 
+    Integer, INTENT(OUT) :: N
+    Real(kind=8), Dimension(:,:), allocatable, INTENT(OUT):: Cells_xyz_Sc
+    Integer, Dimension(:), allocatable, INTENT(OUT):: Cells_m_ind
+    
+    !! LOCAL
+    Integer :: ii,num_B
+    character*1 :: cc
+        
+    ! Read the shape file 
+    N = 0 
+    OPEN(1,File = trim(ShapeFilePath))
+    DO 
+      READ (1,*, END=10) 
+      N = N + 1 
+    END DO 
+    10 CLOSE (1) 
+    IF (rank == 0) THEN
+        write(*,*) 'N = ',N
+    ENDIF 
+    
+    ! Read the positions in the lattice of the pr_NBcels cells (previously dipoles)
+    Allocate(Cells_xyz_Sc(N,4));
+    Allocate(Cells_m_ind(N));
+    OPEN(1,File = trim(ShapeFilePath))
+    Do ii= 1,N
+        read(1,'(f12.6,a,f12.6,a,f12.6,a,f12.6,a,i8,a,i6)') Cells_xyz_Sc(ii,1),cc,Cells_xyz_Sc(ii,2),cc,Cells_xyz_Sc(ii,3),cc,&
+            Cells_xyz_Sc(ii,4),cc,Cells_m_ind(ii),cc,num_B  
+    EndDo   
+
+END SUBROUTINE Read_CellsFile
 
 
 SUBROUTINE Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,option)
@@ -126,8 +166,8 @@ SUBROUTINE Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,o
             !    ';',Cells(ii)%Zc,';',Cells(ii)%Sc,';',Cells(ii)%num_block,';',Cells(ii)%num_diel,';',&
             !    real(Cells(ii)%m_cell),' + j*',imag(Cells(ii)%m_cell),';', real(Cells(ii)%Eps_cell),' + j*',imag(Cells(ii)%Eps_cell);
         
-            Write(14,'(f12.6,a,f12.6,a,f12.6,a,f12.6,a,i6,a,i8)') Cells(ii)%Xc,';',Cells(ii)%Yc, &
-                ';',Cells(ii)%Zc,';',Cells(ii)%Sc,';',Cells(ii)%n_block,';',Cells(ii)%n_diel;
+            Write(14,'(f12.6,a,f12.6,a,f12.6,a,f12.6,a,i8,a,i6)') Cells(ii)%Xc,';',Cells(ii)%Yc, &
+                ';',Cells(ii)%Zc,';',Cells(ii)%Sc,';',Cells(ii)%n_diel,';',Cells(ii)%n_block
         EndDo
         Close(14);
     endif

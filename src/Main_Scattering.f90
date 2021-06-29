@@ -51,7 +51,7 @@ Program Main_Scattering
             
     ! others   
     Integer :: a,ii,jj,rr,Ind,I,K,m,ios,N_vals_m,Sim,old_Nbc
-    Integer :: tdistr_sca,Calc_EqSph,Nval_eps_r,Nval_eps_i
+    Integer :: ind_line,tdistr_sca,Calc_EqSph,Nval_eps_r,Nval_eps_i
     Integer :: N,NBlks_exp,m_read_opt,err,Type_Par,pr_d,d,selected,num_bin,Nbins
     Real(kind=8) :: Volume,q, rp, ip,mrp , mip, p, Sc,Dp,h,ap,theta_dipole, phi_dipole
     Real(kind=8) :: x_l, y_l, z_l, xmax,xeq,xmax_m,xeq_m
@@ -371,8 +371,17 @@ Program Main_Scattering
     if (shape_list == 0) then 
       ! type_p
       read(11,*);
-      read(11,'(i1,a)'), SimScatterer%type_s,SimScatterer%info_s
-      
+      !read(11,'(i1,a,a)'), SimScatterer%type_s,SimScatterer%info_s, type_shape_in
+      read(11,'(i1,a)'), SimScatterer%type_s, inputline
+      ind_line = INDEX(inputline,' ');
+      SimScatterer%info_s = inputline(1:ind_line-1); 
+      ind_line = INDEX(inputline,'cells');
+      if (ind_line .ne. 0) then 
+        SimScatterer%ty_shape_in = 'cells'
+      else
+        SimScatterer%ty_shape_in = 'shape'
+      endif
+            
       read(11,*);
       if (SimScatterer%type_s .eq. 3) then ! for the moment the only different type in reading param is the cylinder : we read a and L
           read(11,*), ac_str, lc_str
@@ -661,7 +670,11 @@ Program Main_Scattering
                 Write(*,'(a)')' '
             endif            
         Else
-            ShapeFilePath = 'inputs'//Env_sep//'shape.dat';          
+            if (SimScatterer%ty_shape_in == 'cells') then 
+                ShapeFilePath = 'inputs'//Env_sep//'Cells.dat'; 
+            else
+                ShapeFilePath = 'inputs'//Env_sep//'shape.dat';
+            endif         
         Endif
         ! Scatterer Output Folder
         !Write(ap_str,'(f11.9)') ap;
