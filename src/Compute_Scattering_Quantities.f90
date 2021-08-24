@@ -93,7 +93,7 @@
         TrTh_min = TrThetasVals(1)*Pi/180.; TrTh_max = TrThetasVals(Nths)*Pi/180.;
         TrPh_min = TrPhisVals(1)*Pi/180.; TrPh_max =TrPhisVals(Nphs)*Pi/180.;     
         
-        a = nint(Freq_w/10**freq_mag);
+        a = nint(Freq_w/10.**freq_mag);
         if (a < 10) Then 
             Allocate(character(4) ::stFreq)
             ty = '(f4.2)';
@@ -120,7 +120,7 @@
                 Write(sim_name,'(a,i3,a)') 'Sim', num_freq, '_'
             EndIf        
         EndIf 
-        Write(stFreq,ty) Freq_w/10**freq_mag
+        Write(stFreq,ty) Freq_w/10.**freq_mag
         
         
         if ((NumIntType_r .eq. 'sd') .OR. (NumIntType_r .eq. 'lb')) then
@@ -695,7 +695,7 @@
         Allocate(Q_bks(NTr))
         Allocate(g(NTr))
         
-        a = nint(Freq_w/10**freq_mag);
+        a = nint(Freq_w/10.**freq_mag);
         if (a < 10) Then 
             Allocate(character(4) ::stFreq)
             ty = '(f4.2)';
@@ -722,7 +722,7 @@
                 Write(sim_name,'(a,i3,a)') 'Sim', num_freq, '_'
             EndIf        
         EndIf 
-        Write(stFreq,ty) Freq_w/10**freq_mag
+        Write(stFreq,ty) Freq_w/10.**freq_mag
         
         ! prepare weight for Receivers if Lebedev (otherwise w = 1 everywhere)
         if (NumIntType_r == 'lb') Then !! Lebedev Qudrature
