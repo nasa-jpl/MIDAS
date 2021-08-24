@@ -1252,7 +1252,7 @@ Program Main_Scattering
             
             if (rank == 0) then 
                 Write(*,'(a,i3,a,i3,a)') '- SIMULATION ',ii,'/',Nfreq, ' : ****************************************'            
-                a = nint(Freq_w/10**freq_mag);
+                a = nint(Freq_w/10.**freq_mag);
                 if (a < 10) Then 
                     Allocate(character(5) ::stFreq); ty = '(f5.3)';
                 ElseIf (a < 100) Then
@@ -1260,7 +1260,7 @@ Program Main_Scattering
                 Else
                     Allocate(character(7) ::stFreq); ty = '(f7.3)';
                 EndIf     
-                Write(stFreq,ty) Freq_w/10**freq_mag
+                Write(stFreq,ty) Freq_w/10.**freq_mag
                 write (*,'(a,a,a,a)') 'The frequency of simulation = ',stFreq,' ',freq_unit 
                 !write (*,'(a,F9.6,a,a)') ' -- > Wavelength = ',Lambda_w*10**lamb_mag,' ',lamb_unit
                 write (*,*) ' -- > Wavelength = ',Lambda_w*10**lamb_mag,' ',lamb_unit    
