@@ -688,11 +688,11 @@ Program Main_Scattering
             endif
         else
             if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then 
-                SimOutfld_name = trim(SimScatterer%info_s)//'-ap='//trim(ap_str)//lamb_unit;
+                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ap='//trim(ap_str)//lamb_unit;
             elseif (SimScatterer%type_s == 3) then
-                SimOutfld_name = trim(SimScatterer%info_s)//'-ac='//trim(ac_str)//lamb_unit//'-lc='//trim(lc_str)//lamb_unit;
+                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ac='//trim(ac_str)//lamb_unit//'-lc='//trim(lc_str)//lamb_unit;
             elseif (SimScatterer%type_s == 1) then
-                SimOutfld_name = 'Sphere-ap='//trim(ap_str)//lamb_unit;
+                SimOutfld_name = trim(Outfld_name)//Env_sep//'Sphere-ap='//trim(ap_str)//lamb_unit;
             endif               
         endif        
         if (rank == 0) Then
@@ -874,7 +874,9 @@ Program Main_Scattering
         Call Discretization(SimScatterer,Cells,Ncells_SphDomains); 
         !! Remember that ap and dp refers to effective radius. ceci corrige quand necessaire ou garde la meme valeur si c bon
         if (Type_Par .ne. 1) then 
-        	SimScatterer%a = ((3*Nbc*SimScatterer%Sc**3.)/(4*pi))**(1./3.)
+        	!SimScatterer%a = ((3*Nbc*SimScatterer%Sc**3.)/(4*pi))**(1./3.)  
+            ! instead of N*d^3 we need to use sum(d^3) in case we are using different Sc (for adaptive mesh for example)!!
+            SimScatterer%a = ((3*sum(Cells(1:Nbc)%Sc**3.))/(4*pi))**(1./3.)
         	SimScatterer%dm = 2.*SimScatterer%a; 
         endif 
         
