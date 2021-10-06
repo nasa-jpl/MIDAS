@@ -514,6 +514,7 @@ Program Main_Scattering
     !! Reading Receivers ********************************************************************************************************
     read(11,*);read(11,*),theta_init_Recei,theta_final_Recei,NRxTheta
     read(11,*);read(11,*),phi_init_Recei,phi_final_Recei,NRxPhi
+    read(11,*);read(11,*),beta_init_Pol,beta_final_Pol,NPolBeta
     
     ! Write Scattering matrix elements for each incident direction and Q per incident direction 
     read(11,*);read(11,*), wr_Sij
