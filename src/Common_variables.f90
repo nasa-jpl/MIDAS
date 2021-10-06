@@ -11,9 +11,12 @@ MODULE common_variables
     ! Transmitters/Receivers
     Integer :: NTrTheta, NTrPhi, NTr, NRxTheta, NRxPhi, NRx, NRx_tot
     Integer :: NTrTheta_CBFM, NTrPhi_CBFM, NTr_CBFM
+    Real(kind=8) :: beta_init_Pol, beta_final_Pol
+    Integer :: NPolBeta
     save NTrTheta, NTrPhi, NTr
     SAVE NRxTheta, NRxPhi, NRx, NRx_tot
-    SAVE NTrTheta_CBFM, NTrPhi_CBFM, NTr_CBFM    
+    SAVE NTrTheta_CBFM, NTrPhi_CBFM, NTr_CBFM   
+    SAVE beta_init_Pol, beta_final_Pol NPolBeta
     
     ! Scatterer 
     Integer :: Nbc,homogs,Adapt_mesh,NbintBl
