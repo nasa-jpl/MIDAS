@@ -365,8 +365,9 @@
                 EndDo              
             EndIf  
             If (rr .eq. 9) Then
-                Write(*,'(a)') 'Error when selecting Nipws :  r0/lambda >= 8'
-                Stop 1;
+                Write(*,'(a,f8.4,a)') 'WARNING : Problem when selecting Nipws :  r0/lambda =',r_lambda,'  > 8'
+                Nipws = Nipws_f_rlamb(8);
+                !Stop 1;
             EndIf            
             Else
             Nipws = 2; ! Initialization            
