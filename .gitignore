@@ -1,5 +1,7 @@
 # input folder & ant .dat to avoid pushing large fies (the folder inputs_examples is not ignored) #
 inputs/
+../MIDAS_V0_Gattaca/
+../MIDAS_debug/
 
 # job files in the root folder 
 job_MIDAS_*
