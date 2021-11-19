@@ -782,4 +782,49 @@ end subroutine removebksl
 
 end module strings  
 
+module String_rplce
 
+    implicit none
+    public
+
+!***********************************************************************************************************************************
+!***********************************************************************************************************************************
+
+contains
+
+!***********************************************************************************************************************************
+!***********************************************************************************************************************************
+
+    pure recursive function replaceStr(string,search,substitute) result(modifiedString)
+        implicit none
+        character(len=*), intent(in)  :: string, search, substitute
+        character(len=:), allocatable :: modifiedString
+        integer                       :: i, stringLen, searchLen
+        stringLen = len(string)
+        searchLen = len(search)
+        if (stringLen==0 .or. searchLen==0) then
+            modifiedString = ""
+            return
+        elseif (stringLen<searchLen) then
+            modifiedString = string
+            return
+        end if
+        i = 1
+        do
+            if (string(i:i+searchLen-1)==search) then
+                modifiedString = string(1:i-1) // substitute // replaceStr(string(i+searchLen:stringLen),search,substitute)
+                exit
+            end if
+            if (i+searchLen>stringLen) then
+                modifiedString = string
+                exit
+            end if
+            i = i + 1
+            cycle
+        end do
+    end function replaceStr
+
+!***********************************************************************************************************************************
+!***********************************************************************************************************************************
+
+end module String_rplce
