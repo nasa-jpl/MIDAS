@@ -16,7 +16,7 @@ MODULE common_variables
     save NTrTheta, NTrPhi, NTr
     SAVE NRxTheta, NRxPhi, NRx, NRx_tot
     SAVE NTrTheta_CBFM, NTrPhi_CBFM, NTr_CBFM   
-    SAVE beta_init_Pol, beta_final_Pol NPolBeta
+    SAVE beta_init_Pol, beta_final_Pol, NPolBeta
     
     ! Scatterer 
     Integer :: Nbc,homogs,Adapt_mesh,NbintBl
