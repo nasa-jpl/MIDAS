@@ -39,8 +39,9 @@ Program Main_Scattering
     Real(kind=8) :: MaxDim, dim_ref, h_LargePart
     CHARACTER(60) ::  shapefile_path
     CHARACTER(:), allocatable ::  shapeSim_folder
-    CHARACTER(300) ,allocatable::ShapesDirNames(:)
+    CHARACTER(300) ,allocatable::ShapesDirNamesParams(:)
     CHARACTER(13) :: ap_str, lc_str, ac_str
+    CHARACTER(2)  :: type_str
     character(240) :: inputline
     logical :: fileExists    
     
@@ -68,7 +69,7 @@ Program Main_Scattering
     CHARACTER(6) :: ty,tdata  
     character(250) :: m_file_name_0
     character(250),allocatable :: m_file_name(:)
-    CHARACTER(300) analysis_fold_name
+    CHARACTER(300) analysis_fold_name, ShapeFilePathParam
     CHARACTER(250) :: Sfold_name,Qfold_name,Solfold_name
     character(7) :: st_th_Tx,st_th_Rx,st_ph_Tx,st_ph_Rx
     CHARACTER(LEN=3) :: path
@@ -368,42 +369,37 @@ Program Main_Scattering
     read(11,'(a)'), shape_folder_path
     read(11,'(a)'), Outfld_name
     
-    if (shape_list == 0) then 
-      ! type_p
-      read(11,*);
-      !read(11,'(i1,a,a)'), SimScatterer%type_s,SimScatterer%info_s, type_shape_in
-      read(11,'(i1,a)'), SimScatterer%type_s, inputline
-      ind_line = INDEX(inputline,' ');
-      SimScatterer%info_s = inputline(1:ind_line-1); 
-      ind_line = INDEX(inputline,'cells');
-      if (ind_line .ne. 0) then 
-        SimScatterer%ty_shape_in = 'cells'
-      else
-        SimScatterer%ty_shape_in = 'shape'
-      endif
-            
-      read(11,*);
-      if (SimScatterer%type_s .eq. 3) then ! for the moment the only different type in reading param is the cylinder : we read a and L
-          read(11,*), ac_str, lc_str
-          read(ac_str,*), r_cyl
-          read(lc_str,*),l_cyl ; ! (m or mm or um)
-          SimScatterer%a = r_cyl/(10**lamb_mag)
-          SimScatterer%dm = 2*r_cyl/(10**lamb_mag)
-          SimScatterer%dy = SimScatterer%dm
-          SimScatterer%dz = SimScatterer%dm
-          SimScatterer%dx = l_cyl/(10**lamb_mag)
-          SimScatterer%info_s ='Cylin';
-      else          
-          ! ap
-          read(11,'(a)'), ap_str
-          read(ap_str,*), ap
-          SimScatterer%a = ap/(10**lamb_mag)
-          SimScatterer%dm = 2*ap/(10**lamb_mag)
-      endif
+    ! type_p
+    read(11,*);
+    !read(11,'(i1,a,a)'), SimScatterer%type_s,SimScatterer%info_s, type_shape_in
+    read(11,'(i1,a)'), SimScatterer%type_s, inputline
+    ind_line = INDEX(inputline,' ');
+    SimScatterer%info_s = inputline(1:ind_line-1); 
+    ind_line = INDEX(inputline,'cells');
+    if (ind_line .ne. 0) then 
+      SimScatterer%ty_shape_in = 'cells'
     else
-      read(11,*); read(11,*);
-      read(11,*); read(11,*);     
-    EndIf
+      SimScatterer%ty_shape_in = 'shape'
+    endif
+          
+    read(11,*);
+    if (SimScatterer%type_s .eq. 3) then ! for the moment the only different type in reading param is the cylinder : we read a and L
+        read(11,*), ac_str, lc_str
+        read(ac_str,*), r_cyl
+        read(lc_str,*),l_cyl ; ! (m or mm or um)
+        SimScatterer%a = r_cyl/(10**lamb_mag)
+        SimScatterer%dm = 2*r_cyl/(10**lamb_mag)
+        SimScatterer%dy = SimScatterer%dm
+        SimScatterer%dz = SimScatterer%dm
+        SimScatterer%dx = l_cyl/(10**lamb_mag)
+        SimScatterer%info_s ='Cylin';
+    else          
+        ! ap
+        read(11,'(a)'), ap_str
+        read(ap_str,*), ap
+        SimScatterer%a = ap/(10**lamb_mag)
+        SimScatterer%dm = 2*ap/(10**lamb_mag)
+    endif
     
     ! Eps_p
     read(11,*);
@@ -594,11 +590,17 @@ Program Main_Scattering
         if (rank == 0) then 
             inquire(file='inputs/SimShapes.dat', exist=fileExists)
             if (.not. fileExists) then
-                if (Env_type .eq. 'WIND') Then 
-                    CALL SYSTEM('dir /s /b inputs/shape.dat >> inputs/SimShapes.dat');              
-                else
-                    CALL SYSTEM('find '//trim(shape_folder_path)//' -type f -name inputs/shape.dat> inputs/SimShapes.dat');              
-                endif         
+                ! Just let the user know that SimShapes.dat does not exist 
+                If (rank == 0) Then   
+                    Write(*,'(a)') 'ERROR : Enable to find SimShapes.dat file !!! Exit !!'            
+                endif          
+                go to 30;        
+                ! The below commented option makes things too complicated as we are considering both multiple shape and cells files, and we need to input ap 
+                !if (Env_type .eq. 'WIND') Then 
+                !    CALL SYSTEM('dir /s /b inputs/shape.dat >> inputs/SimShapes.dat');              
+                !else
+                !    CALL SYSTEM('find '//trim(shape_folder_path)//' -type f -name inputs/shape.dat> inputs/SimShapes.dat');              
+                !endif         
             EndIf
         EndIf
         Call MPI_Barrier(MPI_COMM_WORLD,code);    
@@ -609,8 +611,8 @@ Program Main_Scattering
         eastat = 0; numlines =0;
         Do while (eastat .ge. 0)
             READ(12,'(a)',iostat=eastat) inputline
-            ii = index(inputline,Env_sep//'size'//Env_sep);
-            if ((eastat .ge. 0) .and. (ii .ne. 0)) then 
+            ! ii = index(inputline,Env_sep//'size'//Env_sep); 11/10/2021 check if you still need this line (why did I use it already ???)
+            if (eastat .ge. 0) Then !.and. (ii .ne. 0)) then 
                 numlines = numlines + 1
             endif                
         EndDo
@@ -619,19 +621,25 @@ Program Main_Scattering
         if (rank == 0) then 
             Write(*,'(a,i6)') 'The total number of Shape Simulations : ', NbSimulations
         endif
-        Allocate(ShapesDirNames(NbSimulations));
-        Open(12,File = 'SimShapes.dat') 
-      
+        
+        Allocate(ShapesDirNamesParams(NbSimulations));
+        Open(12,File = 'inputs/SimShapes.dat') 
+        eastat = 0;
         ! Recover shape files pathes 
         ii = 1;
         Do while (ii .le. NbSimulations)
             READ(12,'(a)',iostat=eastat) inputline
-            if (index(inputline,Env_sep//'size'//Env_sep) .ne. 0) then 
-            ShapesDirNames(ii)= inputline;
-            ii = ii + 1;
+            if (index(inputline,':') .ne. 0) then
+                ShapesDirNamesParams(ii)= inputline   
+                ii = ii + 1;
+            else
+                if (rank == 0) then
+                    Write(*,'(a)') 'Something went wrong when reading ap from SimShapes.dat. Please check that you respect the format path : name size';
+                endif                
+                go to 30; 
             endif
         EndDo
-        close (12);     
+        close (12);    
     Else
             NbSimulations = 1;
     endif
@@ -639,29 +647,45 @@ Program Main_Scattering
     ! HERE START SCATTERER  
     Do Sim=1, NbSimulations
         If (shape_list .eq. 1) then 
-            ShapeFilePath = ShapesDirNames(Sim);
-            ii = index(ShapeFilePath,'shape'//Env_sep);
-            SimScatterer%type_s = 2;
-            if (ShapeFilePath(ii+6:ii+6) .eq. 'a') then 
-                SimScatterer%info_s = ShapeFilePath(ii+6:ii+6)//ShapeFilePath(ii+8:ii+11);
-                read(ShapeFilePath(ii+18:ii+30),'(a)') ap_str;
-                read(ShapeFilePath(ii+18:ii+30),'(f13.6)') ap;
-            elseif (ShapeFilePath(ii+6:ii+6) .eq. 'p') then 
-                SimScatterer%info_s = ShapeFilePath(ii+6:ii+6)//ShapeFilePath(ii+8:ii+9);
-                read(ShapeFilePath(ii+16:ii+28),'(a)') ap_str;
-                read(ShapeFilePath(ii+16:ii+28),'(f13.6)') ap;
-            else
+            ShapeFilePathParam = ShapesDirNamesParams(Sim)
+            ii = index(ShapeFilePathParam,':')
+            if (ii == 0) then 
                 if (rank == 0) then
                     Write(*,'(a)') 'Something went wrong when reading ap from SimShapes.dat';
                 endif                
                 go to 30; 
-            endif
+            Endif
             
-            ap = ap/(10**lamb_mag); ! ap (m/mm/um)
+            ShapeFilePath = ShapeFilePathParam(1:ii-2)
+            SimScatterer%info_s = ShapeFilePathParam(ii+2:ii+6); 
+            ap_str = ShapeFilePathParam(ii+8:ii+20);  
+            read(ap_str,'(f13.9)') ap;
+            
+            SimScatterer%type_s = 2;
             SimScatterer%a = ap/(10**lamb_mag)
-            SimScatterer%dm = 2*ap/(10**lamb_mag)
-            ap_str(1:1) = ap_str(3:3); ap_str(2:2)='.';
-            ap_str(3:11) = ap_str(4:6)//ap_str(8:13);ap_str(12:13) = ''; !to prepare the name of the output folder
+            SimScatterer%dm = 2*ap/(10**lamb_mag) 
+            
+            ! Here prepare ap_str for the name of the output folder
+            ii = index(ap_str,'.');
+            jj = 13 
+            Do while (jj>ii)   !to prepare the name of the output folder
+                if (ap_str(jj:jj) == '0') then 
+                    ap_str(jj:jj) = ' '; 
+                else
+                    Exit;
+                endif   
+                jj = jj -1;
+            EndDo
+            if (rank ==0) then  
+                Write(*,*) 'ap_str = ', ap_str
+            endif
+            ii = index(ap_str,'.');
+            jj = index(ap_str,'0'); 
+            Do while ((jj .ne. 0) .and. (jj<ii-1))   !to prepare the name of the output folder
+                ap_str(jj:jj) = ' ';    
+                jj = index(ap_str,'0');
+            EndDo 
+            ap_str =  ADJUSTL(TRIM(ap_str));
             
             if (rank == 0) Then 
                 Write(*,'(a)')' '
@@ -1377,9 +1401,12 @@ Program Main_Scattering
             ! START COMPUTING OF THE ELECTRIC FIELDS
             Call Compute_Electric_Fields(SimScatterer,Cells,Transmitters_Comp,Receivers,methods_names,&
                 CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks);      
-        EndDo
-        deallocate(m_lambdas)
-    EndDo
+        EndDo ! Loop on frequency
+        Deallocate(Cells,m_lambdas)
+        if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then 
+            Deallocate(CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks); !! attention test 8/8/2018 comment/uncomment depending on test or no
+        EndIf  
+    EndDo ! Loop on scatterer (if Nsims >1)
 
     if (rank == 0) then 
         Write (*,'(a)') '*******************************************************************************'
@@ -1394,10 +1421,7 @@ Program Main_Scattering
         Close(10)
     endif
     Deallocate(Transmitters_Comp,Receivers,Cells)   
-    Deallocate (methods_names)
-    if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then 
-        Deallocate(CBFM_Blocks); !! attention test 8/8/2018 comment/uncomment depending on test or no
-    EndIf    
+    Deallocate (methods_names)  
     
 30  Call MPI_FINALIZE (code);
         
