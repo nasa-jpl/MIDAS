@@ -16,8 +16,8 @@ SUBROUTINE Compute_Scattering_Matrices(nom_methode,Cells,E_total,CBFM_Blocks,MPI
     Integer, Dimension(nber_procs,Nblk_proc_max+1), INTENT(IN):: MPI_CBFM_Blocks
     type (Dipole), Dimension(NTr), INTENT(IN) :: Transmitters
     type (Dipole), Dimension(NRx_tot), INTENT(IN) :: Receivers
+    !COMPLEX(real64), Dimension(NPolBeta*NRx_tot,4*NTr), INTENT(OUT) :: S_total     ! change 11/10/2021  ! originally Dimension(NRx_tot,4*NTr)
     COMPLEX(real64), Dimension(NRx_tot,4*NTr), INTENT(OUT) :: S_total
-
     ! Local 
     Integer :: ii,K,I,Ic,ix,iy,iz
     Integer :: Lig,id,nthreads,p,d,Nelts,cel_beg,cel_end
@@ -30,7 +30,7 @@ SUBROUTINE Compute_Scattering_Matrices(nom_methode,Cells,E_total,CBFM_Blocks,MPI
     COMPLEX(real64), Dimension(3) :: E_v, E_h, E_v_p, E_h_p
     COMPLEX(real64) :: ff_coef, Vv, Vh, Hv, Hh
     Integer :: num_emetteur, num_capteur
-    Real(kind=8) :: theta_capteur, phi_capteur
+    Real(kind=8) :: theta_capteur, phi_capteur, Beta,step_beta
     type(Cell), Dimension(:), allocatable :: Cells_proc
   
    
@@ -40,6 +40,12 @@ SUBROUTINE Compute_Scattering_Matrices(nom_methode,Cells,E_total,CBFM_Blocks,MPI
     EndIf
     
     
+    if (NPolBeta > 1) then
+        step_beta = (beta_final_Pol-beta_init_Pol)/(NPolBeta-1);
+    else
+        step_beta = 0;
+        
+    endif
     ! All procs recover again this important information 
     call MPI_ALLGATHER (Nbc_proc,1,MPI_INTEGER,all_Nbc_procs,1,MPI_INTEGER,MPI_COMM_WORLD,code);    
     
@@ -83,38 +89,49 @@ SUBROUTINE Compute_Scattering_Matrices(nom_methode,Cells,E_total,CBFM_Blocks,MPI
                 E_h(3)=E_h(3)+ ff_coef*E_total(iz,num_emetteur+NTr)                    
             ENDDO
             
-            !! ---------------------------------------------------------------------------------!!
-            !! ------------------------------Polarisation Vv -----------------------------------!!
-            !! ---------------------------------------------------------------------------------!! 
-            Vv= - E_v(1)*sin(theta_capteur*Pi/180.)+E_v(2)*cos(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) &
-            +E_v(3)*cos(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.);
+            !Do num_pol = 1:NPolBeta
+            !    Beta =  beta_init_Pol + (num_pol-1)*step_beta
                 
-    
-            !! ---------------------------------------------------------------------------------!!
-            !! ------------------------------Polarisation Vh -----------------------------------!!
-            !! ---------------------------------------------------------------------------------!! 
-            Vh= - E_v(2)*sin(phi_capteur*Pi/180.)+E_v(3)*cos(phi_capteur*Pi/180.);
+                ! need to figure out E_v_pol and E_h_pol (x, y and z)
+                !E_v_pol = cos(Beta*Pi/180.)*E_v + sin(Beta*Pi/180.)*E_h
+                !E_h_pol =  
                 
-    
-            !! ---------------------------------------------------------------------------------!!
-            !! ------------------------------Polarisation Hv -----------------------------------!!
-            !! ---------------------------------------------------------------------------------!! 
-            Hv= - E_h(1)*sin(theta_capteur*Pi/180.)+E_h(2)*cos(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) &
-            + E_h(3)*cos(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.);
+                ! remember in the scattering matrix you are linking Ei and Es ! whatever their polarization is !
                 
-            !! ---------------------------------------------------------------------------------!!
-            !! ------------------------------Polarisation Hh -----------------------------------!!
-            !! ---------------------------------------------------------------------------------!! 
-            Hh= - E_h(2)*sin(phi_capteur*Pi/180.) + E_h(3)*cos(phi_capteur*Pi/180.);
-             
-            !! ---------------------------------------------------------------------------------!!
-            !! -----------------------Remplissage du vecteur S_total ---------------------------!!
-            !! ---------------------------------------------------------------------------------!!
-            
-            S_total_capteur(4*(num_emetteur-1)+1)  = Vv; 
-            S_total_capteur(4*(num_emetteur-1)+2)  = Vh; 
-            S_total_capteur(4*(num_emetteur-1)+3)  = Hv; 
-            S_total_capteur(4*(num_emetteur-1)+4)  = Hh; 
+                ! Look at page 3 of convention code particle : you will have to update the coordinates of Evs and Ehs, then calculating the 4 components of the S matrix will be quite easy
+              
+              !! ---------------------------------------------------------------------------------!!
+              !! ------------------------------Polarisation Vv -----------------------------------!!
+              !! ---------------------------------------------------------------------------------!! 
+              Vv= - E_v(1)*sin(theta_capteur*Pi/180.)+E_v(2)*cos(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) &
+              +E_v(3)*cos(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.);
+                  
+      
+              !! ---------------------------------------------------------------------------------!!
+              !! ------------------------------Polarisation Vh -----------------------------------!!
+              !! ---------------------------------------------------------------------------------!! 
+              Vh= - E_v(2)*sin(phi_capteur*Pi/180.)+E_v(3)*cos(phi_capteur*Pi/180.);
+                  
+      
+              !! ---------------------------------------------------------------------------------!!
+              !! ------------------------------Polarisation Hv -----------------------------------!!
+              !! ---------------------------------------------------------------------------------!! 
+              Hv= - E_h(1)*sin(theta_capteur*Pi/180.)+E_h(2)*cos(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) &
+              + E_h(3)*cos(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.);
+                  
+              !! ---------------------------------------------------------------------------------!!
+              !! ------------------------------Polarisation Hh -----------------------------------!!
+              !! ---------------------------------------------------------------------------------!! 
+              Hh= - E_h(2)*sin(phi_capteur*Pi/180.) + E_h(3)*cos(phi_capteur*Pi/180.);
+               
+              !! ---------------------------------------------------------------------------------!!
+              !! -----------------------Remplissage du vecteur S_total ---------------------------!!
+              !! ---------------------------------------------------------------------------------!!
+              
+              S_total_capteur(4*(num_emetteur-1)+1)  = Vv; 
+              S_total_capteur(4*(num_emetteur-1)+2)  = Vh; 
+              S_total_capteur(4*(num_emetteur-1)+3)  = Hv; 
+              S_total_capteur(4*(num_emetteur-1)+4)  = Hh; 
         ENDDO      
         Deallocate(ff_coeffs); 
         Nelts = 4*NTr;
