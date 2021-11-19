@@ -92,7 +92,9 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
             
             Cells(ii)%Sc = Cells_xyz_Sc(ii,4)     
             Cells(ii)%n_diel = Cells_m_ind(ii)         
-        EndDo        
+        EndDo  
+        
+        SimScatterer%Sc = minval(Cells(1:Nbc)%Sc)       
         go to 30;      
     endif 
     
@@ -491,10 +493,10 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
     ! We compute the maximum dimension of the scatterer in the 3 directions 
     ! (Scatterer xmin, xmax, ymin, ymax, zmin, zmax and Scatterer dx, dy and dz)
     ! these information will be used later inside Division_blocks.f90     
-    Sc = SimScatterer%Sc;    
+30    Sc = SimScatterer%Sc;    
     ! before defining the box containing the scatterer, we should bring it back 
     ! to the vertical position (theta =0; Phi =0)
-30  SimScatterer%xmin= minval(Cells(1:Nbc)%Xc) - Sc/2.
+    SimScatterer%xmin= minval(Cells(1:Nbc)%Xc) - Sc/2.
     SimScatterer%xmax= maxval(Cells(1:Nbc)%Xc) + Sc/2.
     SimScatterer%ymin= minval(Cells(1:Nbc)%Yc) - Sc/2.
     SimScatterer%ymax= maxval(Cells(1:Nbc)%Yc) + Sc/2.
