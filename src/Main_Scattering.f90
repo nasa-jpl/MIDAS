@@ -10,16 +10,8 @@ Program Main_Scattering
     
     !! LOCAL *****************************************************************************************************************
     !! ***********************************************************************************************************************
-    !! Transmitters/Receivers 
-    Integer :: Ninc_sugg, Nscat_sugg, sd_type
-    real(kind=8) :: theta_init_trans_comp,theta_final_trans_comp,Step_theta_trans_comp
-    real(kind=8) :: phi_init_trans_comp, phi_final_trans_comp, step_phi_trans_comp
-    real(kind=8) :: theta_init_Recei,theta_final_Recei,step_theta_Recei
-    real(kind=8) :: phi_init_Recei,phi_final_Recei, step_phi_Recei   
-    
     ! In/Output files
     character(200) :: file_name
-    character(200) ::shape_folder_path
     
     ! Informations on CPU time 
     character(8)  :: date
@@ -28,9 +20,7 @@ Program Main_Scattering
     integer,dimension(8) :: values
     
     ! specific code Multi-frequency
-    Integer :: Nwave, dd1,dd2
     logical :: dirExists
-    Real(kind=8) :: freq_min, freq_max, Wave_min, Wave_max, step_wave, step_freq
     Real(kind=8), Dimension(:), allocatable :: Wavesle
     Complex, Dimension(:,:), allocatable :: m_lambdas
     
@@ -38,9 +28,7 @@ Program Main_Scattering
     Integer :: eastat,numlines,NbSimulations,SimShape
     Real(kind=8) :: MaxDim, dim_ref, h_LargePart
     CHARACTER(60) ::  shapefile_path
-    CHARACTER(:), allocatable ::  shapeSim_folder
     CHARACTER(300) ,allocatable::ShapesDirNamesParams(:)
-    CHARACTER(13) :: ap_str, lc_str, ac_str
     CHARACTER(2)  :: type_str
     character(240) :: inputline
     logical :: fileExists    
@@ -51,23 +39,20 @@ Program Main_Scattering
     Integer, Dimension(:), allocatable :: all_NBlocks
             
     ! others   
-    Integer :: a,ii,jj,rr,Ind,I,K,m,ios,N_vals_m,Sim,old_Nbc
-    Integer :: ind_line,tdistr_sca,Calc_EqSph,Nval_eps_r,Nval_eps_i
+    Integer :: a,ii,jj,rr,Ind,I,K,m,ios,N_vals_m,Sim,old_Nbc,error_read,error_div
+    Integer :: tdistr_sca,Nval_eps_r,Nval_eps_i
     Integer :: N,NBlks_exp,m_read_opt,err,Type_Par,pr_d,d,selected,num_bin,Nbins
     Real(kind=8) :: Volume,q, rp, ip,mrp , mip, p, Sc,Dp,h,ap,theta_dipole, phi_dipole
     Real(kind=8) :: x_l, y_l, z_l, xmax,xeq,xmax_m,xeq_m
-    Real(kind=8) :: r_min,r_max,i_min,i_max, r_cyl, l_cyl,rp_min,rp_max
-    Real(kind=8) :: xp,yp,zp,v_freq,wv,r_lambda,dmin,dmax,hselect,Deq_s,Dmax_s
+    Real(kind=8) :: r_min,r_max,i_min,i_max, rp_min,rp_max
+    Real(kind=8) :: xp,yp,zp,wv,r_lambda,dmin,dmax,hselect,Deq_s,Dmax_s
     
-    Character(9) :: SR_Zc_type_ch 
     Character(1) :: ch_tmp
-    Character(11) :: freq_unit_tmp
-    Character(10) :: lamb_unit_tmp
     Character(4) :: DataType
-    Character(9) :: wave_descr,info_p_fl
+    Character(9) :: info_p_fl
+    CHARACTER(6) :: ty 
     CHARACTER(:) ,allocatable::methods_names(:),stFreq
-    CHARACTER(6) :: ty,tdata  
-    character(250) :: m_file_name_0
+     
     character(250),allocatable :: m_file_name(:)
     CHARACTER(300) analysis_fold_name, ShapeFilePathParam
     CHARACTER(250) :: Sfold_name,Qfold_name,Solfold_name
@@ -81,7 +66,7 @@ Program Main_Scattering
     type(CBFM_Block), Dimension(:), allocatable :: CBFM_Blocks
     Integer, Dimension(7) :: Ncells_SphDomains
     Integer, Dimension(:,:), allocatable :: CBFM_Blocks_Ext,Upd_CBFM_Blocks_Ext, MLCBFM_BlDistr
-    Integer, Dimension(:), allocatable :: Nbc_blocks,Diff_avg,NSims_bin,diel_comp_perc
+    Integer, Dimension(:), allocatable :: Nbc_blocks,Diff_avg,NSims_bin
     Real(kind=8), Dimension(:), allocatable :: hB_test,all_eps_r,all_eps_i,vals
     
     ! time 
@@ -95,7 +80,24 @@ Program Main_Scattering
     !! END LOCAL *****************************************************************************************************************
     !! ***************************************************************************************************************************
     
-    INTERFACE        
+    INTERFACE 
+        SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmitters_Comp,Receivers,error)
+            USE Initialization
+            USE common_variables
+            USE iso_fortran_env
+            USE DiverseUtil
+            USE MPI
+            implicit none
+            
+            ! IN/OUT
+            type (Scatterer), INTENT(INOUT) :: SimScatterer
+            Real(kind=8), Dimension(:), allocatable, INTENT(OUT) :: Wavesle
+            character(:) ,allocatable, INTENT(OUT) :: methods_names(:)
+            character(250),allocatable, INTENT(OUT) :: m_file_name(:)
+            type(Dipole), Dimension(:),allocatable, INTENT(OUT) :: Transmitters_Comp
+            type(Dipole), Dimension(:),allocatable, INTENT(OUT) :: Receivers
+            Integer, INTENT(OUT) :: error
+        END SUBROUTINE Get_InputData
         SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
             USE Initialization   
             USE common_variables
@@ -144,7 +146,7 @@ Program Main_Scattering
             type (Cell), Dimension(:), allocatable, INTENT(OUT):: Upd_Cells
         END SUBROUTINE SetCellsParams
         
-        SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)
+        SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_div)
     
             USE Initialization
             USE common_variables
@@ -156,6 +158,7 @@ Program Main_Scattering
             Integer, Dimension(7), INTENT(IN) :: Ncells_SphDomains
             type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
             Integer, Dimension(:,:), allocatable, INTENT(OUT):: MLCBFM_BlDistr
+            Integer, INTENT(OUT) :: error_div
         END SUBROUTINE Division_blocks
         
         SUBROUTINE Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
@@ -173,22 +176,6 @@ Program Main_Scattering
             type(CBFM_Block), Dimension(Nblocks), INTENT(INOUT) :: CBFM_Blocks
             Integer, Dimension(:,:), allocatable, INTENT(OUT) :: CBFM_Blocks_Ext           
         END SUBROUTINE Extend_blocks 
-        
-        SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,sd_type,thitrans,thftrans,phitrans,phftrans,thiRecei,thfRecei,phiRecei,phfRecei,Transmitters_Comp,Receivers);
-            USE Initialization
-            USE common_variables
-    
-            IMPLICIT NONE
-    
-            !! IN/OUT ******************************************************************
-    
-            Integer, INTENT(IN) :: Ninc_in,Nscat_in
-            Integer, INTENT(OUT) :: sd_type
-            Real(kind=8), INTENT(IN) :: thftrans,thitrans,phftrans,phitrans 
-            Real(kind=8), INTENT(IN) :: thfRecei,thiRecei,phfRecei,phiRecei
-            type (Dipole), Dimension(:), allocatable, INTENT(OUT) :: Transmitters_Comp
-            type (Dipole), Dimension(:), allocatable, INTENT(OUT) :: Receivers                   
-        END SUBROUTINE get_trans_Receiv
     
         SUBROUTINE MPI_distribution_blocks(CBFM_Blocks,MPI_CBFM_Blocks)
 
@@ -241,350 +228,14 @@ Program Main_Scattering
         Env_sep = '/';
     endif
     
-    !! Open the dat file and read the simulation parameters.    
-    file_name = 'inputs'//Env_sep//'Simulation_data.dat'
-    Open(11,File = file_name) 
-    Read(11,*);Read(11,*)
-    
-    
-    !! Parameters of the EM wave
-    read(11,*)
-    read(11,*), wave_descr !! wave description : wavelength or frequency     
-     
-    if (wave_descr == 'NFreq') Then 
-        read(11,'(i3)'), Nfreq
-        read(11,'(a6)'), tdata
-        read(11,'(a)'), freq_unit_tmp
-        if (Len(trim(freq_unit_tmp)) .eq. 11) then
-            freq_unit = freq_unit_tmp(8:10);                
-        else 
-            If (rank .eq. 0) Then
-                Write(*,'(a)') 'Error : Enable to read frequency unit !'
-            endif
-            go to 30;
-        endif
-        if (freq_unit == 'MHz') then
-            lamb_unit = 'm'; 
-            freq_mag = 6; lamb_mag = 0;                         
-        elseif (freq_unit == 'GHz') then
-            lamb_unit = 'mm';
-            freq_mag = 9; lamb_mag = 3;
-        elseif (freq_unit == 'THz') then
-            lamb_unit = 'um';
-            freq_mag = 12; lamb_mag = 6;
-        else
-            If (rank .eq. 0) Then
-                Write(*,'(a)') 'Error : Invalid frequency unit !'
-            endif
-            go to 30;
-        endif           
-        
-        Nwave = Nfreq; Allocate(Wavesle(Nwave));            
-        if (tdata == 'minmax') then
-            read(11,'(f7.3,a,f7.3)'), freq_min ,ch_tmp, freq_max
-            !wave_min = C0/(freq_max*1E6); wave_max = C0/(freq_min*1E6);
-            !wave_min = C0/(freq_max*1E6); wave_max = C0/(freq_min*1E6);  
-            If (Nfreq .gt. 1) then           
-              step_freq = (freq_max-freq_min)/(Nfreq-1)  
-            Else
-              step_freq = 0;
-            EndIf                 
-            Do ii =1,Nfreq
-                Wavesle(ii) = C0/((10.**freq_mag)*(freq_min + (ii-1)*step_freq))   
-            EndDo
-        else
-            If (Nfreq == 1) Then 
-                read(11,'(f7.3,a)'), v_freq 
-                Wavesle(1) = C0/(v_freq*(10.**freq_mag))*(10.**lamb_mag);    ! Wavesle is expressed inside the code in m if MHz, mm if GHz, um if THz    
-            Else                
-                Do ii=1, Nfreq-1
-                  read(11,'(f7.3,a)',advance='no'), v_freq ,ch_tmp
-                  Wavesle(ii) = C0/(v_freq*(10.**freq_mag))*(10.**lamb_mag);    
-                EndDo
-                read(11,'(f7.3)',advance='no'), v_freq 
-                Wavesle(ii) = C0/(v_freq*(10.**freq_mag))*(10.**lamb_mag);      
-                read(11,*)
-            EndIf            
-        endif       
-    Else
-        read(11,'(i3)'), Nwave
-        read(11,'(a6)'), tdata      
-        read(11,'(a)'), lamb_unit_tmp
-        if (Len(trim(lamb_unit_tmp)) .eq. 9) then
-            lamb_unit = trim(lamb_unit_tmp(8:8));             
-        elseif (Len(trim(lamb_unit_tmp)) .eq. 10) then
-            lamb_unit = trim(lamb_unit_tmp(8:9));
-        else
-            If (rank .eq. 0) Then
-                Write(*,'(a)') 'Error : Enable to read wavelength unit !'
-            endif
-            go to 30;
-        endif
-        if (lamb_unit == 'm') then
-            freq_unit = 'MHz'; 
-            freq_mag = 6; lamb_mag = 0;                         
-        elseif (lamb_unit == 'mm') then
-            freq_unit = 'GHz';
-            freq_mag = 9; lamb_mag = 3;
-        elseif (lamb_unit == 'um') then
-            freq_unit = 'THz';
-            freq_mag = 12; lamb_mag = 6;
-        else
-            If (rank .eq. 0) Then
-                Write(*,'(a)') 'Error : Invalid wavelength unit !'
-            endif
-            go to 30;
-        endif  
-        
-        Nfreq = Nwave; Allocate(Wavesle(Nwave));        
-        if (tdata == 'minmax') then
-            read(11,*), wave_min ;read(11,*), wave_max 
-            freq_min = C0/(wave_max*10.**(-lamb_mag)); 
-            freq_max = C0/(wave_min*10.**(-lamb_mag));
-            If (Nwave .gt. 1) then           
-              step_wave = (wave_max-wave_min)/(Nwave-1)  
-            Else
-              step_wave = 0;
-            EndIf                     
-            Do ii =1,Nwave
-                Wavesle(ii) = wave_max - (ii-1)*step_wave
-            EndDo   
-        else
-            if (Nwave == 1) Then 
-                read(11,'(f7.3)'), Wavesle(1);
-            else
-                Do ii=1, Nwave-1
-                  read(11,'(f7.3,a)',advance='no'), Wavesle(Nwave-ii+1) ,ch_tmp
-                EndDo 
-                read(11,'(f7.3)',advance='no'), Wavesle(Nwave-ii+1)
-                read(11,*)
-            EndIf                        
-        endif       
-    EndIf
-    
-    read(11,*)    
-    !! Parameters of the scatterer 
-    read(11,*)
-    read(11,'(i1)');read(11,*), shape_list
-    read(11,'(a)'), shape_folder_path
-    read(11,'(a)'), Outfld_name
-    
-    ! type_p
-    read(11,*);
-    !read(11,'(i1,a,a)'), SimScatterer%type_s,SimScatterer%info_s, type_shape_in
-    read(11,'(i1,a)'), SimScatterer%type_s, inputline
-    ind_line = INDEX(inputline,' ');
-    SimScatterer%info_s = inputline(1:ind_line-1); 
-    ind_line = INDEX(inputline,'cells');
-    if (ind_line .ne. 0) then 
-      SimScatterer%ty_shape_in = 'cells'
-    else
-      SimScatterer%ty_shape_in = 'shape'
+    !! HERE READ Input data file (call subroutine change 11/22/2021)
+    Call Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmitters_Comp,Receivers,error_read);
+    if (error_read .ne. 0) then
+        go to 30; 
     endif
-          
-    read(11,*);
-    if (SimScatterer%type_s .eq. 3) then ! for the moment the only different type in reading param is the cylinder : we read a and L
-        read(11,*), ac_str, lc_str
-        read(ac_str,*), r_cyl
-        read(lc_str,*),l_cyl ; ! (m or mm or um)
-        SimScatterer%a = r_cyl/(10**lamb_mag)
-        SimScatterer%dm = 2*r_cyl/(10**lamb_mag)
-        SimScatterer%dy = SimScatterer%dm
-        SimScatterer%dz = SimScatterer%dm
-        SimScatterer%dx = l_cyl/(10**lamb_mag)
-        SimScatterer%info_s ='Cylin';
-    else          
-        ! ap
-        read(11,'(a)'), ap_str
-        read(ap_str,*), ap
-        SimScatterer%a = ap/(10**lamb_mag)
-        SimScatterer%dm = 2*ap/(10**lamb_mag)
-    endif
-    
-    ! Eps_p
-    read(11,*);
-    read(11,*), dielcomp_option, Ndiel 
-    if (trim(dielcomp_option) == 'fromshapefile') then 
-        Allocate(m_file_name(Ndiel),diel_comp_perc(Ndiel)); ! Ndiel is releavant for this option, diel_comp_perc can be caluclated once dielc composition read from shape.dat
-        DO ii=1,Ndiel
-            read(11,*), m_file_name_0
-            m_file_name(ii) = trim(m_file_name_0);           
-        Enddo
-    elseif (trim(dielcomp_option) == 'fromonlymfile') then 
-        Ndiel = 1;
-        Allocate(m_file_name(Ndiel),diel_comp_perc(Ndiel)); ! Ndiel is simply equal to 1 here. one m per frequency !
-        DO ii=1,Ndiel
-            read(11,*), m_file_name_0
-            m_file_name(ii) = trim(m_file_name_0);           
-        Enddo
-    elseif (trim(dielcomp_option) == 'random1') then
-        Ndiel = 2;
-        Allocate(m_file_name(Ndiel),diel_comp_perc(Ndiel)); ! because of the totally random process Ndiel is in theory =Nbc and diel_comp_perc is not releavant here  
-        Do ii=1,2                                           
-            read(11,*), m_file_name_0
-            m_file_name(1) = trim(m_file_name_0);
-        Enddo        
-    elseif (trim(dielcomp_option) == 'random2') then
-        Allocate(m_file_name(Ndiel),diel_comp_perc(Ndiel));
-        DO ii=1,Ndiel
-            read(11,*), m_file_name_0,p
-            m_file_name(ii) = trim(m_file_name_0);  
-            diel_comp_perc(ii) = p; 
-        Enddo
-    elseif (trim(dielcomp_option) == 'fromdielcompositionfile') then
-        Allocate(m_file_name(1),diel_comp_perc(1)); ! Since each of the Nbc cell has a different refractive index here, diel_comp_perc is not releavant here 
-        m_file_name(1) = 'inputs/dielcomposition.dat'; ! this file contains the refractive index per cell        
-    else
-        Write(*,'(a,a,a)')'Error : ', dielcomp_option, ' is an unknown dielectric decomposition option !!';
-        stop 1
-    endif    
-        
-    if (((trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'fromshapefile')) &
-        .AND. (SimScatterer%type_s .ne. 2)) then 
-        Write(*,'(a,a)') 'Error : The requested dielectric decomposition option can only be used with type_scatterer = 2';
-        stop 1        
-    Endif     
-    
-    read(11,*); read(11,'(i1)'), Calc_EqSph;
-    read(11,*);
-        
-    !! Parameters of the dicretization 
-    read(11,*)
-    read(11,*), ch_tmp;
-    if (ch_tmp .eq. 'D') then
-      read(11,*), Dlambda
-    elseif (ch_tmp .eq. 'S') then
-      read(11,*), Sc;
-      if ((freq_unit == 'THz') .OR. (freq_unit == 'GHz')) then 
-        SimScatterer%Sc = 1e-6*Sc;  
-      else
-        SimScatterer%Sc = Sc;
-      endif
-            
-      Dlambda = 1;
-    else
-        If (rank ==0) Then
-            Write(*,'(a)') 'Error when reading discretization parameter'
-        endif
-        go to 30;           
-    endif
-    read(11,*); read(11,*), Adapt_mesh
-    read(11,*)
-    
-    !!!! Parameters of the Applied methods
-    read(11,*)
-    read(11,*);read(11,*), Nber_methods
-    read(11,*);read(11,*), leng_meth
-    Allocate(character(leng_meth) :: methods_names(Nber_methods))
-    read(11,*)
-    CBFM=0; MLCBFM=0; MoM=0; RGE=0;
-    DO ii=1,Nber_methods
-        read(11,*), methods_names(ii)
-        !! The integers CBFM; MLCBFM and MoM represent the position of each method in the array methods_names 
-        !! if this method is applied, and is equal to 0 otherwise        
-        If (methods_names(ii) == 'CBFM-E') Then
-            CBFM = ii
-        Elseif (methods_names(ii) == 'MLCBFM-E') Then
-            MLCBFM = ii
-        Elseif (methods_names(ii) == 'RGE') Then
-            RGE = ii   
-        Elseif (methods_names(ii) == 'MoM') Then
-            MoM = ii        
-        Endif     
-    Enddo
-    read(11,*)
-     
-    !! Reading Transmitters ****************************************************************************************************************************************
-    read(11,*)
-    read(11,*);read(11,'(a2,a1,a2)'), NumIntType_t,ch_tmp,NumIntType_r
-    if (NumIntType_r .eq. '') then 
-        NumIntType_r = NumIntType_t;
-    endif
-    read(11,*);read(11,*), Ninc_sugg
-    read(11,*);read(11,*), Nscat_sugg
-    read(11,*);
-    read(11,*);read(11,*),theta_init_trans_comp,theta_final_trans_comp,NTrTheta
-    read(11,*);read(11,*),phi_init_trans_comp,phi_final_trans_comp,NTrPhi
-    read(11,*)
-
-    !! Reading Receivers ********************************************************************************************************
-    read(11,*);read(11,*),theta_init_Recei,theta_final_Recei,NRxTheta
-    read(11,*);read(11,*),phi_init_Recei,phi_final_Recei,NRxPhi
-    read(11,*);read(11,*),beta_init_Pol,beta_final_Pol,NPolBeta
-    
-    ! Write Scattering matrix elements for each incident direction and Q per incident direction 
-    read(11,*);read(11,*), wr_Sij
-    read(11,*);read(11,*), wr_Qij    
-    read(11,*)
-    
-    ! Get Transmitters/Scatterers depending on the type of the numerical integration used to average the scattering quantities
-    ! over incident/scattering directions
-    call get_trans_Receiv(Ninc_sugg,Nscat_sugg,sd_type,theta_init_trans_comp,theta_final_trans_comp,&
-                          phi_init_trans_comp,phi_final_trans_comp, &
-                          theta_init_Recei,theta_final_Recei, phi_init_Recei,phi_final_Recei,&
-                          Transmitters_Comp,Receivers);
-    
-    ! if only 1 incident direction is used, we autmatically put wr_Sij and wr_Qij to 1
-    if (NTr .eq. 1) then 
-        wr_Sij=1;wr_Qij=1;
-    endif
-    
-    ! Parameters of the numerical methods 
-    
-    !CBFM
-    read(11,*)
-    read(11,*);read(11,*), Navg_cells
-    read(11,*);read(11,*), set_Nipws   !! if set_Nipws we will use setNipws in getParameters_CBFM.f90
-    read(11,*);read(11,*), distr_ipws !! type of distribution for the N incident plane waves used 
-                                      !! to generate the CBFs (see getTransmitters_CBFM for details)
-    read(11,*);read(11,*), Nc_extended
-    read(11,*);read(11,*), DR
-    read(11,*);read(11,*), SR
-    read(11,*), res_SR
-    read(11,*);read(11,*), SR_Zc
-    read(11,*) SR_Zc_type_ch
-    read(11,*), Eps_SR_Zc
-    read(11,*)        
-         
-    !ACA
-    read(11,*);
-    read(11,*);read(11,*), Use_ACA
-    read(11,*);read(11,*), Nb_it_max                                                                                                                                                                                     
-    read(11,*);read(11,*), Epsilon_ACA                                                                                                                                                                                           
-    read(11,*);read(11,*), Vrb_ACA
-    read(11,*) 
-    
-    ! decide SR_Zc_type from SR_Zc_type_ch
-    If (trim(SR_Zc_type_ch) =='threshold') Then
-        SR_Zc_type = 1; 
-    ElseIf (trim(SR_Zc_type_ch) =='edistance') Then
-        SR_Zc_type = 2;
-    ElseIf (trim(SR_Zc_type_ch) =='spalgo_dz') Then
-        SR_Zc_type = 3;
-    EndIf
-    
-    If ((Use_ACA == 1) .and.(SR_Zc==1) .and. (SR_Zc_type .ne. 1)) Then  !! The use of ACA is available with only the first sparsity approach
-        If (rank == 0) Then   
-            Write(*,'(a)') 'ERROR : Wrong combination UseACA/Sparsity !!! Exit !!'            
-        endif          
-        go to 30;  !! stop 1 points any error in the chosed/entred simulation data           
-    EndIf
-    
-    ! Save Sol Elements
-    read(11,*);
-    read(11,*);read(11,*), save_Zc
-    read(11,*);read(11,*), save_Eint
-    if (save_Eint == 1) then
-        read(11,*), save_Eint_Nmax
-    endif        
-    
-    !! close the dat file
-    Close(11)
     
     !! Initialization ************************************************************************************************************
     !! ***************************************************************************************************************************
-    
-
     If (shape_list .eq. 1) then
         ! First all the jobs will wait until job 0 check the existence and create if needed the SimShape.dat file
         if (rank == 0) then 
@@ -594,13 +245,7 @@ Program Main_Scattering
                 If (rank == 0) Then   
                     Write(*,'(a)') 'ERROR : Enable to find SimShapes.dat file !!! Exit !!'            
                 endif          
-                go to 30;        
-                ! The below commented option makes things too complicated as we are considering both multiple shape and cells files, and we need to input ap 
-                !if (Env_type .eq. 'WIND') Then 
-                !    CALL SYSTEM('dir /s /b inputs/shape.dat >> inputs/SimShapes.dat');              
-                !else
-                !    CALL SYSTEM('find '//trim(shape_folder_path)//' -type f -name inputs/shape.dat> inputs/SimShapes.dat');              
-                !endif         
+                go to 30;               
             EndIf
         EndIf
         Call MPI_Barrier(MPI_COMM_WORLD,code);    
@@ -702,7 +347,6 @@ Program Main_Scattering
             endif         
         Endif
         ! Scatterer Output Folder
-        !Write(ap_str,'(f11.9)') ap;
         If (shape_list .eq. 1) then 
             if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then 
                 SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ap='//trim(ap_str)//lamb_unit; 
@@ -912,7 +556,10 @@ Program Main_Scattering
         if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then 
             call date_and_time(date_init,time_init,zone_init,values_init); 
             ! Division into blocks depending on the type of scatterer  
-            call Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)    
+            call Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_div) 
+            if (error_div .ne. 0) then
+                go to 30; 
+            endif   
             call date_and_time(date_final,time_final,zone_final,values_final)
             call Calcul_time_spent(values_init,values_final,Comp_time_div)     
                             
@@ -964,7 +611,7 @@ Program Main_Scattering
             ! Blocks Distribution :  
             !! Divide up the CBFM blocks among the available MPI jobs
             Call MPI_distribution_blocks(CBFM_Blocks,MPI_CBFM_Blocks)
-            if ((Adapt_mesh .eq. 0) .and. (nber_procs .gt. Nblocks)) then 
+            if (nber_procs .gt. Nblocks) then 
               if (rank == 0) then 
                 Write(*,'(a,i4,a,i4,a)') 'Performance Error : Nprocs =',nber_procs,' > Nblocks =',Nblocks,' ! Please restart with fewer processors !';
               endif
@@ -1019,13 +666,8 @@ Program Main_Scattering
             write (*,'(f9.4,a,a)') zp, ' ',lamb_unit   
             write (*,'(a)',advance='no') 'The effective radius of the scatterer = '
             Write (*,'(f12.6,a,a)') SimScatterer%a*10**lamb_mag, ' ',lamb_unit 
-            if (Adapt_mesh .eq. 0) then 
-                Write(10,'(a,i7)') 'The Total Number of Cells =', Nbc
-                Write(*,'(a,i7)') 'Total Number of Cells =', Nbc
-            else
-                Write(10,'(a,i7)') 'The Initial Total Number of Cells =', Nbc
-                Write(*,'(a,i7)') 'Initial Total Number of Cells =', Nbc
-            EndIf       
+            Write(10,'(a,i7)') 'The Total Number of Cells =', Nbc
+            Write(*,'(a,i7)') 'Total Number of Cells =', Nbc      
     
             Write(10,*) ''
             Write(10,*) ''
@@ -1170,45 +812,44 @@ Program Main_Scattering
                 EndIf
                 call system('mkdir "'//trim(Solfold_name)//'"')            
             Endif
-            if (Adapt_mesh .eq. 0) then
-                if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then 
-                    Write(10,*) ''; Write(10,*) ''
-                    Write(10,'(a)') 'Division into blocks to apply the CBFM : '
-                    Write(10,'(a,i6)') 'Total number of blocks = ',Nblocks        
-                    Write(10,'(a)') 'Number of cells per Block  = '
-                    Do I=1,Nblocks-1
-	                    Write(10,'(i7,a)',advance='no') CBFM_Blocks(I)%Nbc_b,';'
-                    Enddo
-                    Write(10,'(i7)') CBFM_Blocks(Nblocks)%Nbc_b
-                    Write(10,'(a)') 'Number of cells per Block after extension = '
-                    Do I=1,Nblocks-1
-	                    Write(10,'(i7,a)',advance='no') (CBFM_Blocks(I)%Nbc_b+CBFM_Blocks(I)%Nbc_ext),';'
-                    Enddo
-                    Write(10,'(i7)') (CBFM_Blocks(Nblocks)%Nbc_b+CBFM_Blocks(Nblocks)%Nbc_ext)
+            
+            if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then 
+                Write(10,*) ''; Write(10,*) ''
+                Write(10,'(a)') 'Division into blocks to apply the CBFM : '
+                Write(10,'(a,i6)') 'Total number of blocks = ',Nblocks        
+                Write(10,'(a)') 'Number of cells per Block  = '
+                Do I=1,Nblocks-1
+	                Write(10,'(i7,a)',advance='no') CBFM_Blocks(I)%Nbc_b,';'
+                Enddo
+                Write(10,'(i7)') CBFM_Blocks(Nblocks)%Nbc_b
+                Write(10,'(a)') 'Number of cells per Block after extension = '
+                Do I=1,Nblocks-1
+	                Write(10,'(i7,a)',advance='no') (CBFM_Blocks(I)%Nbc_b+CBFM_Blocks(I)%Nbc_ext),';'
+                Enddo
+                Write(10,'(i7)') (CBFM_Blocks(Nblocks)%Nbc_b+CBFM_Blocks(Nblocks)%Nbc_ext)
         
-                    Write(*,*) ''; Write(*,*) ''
-                    Write(*,'(a)')  '-------Division into blocks------'
-                    Write(*,'(a,i6)') 'Total number of blocks = ',Nblocks
-                    Write(*,'(a,f9.4,a,a)') 'Maximum block height = ', hBlock*10**lamb_mag, ' ',lamb_unit
-                    Write(*,'(a,i6)') 'Maximum block length = ', maxval(CBFM_Blocks(1:NBlocks)%Nbc_b)
-                    Write(*,'(a,i2)') 'Nbcells_ext =', Nc_extended
-                    Write(*,'(a,i6)') 'Maximum block extension length = ', maxval(CBFM_Blocks(1:NBlocks)%Nbc_ext)    
-                    if (define_use_Copies == 1) then 
-                        Write(*,'(a,i4,a,i4,a)') 'Note that NcalBlks = ',NcalBlks,' out of total ',NBlocks,' blocks';
-                    endif
+                Write(*,*) ''; Write(*,*) ''
+                Write(*,'(a,a,a)')  '-------Division into blocks (',div_type,')------'
+                Write(*,'(a,i6)') 'Total number of blocks = ',Nblocks
+                Write(*,'(a,f9.4,a,a)') 'Maximum block height = ', hBlock*10**lamb_mag, ' ',lamb_unit
+                Write(*,'(a,i6)') 'Maximum block length = ', maxval(CBFM_Blocks(1:NBlocks)%Nbc_b)
+                Write(*,'(a,i2)') 'Nbcells_ext =', Nc_extended
+                Write(*,'(a,i6)') 'Maximum block extension length = ', maxval(CBFM_Blocks(1:NBlocks)%Nbc_ext)    
+                if (define_use_Copies == 1) then 
+                    Write(*,'(a,i4,a,i4,a)') 'Note that NcalBlks = ',NcalBlks,' out of total ',NBlocks,' blocks';
+                endif
                 
-                    Write(*,*) '';
-                    Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to discretize : ',Comp_time_disc(1),'j',Comp_time_disc(2)&
-                    ,'h',Comp_time_disc(3),'min', Comp_time_disc(4),'sec'
-                    Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to divide into blocks: ',Comp_time_div(1),'j',Comp_time_div(2)&
-                    ,'h',Comp_time_div(3),'min', Comp_time_div(4),'sec'
-                    Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to extend blocks: ',Comp_time_ext(1),'j',Comp_time_ext(2)&
-                    ,'h',Comp_time_ext(3),'min', Comp_time_ext(4),'sec'
-		            if (Nbc .lt. 100000) then
-                     Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to write geometry/blocks files : ',Comp_time_write(1),'j',Comp_time_write(2)&
-                    ,'h',Comp_time_write(3),'min', Comp_time_write(4),'sec'
-		            endif
-                EndIf  
+                Write(*,*) '';
+                Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to discretize : ',Comp_time_disc(1),'j',Comp_time_disc(2)&
+                ,'h',Comp_time_disc(3),'min', Comp_time_disc(4),'sec'
+                Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to divide into blocks: ',Comp_time_div(1),'j',Comp_time_div(2)&
+                ,'h',Comp_time_div(3),'min', Comp_time_div(4),'sec'
+                Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to extend blocks: ',Comp_time_ext(1),'j',Comp_time_ext(2)&
+                ,'h',Comp_time_ext(3),'min', Comp_time_ext(4),'sec'
+		        if (Nbc .lt. 100000) then
+                    Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to write geometry/blocks files : ',Comp_time_write(1),'j',Comp_time_write(2)&
+                ,'h',Comp_time_write(3),'min', Comp_time_write(4),'sec'
+		        endif
             EndIf
         EndIf
         ! here rank = 1 will quickly check if the folders are properly created  (I was having a weired problem of rank 0 not creating the folders !!)
@@ -1347,45 +988,6 @@ Program Main_Scattering
                 Write(10,'(a,F10.6,a,a)') 'The wavelength of simulation = ',Lambda_w*10**lamb_mag,' ',lamb_unit 
             endif
             
-            if ((Adapt_mesh .eq. 1) .AND. (Nbc .ne. old_Nbc)) then 
-            
-                if (rank == 0) then 
-                    Write(10,*) '';
-                    Write(10,'(a,i7)') 'The updated Number of Cells After Adaptive Mesh =', Nbc
-                    Write(*,*) ''; 
-                    Write(*,'(a,i8)') 'After Adaptive Mesh, Total Number of Cells =',Nbc
-                EndIf 
-            
-                if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then 
-                    call Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)    
-                    Call Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
-                    call Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,'UPD');   
-                    
-                    deallocate(MPI_CBFM_Blocks);                
-                    Call MPI_distribution_blocks(CBFM_Blocks,MPI_CBFM_Blocks);
-                    
-                    if (rank == 0) then                    
-                      Write(10,'(a)') 'Division into blocks to apply the CBFM : '
-                      Write(10,'(a,i6)') 'Total number of blocks = ',Nblocks        
-                      Write(10,'(a)') 'Number of cells per Block  = '
-                      Do I=1,Nblocks-1
-  	                    Write(10,'(i7,a)',advance='no') CBFM_Blocks(I)%Nbc_b,';'
-                      Enddo
-                      Write(10,'(i7)') CBFM_Blocks(Nblocks)%Nbc_b
-                      Write(10,'(a)') 'Number of cells per Block after extension = '
-                      Do I=1,Nblocks-1
-  	                    Write(10,'(i7,a)',advance='no') (CBFM_Blocks(I)%Nbc_b+CBFM_Blocks(I)%Nbc_ext),';'
-                      Enddo
-                      Write(10,'(i7)') (CBFM_Blocks(Nblocks)%Nbc_b+CBFM_Blocks(Nblocks)%Nbc_ext)
-          
-                      Write(*,'(a,i6)') ' -- > Total number of blocks = ',Nblocks
-                      Write(*,'(a,f6.3,a)') ' -- > Maximum block height = ', hBlock*1e3, ' mm'
-                      Write(*,'(a,i6)') ' -- > Maximum block length = ', maxval(CBFM_Blocks(1:NBlocks)%Nbc_b)   
-                      Write(*,'(a)') ''; Write(*,'(a)') ''
-                    endif 
-                EndIf                 
-            EndIf
-            
             ! check if Nprocs >= Nblocks
             if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) then 
                 if (nber_procs .gt. Nblocks) then 
@@ -1420,8 +1022,6 @@ Program Main_Scattering
         Write (10,'(a)') '*******************************************************************************'
         Close(10)
     endif
-    Deallocate(Transmitters_Comp,Receivers,Cells)   
-    Deallocate (methods_names)  
     
 30  Call MPI_FINALIZE (code);
         

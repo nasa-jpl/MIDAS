@@ -25,6 +25,7 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
     Real(kind=8) :: x0,y0,z0,cheb_eps,hypotxy
     Real(kind=8) :: theta_rd,phi_rd,Rlim,ap_cheb,ap_int,Dp_cheb 
     Real(kind=8) :: h_cyl, d_cyl, Lp
+    Real(kind=8) :: Dx,Dy,Dz
     
     Integer, Dimension(:,:), allocatable :: Part_in_lat
     Integer, Dimension(:), allocatable :: Nbcels_x,Nbcels_y,Nbcels_z,Cells_m_ind
@@ -69,13 +70,8 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
     END INTERFACE
     
     
-    
-    
     !! FIRST THE EASIEST CONFIG 
     if (SimScatterer%ty_shape_in == 'cells') then 
-        ! first in case there is any mistake here : 
-        ! if cells.dat as input, there is not an option of Adapt_mesh
-        Adapt_mesh = 0;            
         ! simply read Cells.dat to fill in the Intent(out) Cells 
         Call Read_CellsFile(Nbc,Cells_xyz_Sc,Cells_m_ind); 
        
@@ -372,7 +368,15 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
             
             TmpCells(Comp_cel)%Sc = Sc     
             TmpCells(Comp_cel)%n_diel = Part_in_lat(idip,4); ! we only consider isotropic scatterers for the moment         
-        EndDo            
+        EndDo 
+        
+        ! Here center the scatterer at the origin
+        Dx = maxval(TmpCells(:)%Xc) - minval(TmpCells(:)%Xc)
+        Dy = maxval(TmpCells(:)%Yc) - minval(TmpCells(:)%Yc)
+        Dz = maxval(TmpCells(:)%Zc) - minval(TmpCells(:)%Zc) 
+        TmpCells(:)%Xc = TmpCells(:)%Xc - Dx/2.0
+        TmpCells(:)%Yc = TmpCells(:)%Yc - Dy/2.0         
+        TmpCells(:)%Zc = TmpCells(:)%Zc - Dz/2.0
         
         ! we recall that the scatterer attributes pb_xmin, pb_xmax,pb_ymin, pb_ymax 
         ! pb_zmin and pb_zmax of the current scatterer will be assigned in the subroutine Division_blocks  

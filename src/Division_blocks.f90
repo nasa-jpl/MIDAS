@@ -1,4 +1,4 @@
-SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr)
+SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_div)
     
     USE Initialization
     USE common_variables
@@ -10,10 +10,12 @@ SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCB
     Integer, Dimension(7), INTENT(IN) :: Ncells_SphDomains
     type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
     Integer, Dimension(:,:), allocatable, INTENT(OUT):: MLCBFM_BlDistr
+    Integer, INTENT(OUT) :: error_div
     
     ! local 
-    integer :: Type_Par, err,m, I, N
-    real(kind=8) :: dmin, dmax
+    integer :: Type_Par, err,m, I, N, SPH_v
+    real(kind=8) :: dmin, dmax,Dx,Dy,Dz
+    type (Cell), Dimension(:), allocatable :: Cells_after_div
     Integer, Dimension(:), allocatable :: Diff_avg
     Real(kind=8), Dimension(:), allocatable :: hB_test
     
@@ -33,7 +35,7 @@ SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCB
             Integer, INTENT(INOUT) :: error_division            
         END SUBROUTINE Division_blocks_csh
         
-        SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_division)
+        SUBROUTINE Division_blocks_sph_v0(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_division)
 
             ! The division into blocks depends on the type of the considered scatterer
             ! It is much simpler for the conventional shapes : Sphere, Cylinder ...
@@ -52,23 +54,85 @@ SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCB
             type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
             Integer, Dimension(:,:), allocatable, INTENT(OUT):: MLCBFM_BlDistr
             Integer, INTENT(INOUT) :: error_division               
-        END SUBROUTINE Division_blocks_sph 
+        END SUBROUTINE Division_blocks_sph_v0 
+        
+        SUBROUTINE Division_blocks_sph_v1(SimScatterer,Cells,Cells_after_div,CBFM_Blocks,MLCBFM_BlDistr,error_division)
+            USE Initialization
+            USE common_variables
+            USE DiverseUtil
+            USE MPI
+            
+            Implicit NONE
+            
+            !IN/OUT 
+            type (Scatterer), INTENT(INOUT) :: SimScatterer
+            type (Cell), Dimension(Nbc), INTENT(IN) :: Cells
+            type (Cell), Dimension(:), allocatable, INTENT(OUT) :: Cells_after_div
+            type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
+            Integer, Dimension(:,:), allocatable, INTENT(OUT):: MLCBFM_BlDistr
+            Integer, INTENT(OUT) :: error_division
+        END SUBROUTINE Division_blocks_sph_v1
+        
+        SUBROUTINE Division_blocks_sph_H(find_best_combin,Cells,CBFM_Blocks,MLCBFM_BlDistr,error_division)
+            USE Initialization
+            USE common_variables
+            USE DiverseUtil
+            USE MPI
+                    
+            Implicit NONE
+            
+            !IN/OUT 
+            Integer, INTENT(IN) :: find_best_combin
+            type (Cell), Dimension(Nbc), INTENT(INOUT) :: Cells
+            type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
+            Integer, Dimension(:,:), allocatable, INTENT(OUT):: MLCBFM_BlDistr
+            Integer, INTENT(OUT) :: error_division
+        END SUBROUTINE Division_blocks_sph_H
     
-    END INTERFACE
+    END INTERFACE 
     
+    error_div = 0;
     Type_Par = SimScatterer%type_s 
     
+    if (div_type == 'SPH') then   
+        
+        SPH_v = 3;  ! so far 4 options : 0 to 3 
+        write(div_type,'(a2,i1)') div_type,SPH_v ! remove later if you will keep one only SPH type
+        
+        ! Version 0
+        if (SPH_v .eq. 0) then   ! not really working, eliminate as soon as other versions tested and validated 
+          Call Division_blocks_sph_v0(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_div)
+        
+        elseif (SPH_v .eq. 1) then  ! easy option divide&eliminate empty blocks using hblock, update hblock according to average N and re-divide until achievieng desired Ncells per block
+          
+          Dx = maxval(Cells(:)%Xc) - minval(Cells(:)%Xc)
+          Dy = maxval(Cells(:)%Yc) - minval(Cells(:)%Yc)
+          Dz = maxval(Cells(:)%Zc) - minval(Cells(:)%Zc)
+          dmax = max(Dx, max(Dy,Dz))
+          hBlock = min(20*SimScatterer%Sc,dmax/2)
+          N = 2*Navg_cells ! initialize to go through the first while check 
+          do while ((error_div .eq. 0) .and. (N .gt. 1.5*Navg_cells))  ! Navg_cells read from user input
+              !if (rank == 0) then 
+              !    write(*,*) 'N = ',N,'; h = ',hBlock
+              !endif
+              call Division_blocks_sph_v1(SimScatterer,Cells,Cells_after_div,CBFM_Blocks,MLCBFM_BlDistr,error_div)
+              N = sum(CBFM_Blocks(1:Nblocks)%Nbc_b)/Nblocks;
+              hBlock = hBlock*3/4
+          enddo
     
-    if ((Type_Par .eq. 1) .or. (Type_Par .eq. 6)) then              
-        Call Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,err);
-                
-        if (err .ne. 0) then 
-            Write(*,'(a)') 'Something went wrong when dividing into blocks !'
-            stop 1;
+        elseif (SPH_v .eq. 2) then
+            call Division_blocks_sph_H(0,Cells,CBFM_Blocks,MLCBFM_BlDistr,error_div)
+        elseif (SPH_v .eq. 3) then
+            call Division_blocks_sph_H(1,Cells,CBFM_Blocks,MLCBFM_BlDistr,error_div)
         endif
-                
-        hBlock = 2*maxval(CBFM_Blocks(:)%BSphCont(4));
-    else
+               
+        if (error_div .ne. 0) then 
+            Write(*,'(a)') 'Something went wrong when dividing into blocks !'
+            return
+        endif                 
+        hBlock = 2*maxval(CBFM_Blocks(:)%BSphCont(4));    
+        
+    elseif (div_type == 'CSH') then
         !! ADAPTIVE DIVISION INTO BLOCKS TO GET AS CLOSE AS POSSIBLE 
         !!TO NBlock (avgNcells) indicated in 'Simulation_data.dat'   
         !! Division into M blocks of height hBlock 
@@ -89,12 +153,13 @@ SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCB
             Call Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,err);
             if ((err .ne. 0) .AND. (I .eq. 1)) then
                 Write(*,'(a)') 'Something went wrong in the division into blocks !!';
-                STOP 1;
+                error_div = err;
+                exit;
             elseif (err .ne. 0) then 
-                exit ;
+                exit;
             endif
             hB_test(I) = hBlock; 
-            N = sum(CBFM_Blocks(:)%Nbc_b)/Nblocks;
+            N = sum(CBFM_Blocks(:)%Nbc_b)/Nblocks
             Diff_avg(I) = abs(N-Navg_cells);
             ! next test 
             hBlock = hBlock*hB_test_step; 
@@ -109,18 +174,20 @@ SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCB
         endif
         err = 0;
         Call Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,err)
+        error_div = err;
         ! Finally, we save the maximum height resulting from 
         ! the division into blocks in /Param_MoMCBFM/ hBlock
         hBlock = 2*maxval(CBFM_Blocks(:)%BSphCont(4));     
-        Deallocate(Diff_avg,hB_test);                  
+        Deallocate(Diff_avg,hB_test); 
+    Else
+        Write(*,'(a)') 'Unknown option for division into blocks !! Please input CSH or SPH ';
+        error_div = 1;      
     EndIf 
 
     
 END SUBROUTINE Division_blocks
-    
-    
 
-    
+   
 SUBROUTINE Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,error_division)
 
     ! The division into blocks depends on the type of the considered scatterer
@@ -371,7 +438,7 @@ SUBROUTINE Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,err
                     Div_is_possible = .TRUE.;
                     ! we focus on the cells of the current block that is candidate to division
                     Allocate(new_cells_Block(Nbc_block));                        
-                    Call SetBlockCtrs(Type_Par,iiB,NbBl,CBFM_Blocks_p,Nbc_block,positions)
+                    Call SetBlockCtrs(iiB,NbBl,CBFM_Blocks_p,Nbc_block,positions)
                     if (CBFM_Blocks_p(iiB)%BCubCont(3,dir1) .gt. CBFM_Blocks_p(iiB)%BCubCont(3,dir2)) then
                         dir_div = dir1; 
                     else 
@@ -573,7 +640,7 @@ SUBROUTINE Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,err
         positions(2,:) = Cells(cel_init:cel_final)%Yc
         positions(3,:) = Cells(cel_init:cel_final)%Zc
           
-        Call SetBlockCtrs(Type_Par,ii,NBlocks,CBFM_Blocks,Nbc_block,positions) 
+        Call SetBlockCtrs(ii,NBlocks,CBFM_Blocks,Nbc_block,positions) 
         deallocate(positions);
     EndDo
         
@@ -585,7 +652,7 @@ END SUBROUTINE Division_blocks_csh
 !******************************************************************************************
 !******************************************************************************************
 
-SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_division)
+SUBROUTINE Division_blocks_sph_v0(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_division)
 
     ! The division into blocks depends on the type of the considered scatterer
     ! It is much simpler for the conventional shapes : Sphere, Cylinder ...
@@ -793,7 +860,7 @@ SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,
                 Div_is_possible = .TRUE.;
                 ! we focus on the cells of the current block that is candidate to division
                 Allocate(new_cells_Block(Nbc_block));                        
-                Call SetBlockCtrs(Type_Par,iiB,NbBl,Blocks_extern,Nbc_block,positions)
+                Call SetBlockCtrs(iiB,NbBl,Blocks_extern,Nbc_block,positions)
                 dir_div = maxloc(Blocks_extern(iiB)%BCubCont(3,:),1);                          
                 hbox = Blocks_extern(iiB)%BCubCont(3,dir_div) 
                 ! always divide by 2
@@ -922,7 +989,7 @@ SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,
         positions(2,:) = Cells(cel_init:cel_final)%Yc
         positions(3,:) = Cells(cel_init:cel_final)%Zc
           
-        Call SetBlockCtrs(Type_Par,ii,NBlocks,CBFM_Blocks,Nbc_block,positions) 
+        Call SetBlockCtrs(ii,NBlocks,CBFM_Blocks,Nbc_block,positions) 
         deallocate(positions);
     EndDo     
     
@@ -936,7 +1003,567 @@ SUBROUTINE Division_blocks_sph(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,
         
 10  return; 
     
-END SUBROUTINE Division_blocks_sph
+END SUBROUTINE Division_blocks_sph_v0
+    
+SUBROUTINE Division_blocks_sph_v1(SimScatterer,Cells,Cells_after_div,CBFM_Blocks,MLCBFM_BlDistr,error_division)
+
+    ! The division into blocks depends on the type of the considered scatterer
+    ! It is much simpler for the conventional shapes : Sphere, Cylinder ...
+    ! The division here is for the complex geometries (from file) 
+    ! STILL can be improved ...        
+        
+    USE Initialization
+    USE common_variables
+    USE MPI
+    USE DiverseUtil
+    
+    Implicit NONE
+    
+    !IN/OUT 
+    type (Scatterer), INTENT(INOUT) :: SimScatterer
+    type (Cell), Dimension(Nbc), INTENT(IN) :: Cells
+    type (Cell), Dimension(:), allocatable, INTENT(OUT) :: Cells_after_div
+    type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
+    Integer, Dimension(:,:), allocatable, INTENT(OUT):: MLCBFM_BlDistr
+    Integer, INTENT(OUT) :: error_division
+    
+    ! local 
+    Integer :: ii,jj,cc,cel,Type_Par,Nx,Ny,Nz,index_B,iBx,iBy,iBz
+    Integer :: numB_ii,Nblk,Nbc_blk_max,Ncel_avg,Ncel_thresh,N
+    Integer :: ind_new_cel,cel_init,cel_final,Nbc_block
+    Real(kind=8) :: Sc,Dx,Dy,Dz,hx,hy,hz,xc,yc,zc
+    
+    Integer, dimension(:,:), allocatable :: cells_in_blocks
+    Real(kind=8), dimension(:,:), allocatable :: positions
+    type (Cell), Dimension(:), allocatable :: new_Cells
+    type (CBFM_Block), Dimension(:), allocatable:: CBFM_Blocks_in
+    
+    CHARACTER(200) :: file_name
+    CHARACTER tmp_str,ch1,ch2
+    CHARACTER(:), allocatable::info_p_fl
+    
+    logical :: Div_is_possible,CanDiv,last_division
+    
+    type (CBFM_Block), Dimension(:), allocatable:: Blocks_extern,Blocks_extern_tmp
+    
+    ! Test 12/15/2021 
+    Integer :: countU
+    Integer, dimension(:), allocatable :: all_NBlocks,Nbc_blocks
+    Integer, dimension(:,:), allocatable :: all_NbcBlocks
+    
+    error_division = 0; ! I dont see how error_div can go to 1 here, but I will keep it in case I need it later
+    Type_Par = SimScatterer%type_s
+    info_p_fl = trim(SimScatterer%info_s);
+    Sc = SimScatterer%Sc
+    
+    Dx = maxval(Cells(:)%Xc) - minval(Cells(:)%Xc)
+    Dy = maxval(Cells(:)%Yc) - minval(Cells(:)%Yc)
+    Dz = maxval(Cells(:)%Zc) - minval(Cells(:)%Zc)
+    
+    ! hBlock is a common variable that I will need to intialize (2*lambda for example) before calling this subroutine 
+    ! in loop until getting under Ncel_avg required by user
+    Nx = ceiling(Dx/hBlock); Ny = ceiling(Dy/hBlock); Nz = ceiling(Dz/hBlock)
+    hx = Dx/Nx; hy = Dy/Ny; hz = Dz/Nz
+    
+    ! Initialize the number of blocks and maximum number of cells per block 
+    Nblk = Nx*Ny*Nz; Nbc_blk_max = nint(2.0*(ceiling(hBlock/Sc)**3)) ! the 2 factor is just for security 
+    Allocate(cells_in_blocks(Nblk,Nbc+1)); cells_in_blocks=0
+    
+ !   if (rank == 0) then
+ !       write(*,*) 'Dx =', Dx
+ !       write(*,*) 'Dy =', Dy
+ !       write(*,*) 'Dz =', Dz
+ !       Write(*,*) 'hx =', hx
+ !       Write(*,*) 'hy =', hy
+ !       Write(*,*) 'hz =', hz
+ !       write(*,*) 'hBlock =',hBlock
+ !       write(*,*) 'Sc =',Sc
+ !       write(*,*) 'Nbc =',Nbc
+ !       write(*,*) 'Nblk = ',Nblk 
+ !       write(*,*) 'Nbc_blk_max =',Nbc_blk_max
+ !   endif 
+        
+    Do ii=1,Nbc
+        ! get iBx, iBy and iBz for each cell to determine its corresponding block B
+        xc = Cells(ii)%Xc + Dx/2. 
+        yc = Cells(ii)%Yc + Dy/2.
+        zc = Cells(ii)%Zc + Dz/2.
+        ! find iBx
+        jj=1
+        do while (jj .le. Nx)
+            if (xc .lt. jj*hx) then
+                iBx = jj; exit
+            else 
+                jj= jj+1
+            endif
+        enddo
+        ! find iBy
+        jj=1
+        do while (jj .le. Ny)
+            if (yc .lt. jj*hy) then
+                iBy = jj; exit
+            else 
+                jj= jj+1
+            endif
+        enddo
+        ! find iBz
+        jj=1
+        do while (jj .le. Nz)
+            if (zc .lt. jj*hz) then
+                iBz = jj; exit
+            else 
+                jj= jj+1
+            endif
+        enddo
+        
+        numB_ii = (Nx*Ny)*(iBz-1) + Nx*(iBy-1) + iBx; 
+        if (rank == 0) then
+            !write(*,*) 'xc = ',xc, '; yc = ',yc,'; zc = ',zc 
+            !write(*,*) 'iBx = ',iBx,'; iBy = ',iBy,'; iBz = ',iBz 
+            !write(*,*) 'numB_ii = ',numB_ii 
+        endif  
+        
+        ! add this information to the table cells_in_blocks
+        cells_in_blocks(numB_ii,1) = cells_in_blocks(numB_ii,1) + 1
+        cc = 1+ cells_in_blocks(numB_ii,1) ; ! first column number of cells for the block numB_cel
+        cells_in_blocks(numB_ii,cc) = Cells(ii)%n_cell; ! or ii  
+    enddo
+    
+    !if (rank == 0) then 
+    !    Write(*,*) 'Here 1 Nblocks =',Nblk
+    !    Write(*,*) cells_in_blocks(1:Nblk,1)
+    !endif
+    
+    ! First eliminate empty blocks 
+    index_B = 2;
+    Nblocks = Nblk; ii=2
+    do while (ii .le. Nblk)
+        if (cells_in_blocks(index_B-1,1) .eq. 0) then 
+            Nblocks = Nblocks - 1
+            cells_in_blocks(index_B-1:Nblocks,1:Nbc+1) = cells_in_blocks(index_B:Nblocks+1,1:Nbc+1);           
+        else
+            index_B = index_B + 1           
+        endif
+        ii = ii + 1        
+    enddo
+    ! Last step : test the last block 
+    if (cells_in_blocks(Nblocks,1) .eq. 0) then 
+        Nblocks = Nblocks - 1  
+    endif
+    
+    ! Here we know that we have to consider only Nblocks rows of cells_in_blocks! 
+    !if (rank == 0) then 
+    !    Write(*,*) 'Here 2 Nblocks =',Nblocks
+    !    Write(*,*) cells_in_blocks(1:Nblocks,1)
+    !endif
+    
+    
+    ! Second round : knowing the average Ncels per blocks now that we eliminted the empty blocks
+    ! add the "small" blocks to the previous friend
+    Nblk = Nblocks
+    Ncel_avg = sum(cells_in_blocks(1:Nblk,1))/Nblk;
+    Ncel_thresh = nint(1.2*Ncel_avg);
+    !if (rank == 1) then
+    !    write(*,*) 'Ncel_thresh =',Ncel_thresh
+    !endif
+    !index_B = 2; ii =2
+    !do while (ii .le. Nblk)
+    !    if (sum(cells_in_blocks(index_B-1:index_B,1)) .le. Ncel_thresh) then 
+    !        Nblocks = Nblocks - 1
+    !        jj= cells_in_blocks(index_B,1) + 2
+    !        N = cells_in_blocks(index_B-1,1)
+    !        cells_in_blocks(index_B,1) = sum(cells_in_blocks(index_B-1:index_B,1))
+    !        cells_in_blocks(index_B,jj:jj+N-1) = cells_in_blocks(index_B-1,2:2+N-1)
+    !        ! after we moved all data to index_B we use it to crush index_B-1 row
+    !        cells_in_blocks(index_B-1:Nblocks,1:Nbc+1) = cells_in_blocks(index_B:Nblocks+1,1:Nbc+1); 
+    !        !cells_in_blocks(index_B:Nblk-1,1:Nbc+1) = cells_in_blocks(index_B+1:Nblk,1:Nbc+1);           
+    !    else
+    !        index_B = index_B + 1           
+    !    endif
+    !    ii = ii + 1        
+    !enddo
+    
+    !Write(*,*) 'rank ',rank,' : after summing small blocs, Nblocks =',Nblocks
+    !Write(*,*) cells_in_blocks(1:Nblocks,1)
+    
+    
+    
+    !!!! TEST TES 12/15 2021
+    !! HERE I NEED TO CHECK THAT ALL JOBS HAVE THE SAME DIVISION INTO BLOCKS
+    ! Check that all the jobs have the same (Division/Extension) Configuration
+    allocate(all_NBlocks(nber_procs));
+    call MPI_ALLGATHER(Nblocks,1,MPI_INTEGER,all_NBlocks,1,MPI_INTEGER,MPI_COMM_WORLD,code)
+    call count_unique_vals(nber_procs,all_NBlocks,countU)
+    if (countU .ne. 1) Then 
+        if (rank == 0) Then 
+            Write(*,'(a)') 'Error : all the jobs have not the same division into blocks !';
+        endif
+        stop 10           
+    EndIf
+    
+    allocate(all_NbcBlocks(Nblocks,nber_procs));
+    allocate(Nbc_blocks(Nblocks));
+    Nbc_blocks = cells_in_blocks(1:Nblocks,1)
+    call MPI_ALLGATHER(Nbc_blocks,Nblocks,MPI_INTEGER,all_NbcBlocks,Nblocks,MPI_INTEGER,MPI_COMM_WORLD,code)
+    deallocate(Nbc_blocks);
+
+    Do ii=1, Nblocks
+        allocate(Nbc_blocks(nber_procs));
+        Nbc_blocks = all_NbcBlocks(ii,1:nber_procs);
+        call count_unique_vals(nber_procs,Nbc_blocks,countU)
+        if (countU .ne. 1) Then 
+            if (rank == 0) Then 
+                Write(*,'(a)') 'Error : all the jobs have not the same division into blocks !';
+            endif
+            stop 15          
+        EndIf 
+        deallocate(Nbc_blocks);  
+    EndDo
+    deallocate(all_NBlocks,all_NbcBlocks);
+
+    !if (rank == 0) then 
+    !    Write(*,*) 'rank ',rank, ': If I''am here the jobs have all the same Nbc'
+    !    Write(*,*) 'Nblocks = ',Nblocks ,'; and while Nbc = ',Nbc,', sum(cells_in_blocks(1:Nblocks,1)) = ',sum(cells_in_blocks(1:Nblocks,1))
+    !    Write(*,*) 'cells_in_blocks(1:Nblocks,1) = ',cells_in_blocks(1:Nblocks,1)
+    !    
+    !endif
+        
+
+    ! Now reorganize the cells depending on the block to which they belong and fill in CBFM_Blocks
+    ! that will make the application of the CBFM and the extension of the blocks easier
+    Allocate(CBFM_Blocks(Nblocks))
+    Allocate(Cells_after_div(Nbc));
+    ind_new_cel = 1
+    Do ii=1,Nblocks
+        N = cells_in_blocks(ii,1)
+        CBFM_Blocks(ii)%num_Block= ii
+        CBFM_Blocks(ii)%Nbc_b= N
+        Do jj=1,N
+            cel = cells_in_blocks(ii,1+jj)
+            Cells_after_div(ind_new_cel) = Cells(cel)
+            Cells_after_div(ind_new_cel)%n_cell = ind_new_cel
+            Cells_after_div(ind_new_cel)%n_block = ii 
+            ind_new_cel = ind_new_cel + 1
+        EndDo            
+    EndDo   
+    deallocate(cells_in_blocks)
+    
+    Type_Par = SimScatterer%type_s 
+    ! define a narrower contour for each block
+    Do ii=1,Nblocks 
+        CBFM_Blocks(ii)%num_block = ii;
+        Nbc_block = CBFM_Blocks(ii)%Nbc_b
+        cel_init = sum(CBFM_Blocks(1:ii-1)%Nbc_b)+1;
+        cel_final = sum(CBFM_Blocks(1:ii)%Nbc_b);
+        
+        Allocate(positions(3,CBFM_Blocks(ii)%Nbc_b));
+        positions(1,:) = Cells_after_div(cel_init:cel_final)%Xc
+        positions(2,:) = Cells_after_div(cel_init:cel_final)%Yc
+        positions(3,:) = Cells_after_div(cel_init:cel_final)%Zc
+        Call SetBlockCtrs(ii,NBlocks,CBFM_Blocks,Nbc_block,positions) 
+        deallocate(positions);
+    EndDo     
+    
+    ! for the moment, the MLCBFM version is not implemented here 
+    NberLevels = 1;
+    NbBlksL2 = 1;
+    Allocate(MLCBFM_BlDistr(1,NbBlksL2+1))
+    MLCBFM_BlDistr(1,1) = NbBlksL2;
+    MLCBFM_BlDistr(1,2) = 1;  
+END SUBROUTINE Division_blocks_sph_v1
+    
+SUBROUTINE Division_blocks_sph_H(find_best_combin,Cells,CBFM_Blocks,MLCBFM_BlDistr,error_division)
+    USE Initialization
+    USE common_variables
+    USE DiverseUtil
+    USE MPI
+            
+    Implicit NONE
+    
+    !IN/OUT 
+    Integer, INTENT(IN) :: find_best_combin
+    type (Cell), Dimension(Nbc), INTENT(INOUT) :: Cells
+    type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks
+    Integer, Dimension(:,:), allocatable, INTENT(OUT):: MLCBFM_BlDistr
+    Integer, INTENT(OUT) :: error_division
+    
+    ! Local 
+    Integer :: ii,jj,kk,row,Nb,N,start_at,end_at
+    Integer :: NBlocks_old,Nbii,Navg_ii,Nvalid
+    Integer minl(1)
+    Integer, dimension(2,9) :: Ndiff
+    Real(kind=8) :: fr_x, fr_y, fr_z
+    type (Cell), Dimension(:), allocatable:: Cells_after
+    Real(kind=8), dimension(9,3) :: fr_vals
+    Real(kind=8), dimension(:,:), allocatable :: positions
+    type (Cell), Dimension(:), allocatable :: Cells_ii_before,Cells_ii_after
+    type (CBFM_Block), Dimension(:), allocatable :: CBFM_Blocks_ii_after,CBFM_Blocks_tmp
+    
+    INTERFACE        
+        SUBROUTINE HierarchicalOctree_subdivision(Nc,fr_x,fr_y,fr_z,Cells_before,Cells_after,Nb,CBFM_Blocks_after,error_division)
+            USE Initialization
+            USE common_variables
+            USE DiverseUtil
+            USE MPI
+                    
+            Implicit NONE
+                    
+            !IN/OUT 
+            Integer, INTENT(IN) :: Nc
+            Real(kind=8), INTENT(IN) :: fr_x,fr_y,fr_z
+            Integer, INTENT(OUT) :: Nb
+            type (Cell), Dimension(Nc), INTENT(IN) :: Cells_before
+            type (Cell), Dimension(:), allocatable, INTENT(OUT) :: Cells_after
+            type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks_after
+            Integer, INTENT(OUT) :: error_division
+        END SUBROUTINE HierarchicalOctree_subdivision 
+    END INTERFACE
+    
+    ! Initialization, table needed later for HierarchicalOctree_subdivision 
+    fr_vals(1,1) = 1/2.; fr_vals(1,2) = 1/2.; fr_vals(1,3) = 1/2.;
+    row = 2
+    do ii=1,2
+      if (ii .eq. 1) then; fr_vals(row,1) = 1/3.; else; fr_vals(row,1) = 2/3.; endif
+      do jj=1,2
+        if (jj .eq. 1) then; fr_vals(row,2) = 1/3.; else; fr_vals(row,2) = 2/3.; endif
+        do kk=1,2 
+            if (kk .eq. 1) then; fr_vals(row,3) = 1/3.; else; fr_vals(row,3) = 2/3.; endif
+            row = row +1 
+        enddo
+      enddo
+    enddo
+    
+    ! First Hierarchical Octree subdivision/call
+    fr_x = 1/2.; fr_y = 1/2.; fr_z = 1/2.;
+    call HierarchicalOctree_subdivision(Nbc,fr_x,fr_y,fr_z,Cells,Cells_after,NBlocks,CBFM_Blocks,error_division)
+    Cells =  Cells_after; deallocate(Cells_after);
+    
+    ! If first/highest level division id successeful, scan CBFM_Blocks and re-divide when needed 
+    if (error_division .eq. 0) then 
+        ii = 1
+        do while (ii .LE. NBlocks)
+            N = CBFM_Blocks(ii)%Nbc_b
+            
+            if ((N .GT. Navg_cells) .AND. (abs(N - Navg_cells) .GT. abs(nint(N/8.) - Navg_cells))) then            
+                Allocate(Cells_ii_before(N));
+                start_at=sum(CBFM_Blocks(1:ii-1)%Nbc_b)+1; end_at =sum(CBFM_Blocks(1:ii)%Nbc_b)
+                Cells_ii_before(1:N) = Cells(start_at:end_at)
+                if (find_best_combin .eq. 1) then  
+                    Ndiff = 0; Nvalid = 0               
+                    do jj = 1,9 ! 9 most relavant combinations to test
+                        fr_x = fr_vals(jj,1); fr_y = fr_vals(jj,2); fr_z = fr_vals(jj,3)
+                        call HierarchicalOctree_subdivision(N,fr_x,fr_y,fr_z,Cells_ii_before,Cells_ii_after,Nbii,CBFM_Blocks_ii_after,error_division)
+                        
+                        if (Nbii .GT. 1) then 
+                            Nvalid = Nvalid + 1;
+                            Ndiff(1,Nvalid) = jj 
+                            Navg_ii = sum(CBFM_Blocks_ii_after(1:Nbii)%Nbc_b)/Nbii
+                            do kk=1,Nbii
+                                Ndiff(2,Nvalid) = max(Ndiff(2,Nvalid),abs(CBFM_Blocks_ii_after(kk)%Nbc_b - Navg_ii))
+                            enddo
+                        endif                    
+                        deallocate(Cells_ii_after,CBFM_Blocks_ii_after);
+                    enddo
+                    
+                    ! once we know the best combination (minumum difference % mean)                    
+                    if (Nvalid .NE. 0) then; minl = MINLOC(Ndiff(2,1:Nvalid)); kk = Ndiff(1,minl(1));
+                    else; kk = 1; endif                
+                    fr_x = fr_vals(kk,1); fr_y = fr_vals(kk,2); fr_z = fr_vals(kk,3)
+                elseif (find_best_combin .eq. 0) then
+                    fr_x = fr_vals(1,1); fr_y = fr_vals(1,2); fr_z = fr_vals(1,3)
+                endif
+                call HierarchicalOctree_subdivision(N,fr_x,fr_y,fr_z,Cells_ii_before,Cells_ii_after,Nbii,CBFM_Blocks_ii_after,error_division)
+                
+                if (error_division .eq. 1) then
+                    exit;
+                endif
+                
+                ! if not error, incorporate (Cells_ii_after, CBFM_Blocks_ii_after) in (Cells_after, CBFM_Blocks_after)
+                ! Watch out How you are changing the global NBlocks : I think I need to define 2 local Nblocks : Nb and Nbii and recursivelyincrement Nb with Nbii
+                Cells_ii_after(1:N)%n_cell = start_at + Cells_ii_after(1:N)%n_cell -1 
+                Cells(start_at:end_at) = Cells_ii_after(1:N);
+                
+                ! Update Nb 
+                NBlocks_old = NBlocks; NBlocks = NBlocks - 1 + Nbii; 
+                allocate(CBFM_Blocks_tmp(NBlocks));
+                CBFM_Blocks_tmp(1:ii-1) = CBFM_Blocks(1:ii-1);
+                CBFM_Blocks_tmp(ii:ii+Nbii-1) = CBFM_Blocks_ii_after(1:Nbii)
+                CBFM_Blocks_tmp(ii+Nbii:NBlocks) = CBFM_Blocks(ii+1:NBlocks_old)
+                
+                deallocate(CBFM_Blocks); allocate(CBFM_Blocks(NBlocks)); CBFM_Blocks = CBFM_Blocks_tmp                              
+                deallocate(Cells_ii_before,Cells_ii_after,CBFM_Blocks_ii_after,CBFM_Blocks_tmp)
+            else 
+                ii = ii +  1 
+            endif           
+        enddo
+    endif
+    
+    ! define a narrower contour for each block
+    Do ii=1,Nblocks 
+        CBFM_Blocks(ii)%num_block = ii;
+        N = CBFM_Blocks(ii)%Nbc_b
+        start_at = sum(CBFM_Blocks(1:ii-1)%Nbc_b)+1;
+        end_at = sum(CBFM_Blocks(1:ii)%Nbc_b);
+        
+        Allocate(positions(3,CBFM_Blocks(ii)%Nbc_b));
+        positions(1,:) = Cells(start_at:end_at)%Xc
+        positions(2,:) = Cells(start_at:end_at)%Yc
+        positions(3,:) = Cells(start_at:end_at)%Zc
+        Call SetBlockCtrs(ii,NBlocks,CBFM_Blocks,N,positions) 
+        deallocate(positions);
+    EndDo     
+    
+    ! for the moment, the MLCBFM version is not implemented here 
+    NberLevels = 1;
+    NbBlksL2 = 1;
+    Allocate(MLCBFM_BlDistr(1,NbBlksL2+1))
+    MLCBFM_BlDistr(1,1) = NbBlksL2;
+    MLCBFM_BlDistr(1,2) = 1;  
+        
+       
+END SUBROUTINE Division_blocks_sph_H
+
+SUBROUTINE HierarchicalOctree_subdivision(Nc,fr_x,fr_y,fr_z,Cells_before,Cells_after,Nb,CBFM_Blocks_after,error_division)
+     USE Initialization
+    USE common_variables
+    USE DiverseUtil
+    USE MPI
+            
+    Implicit NONE
+            
+    !IN/OUT 
+    Integer, INTENT(IN) :: Nc
+    Real(kind=8), INTENT(IN) :: fr_x,fr_y,fr_z
+    Integer, INTENT(OUT) :: Nb
+    type (Cell), Dimension(Nc), INTENT(IN) :: Cells_before
+    type (Cell), Dimension(:), allocatable, INTENT(OUT) :: Cells_after
+    type (CBFM_Block), Dimension(:), allocatable, INTENT(OUT) :: CBFM_Blocks_after
+    Integer, INTENT(OUT) :: error_division
+    
+    ! Local
+    Integer :: ii,jj,cc,Nx,Ny,Nz,Nblk,iBx,iBy,iBz,Nbii,Nb_old
+    Integer :: N,numB_ii,index_B,cel,ind_new_cel,start_at,end_at
+    Real(kind=8) :: dx,dy,dz,hx,hy,hz,xc,yc,zc,toO_x,toO_y,toO_z
+    Integer, Dimension(:,:), allocatable :: cells_in_blocks
+    Real(kind=8), dimension(:,:), allocatable :: positions
+    type (Cell), Dimension(:), allocatable :: Cells_ii_before,Cells_ii_after
+    type (CBFM_Block), Dimension(:), allocatable :: CBFM_Blocks_ii_after,CBFM_Blocks_tmp
+    
+     
+    ! 1) Divide by 8 
+    ! 2) Eliminate empty blocks
+    ! 3) reorganize cells according to new division into blocks
+    
+    error_division = 0
+
+    !1) divide into 8 sub-blocks
+    dx = maxval(Cells_before(1:Nc)%Xc) - minval(Cells_before(1:Nc)%Xc)
+    dy = maxval(Cells_before(1:Nc)%Yc) - minval(Cells_before(1:Nc)%Yc)
+    dz = maxval(Cells_before(1:Nc)%Zc) - minval(Cells_before(1:Nc)%Zc)
+    
+    toO_X = minval(Cells_before(1:Nc)%Xc)  ! to add if min negative
+    toO_Y = minval(Cells_before(1:Nc)%Yc);
+    toO_Z = minval(Cells_before(1:Nc)%Zc);
+    
+    
+    Nx = 2; Ny = 2; Nz = 2
+    hx = dx*fr_x; hy = dy*fr_y; hz = dz*fr_z;
+    
+    !if ((rank .eq. 0) .and. (Nc .eq. 5446)) then 
+    !    write(*,*) 'minval(Cells_before(1:Nc)%Xc) = ',minval(Cells_before(1:Nc)%Xc)
+    !    write(*,*) 'minval(Cells_before(1:Nc)%Yc) = ',minval(Cells_before(1:Nc)%Yc)
+    !    write(*,*) 'minval(Cells_before(1:Nc)%Zc) = ',minval(Cells_before(1:Nc)%Zc)
+        
+    !    write(*,*) 'maxval(Cells_before(1:Nc)%Xc) = ',maxval(Cells_before(1:Nc)%Xc)
+    !    write(*,*) 'maxval(Cells_before(1:Nc)%Yc) = ',maxval(Cells_before(1:Nc)%Yc)
+    !    write(*,*) 'maxval(Cells_before(1:Nc)%Zc) = ',maxval(Cells_before(1:Nc)%Zc)
+        
+        
+    !    write(*,*) 'dx = ',dx
+    !    write(*,*) 'dy = ',dy
+    !    write(*,*) 'dz = ',dz
+        
+    !    write(*,*) 'toO_X = ',toO_X
+    !    write(*,*) 'toO_Y = ',toO_Y
+    !    write(*,*) 'toO_Z = ',toO_Z
+        
+    !    write(*,*) 'hx = ',hx
+    !    write(*,*) 'hy = ',hy
+    !    write(*,*) 'hz = ',hz
+    !endif
+    
+    Nblk = Nx*Ny*Nz;    
+    Allocate(cells_in_blocks(Nblk,Nc+1))
+    cells_in_blocks=0        
+    Do ii=1,Nc
+        ! get iBx, iBy and iBz for each cell to determine its corresponding block B
+        xc = Cells_before(ii)%Xc - toO_X
+        yc = Cells_before(ii)%Yc - toO_Y
+        zc = Cells_before(ii)%Zc - toO_Z
+        
+        ! here xc/yc/zc is either lower than hx/hy/hz or greater
+        ! find iBx  (1 or 2)           
+        if (xc .le. hx) then; iBx = 1; else; iBx = 2; endif
+        ! find iBy
+        if (yc .le. hy) then; iBy = 1; else; iBy = 2; endif
+        ! find iBz
+        if (zc .le. hz) then; iBz = 1; else; iBz = 2; endif     
+        numB_ii = (Nx*Ny)*(iBz-1) + Nx*(iBy-1) + iBx;  
+        
+        !if ((rank .eq. 0) .and. (Nc .eq. 5446)) then 
+        !    write(*,*),'xc = ',xc,'; yc = ',yc,'; zc = ',zc
+        !    write(*,*),'numB_ii = ',numB_ii
+        !    if (ii .eq. Nc) then 
+        !    stop 0;
+        !    endif
+        !endif       
+        ! add this information to the table cells_in_blocks
+        cells_in_blocks(numB_ii,1) = cells_in_blocks(numB_ii,1) + 1
+        cc = 1+ cells_in_blocks(numB_ii,1) ; ! first column number of cells for the block numB_cel
+        cells_in_blocks(numB_ii,cc) = ii; ! SO HERE we use ii and not Cells_before(ii)%n_cell because these are partial division
+                                                               ! we use ii to localize the cell in Cells_before but we carefully save the global information 
+                                                               ! in Cells_before(ii)%n_cell    
+    enddo
+    
+    !2) Eliminate empty blocks 
+    index_B = 2;
+    Nb = Nblk; ii=2
+    do while (ii .le. Nblk)
+        if (cells_in_blocks(index_B-1,1) .eq. 0) then 
+            Nb = Nb - 1
+            cells_in_blocks(index_B-1:Nb,1:Nc+1) = cells_in_blocks(index_B:Nb+1,1:Nc+1);           
+        else
+            index_B = index_B + 1           
+        endif
+        ii = ii + 1        
+    enddo
+    ! Last step : test the last block 
+    if (cells_in_blocks(Nb,1) .eq. 0) then 
+        Nb = Nb - 1  
+    endif    
+    
+    !3) ! Reorganize the cells depending on the block to which they belong and fill in CBFM_Blocks
+    Allocate(CBFM_Blocks_after(Nb))
+    Allocate(Cells_after(Nc));
+    ind_new_cel = 1
+    Do ii=1,Nb
+        N = cells_in_blocks(ii,1)
+        CBFM_Blocks_after(ii)%num_Block= ii
+        CBFM_Blocks_after(ii)%Nbc_b= N
+        Do jj=1,N
+            cel = cells_in_blocks(ii,1+jj)
+            Cells_after(ind_new_cel) = Cells_before(cel)
+            Cells_after(ind_new_cel)%n_cell = ind_new_cel  ! do not forget to update with the global n_cell after exisiting the subroutine
+            Cells_after(ind_new_cel)%n_block = ii 
+            ind_new_cel = ind_new_cel + 1
+        EndDo            
+    EndDo   
+    deallocate(cells_in_blocks)
+    
+    if (sum(CBFM_Blocks_after(1:Nb)%Nbc_b) .NE. Nc) Then 
+        error_division = 1
+    EndIf              
+END SUBROUTINE HierarchicalOctree_subdivision
 
     
 SUBROUTINE BlockCenter(NbcBlk,Blk,pos,BlkCent)
@@ -1016,14 +1643,14 @@ End Subroutine BlockCenter
 !******************************************************************************************
 !******************************************************************************************
   
-SUBROUTINE SetBlockCtrs(typep,numB,NbBl,CBFM_Blocks,Nbc_b,positions)
+SUBROUTINE SetBlockCtrs(numB,NbBl,CBFM_Blocks,Nbc_b,positions)
   
       USE Initialization
       USE f95_precision
       Implicit NONE
       
       !IN/OUT
-      Integer, INTENT(IN) :: numB,Nbc_b,NbBl,typep
+      Integer, INTENT(IN) :: numB,Nbc_b,NbBl
       type (CBFM_Block), Dimension(NbBl), INTENT(INOUT) :: CBFM_Blocks
       Real(kind=8), Dimension(3,Nbc_b), INTENT(IN) :: positions
   

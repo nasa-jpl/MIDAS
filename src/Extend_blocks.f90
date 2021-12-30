@@ -30,7 +30,6 @@ SUBROUTINE Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
     Real(kind=8), dimension(:,:), allocatable :: positions
     
     
-    
     ! Initialize the table Extensions
     Nbext_max = Fact_Nbext_max*maxval(CBFM_Blocks(:)%Nbc_b);
     Allocate(Extensions(Nblocks,Nbext_max));
@@ -85,7 +84,7 @@ SUBROUTINE Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
                 EndIf                        
             EndDo
           
-            ! Now that we know the adjascent blocksto BB, let's determine the cells of these blocks
+            ! Now that we know the adjascent blocks to BB, let's determine the cells of these blocks
             ! belonging to the extension zone of the block BB 
             ! first Based on the contour of the block, let us define the extended zone 
             X_ext_min= CBFM_Blocks(BB)%BCubCont(1,1)-ExtLength-Sc/2.; 
@@ -95,7 +94,9 @@ SUBROUTINE Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
             Z_ext_min= CBFM_Blocks(BB)%BCubCont(1,3)-ExtLength-Sc/2.; 
             Z_ext_max= CBFM_Blocks(BB)%BCubCont(2,3)+ExtLength+Sc/2.; 
                   
-          
+            if (rank == 0) then 
+                !Write(*,*) 'Block ',BB,' : NbBadj =',NbBadj,'; Badj = ',Badj
+            endif 
             NbCelExt = 0;
             Upd_NbBadj = 0;
             Allocate(Upd_Badj(NbBadj)); ! update NbBadj and Badj depending on the number of cells 
@@ -106,7 +107,7 @@ SUBROUTINE Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
                 cel_init = sum(CBFM_Blocks(1:BBp-1)%Nbc_b)+1;
                 cel_final = sum(CBFM_Blocks(1:BBp)%Nbc_b);
                       
-                ! Need to cancel the rotation of the cells first (get them back to the vertical position)
+                ! Need to cancel the rotation of the cells first (get them back to the vertical position)/not needed anymore
                 Allocate(Positions(3,ncb))
                 positions(1,1:ncb) = Cells(cel_init:cel_final)%Xc
                 positions(2,1:ncb) = Cells(cel_init:cel_final)%Yc

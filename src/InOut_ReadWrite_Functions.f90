@@ -1,9 +1,412 @@
 !! SUBROUTINES : 
+!! - Get_InputData
 !! - Read_ShapeFile
 !! - Read_CellsFile
 !! - Write_geometry_files
 !! - Write_jobs_sim_info
 !! - Write_memory_info : system_mem_usage & print_allocate
+
+!! READ IMPUT FILE --------------------------------------------------------
+SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmitters_Comp,Receivers,error)
+    USE Initialization
+    USE common_variables
+    USE iso_fortran_env
+    USE DiverseUtil
+    USE MPI
+    implicit none
+    
+    ! IN/OUT
+    type (Scatterer), INTENT(INOUT) :: SimScatterer
+    Real(kind=8), Dimension(:), allocatable, INTENT(OUT) :: Wavesle
+    character(:) ,allocatable, INTENT(OUT) :: methods_names(:)
+    character(250),allocatable, INTENT(OUT) :: m_file_name(:)
+    type(Dipole), Dimension(:),allocatable, INTENT(OUT) :: Transmitters_Comp
+    type(Dipole), Dimension(:),allocatable, INTENT(OUT) :: Receivers
+    Integer, INTENT(OUT) :: error
+    
+    ! Local 
+    Integer :: Nwave, ind_line, ii,Ninc_sugg, Nscat_sugg
+    Integer, Dimension(:), allocatable :: diel_comp_perc
+    Real(kind=8) :: freq_min, freq_max, Wave_min, Wave_max, step_wave, step_freq
+    Real(kind=8) :: p, r_cyl, l_cyl, ap, v_freq, Sc
+    Character(1) :: ch_tmp
+    character(250) :: m_file_name_0,inputline
+    character(200) :: file_name
+    character(9) :: wave_descr,SR_Zc_type_ch 
+    character(6) :: tdata
+    character(11) :: freq_unit_tmp
+    character(10) :: lamb_unit_tmp
+    
+    INTERFACE 
+        SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,Transmitters_Comp,Receivers);
+            USE Initialization
+            USE common_variables
+    
+            IMPLICIT NONE
+    
+            !! IN/OUT ******************************************************************
+    
+            Integer, INTENT(IN) :: Ninc_in,Nscat_in
+            type (Dipole), Dimension(:), allocatable, INTENT(OUT) :: Transmitters_Comp
+            type (Dipole), Dimension(:), allocatable, INTENT(OUT) :: Receivers                   
+        END SUBROUTINE get_trans_Receiv
+    END INTERFACE
+    
+    !! Initialize error to 0
+    error = 0
+    !! Open the dat file and read the simulation parameters.    
+    file_name = 'inputs'//Env_sep//'Simulation_data.dat'
+    Open(11,File = file_name) 
+    Read(11,*);Read(11,*)
+    
+    !! Parameters of the EM wave
+    read(11,*)
+    read(11,*), wave_descr !! wave description : wavelength or frequency     
+     
+    if (wave_descr == 'NFreq') Then 
+        read(11,'(i3)'), Nfreq
+        read(11,'(a6)'), tdata
+        read(11,'(a)'), freq_unit_tmp
+        if (Len(trim(freq_unit_tmp)) .eq. 11) then
+            freq_unit = freq_unit_tmp(8:10);                
+        else 
+            If (rank .eq. 0) Then
+                Write(*,'(a)') 'Error : Enable to read frequency unit !'
+                error = 1
+            endif
+            error = 1
+            go to 40
+        endif
+        if (freq_unit == 'MHz') then
+            lamb_unit = 'm'; 
+            freq_mag = 6; lamb_mag = 0;                         
+        elseif (freq_unit == 'GHz') then
+            lamb_unit = 'mm';
+            freq_mag = 9; lamb_mag = 3;
+        elseif (freq_unit == 'THz') then
+            lamb_unit = 'um';
+            freq_mag = 12; lamb_mag = 6;
+        else
+            If (rank .eq. 0) Then
+                Write(*,'(a)') 'Error : Invalid frequency unit !'
+            endif
+            error = 1
+            go to 40
+        endif           
+        
+        Nwave = Nfreq; Allocate(Wavesle(Nwave));            
+        if (tdata == 'minmax') then
+            read(11,'(f7.3,a,f7.3)'), freq_min ,ch_tmp, freq_max
+            !wave_min = C0/(freq_max*1E6); wave_max = C0/(freq_min*1E6);
+            !wave_min = C0/(freq_max*1E6); wave_max = C0/(freq_min*1E6);  
+            If (Nfreq .gt. 1) then           
+              step_freq = (freq_max-freq_min)/(Nfreq-1)  
+            Else
+              step_freq = 0;
+            EndIf                 
+            Do ii =1,Nfreq
+                Wavesle(ii) = C0/((10.**freq_mag)*(freq_min + (ii-1)*step_freq))   
+            EndDo
+        else
+            If (Nfreq == 1) Then 
+                read(11,'(f7.3,a)'), v_freq 
+                Wavesle(1) = C0/(v_freq*(10.**freq_mag))*(10.**lamb_mag);    ! Wavesle is expressed inside the code in m if MHz, mm if GHz, um if THz    
+            Else                
+                Do ii=1, Nfreq-1
+                  read(11,'(f7.3,a)',advance='no'), v_freq ,ch_tmp
+                  Wavesle(ii) = C0/(v_freq*(10.**freq_mag))*(10.**lamb_mag);    
+                EndDo
+                read(11,'(f7.3)',advance='no'), v_freq 
+                Wavesle(ii) = C0/(v_freq*(10.**freq_mag))*(10.**lamb_mag);      
+                read(11,*)
+            EndIf            
+        endif       
+    Else
+        read(11,'(i3)'), Nwave
+        read(11,'(a6)'), tdata      
+        read(11,'(a)'), lamb_unit_tmp
+        if (Len(trim(lamb_unit_tmp)) .eq. 9) then
+            lamb_unit = trim(lamb_unit_tmp(8:8));             
+        elseif (Len(trim(lamb_unit_tmp)) .eq. 10) then
+            lamb_unit = trim(lamb_unit_tmp(8:9));
+        else
+            If (rank .eq. 0) Then
+                Write(*,'(a)') 'Error : Enable to read wavelength unit !'
+            endif
+            error = 1
+            go to 40
+        endif
+        if (lamb_unit == 'm') then
+            freq_unit = 'MHz'; 
+            freq_mag = 6; lamb_mag = 0;                         
+        elseif (lamb_unit == 'mm') then
+            freq_unit = 'GHz';
+            freq_mag = 9; lamb_mag = 3;
+        elseif (lamb_unit == 'um') then
+            freq_unit = 'THz';
+            freq_mag = 12; lamb_mag = 6;
+        else
+            If (rank .eq. 0) Then
+                Write(*,'(a)') 'Error : Invalid wavelength unit !'
+            endif
+            error = 1
+            go to 40
+        endif  
+        
+        Nfreq = Nwave; Allocate(Wavesle(Nwave));        
+        if (tdata == 'minmax') then
+            read(11,*), wave_min ;read(11,*), wave_max 
+            freq_min = C0/(wave_max*10.**(-lamb_mag)); 
+            freq_max = C0/(wave_min*10.**(-lamb_mag));
+            If (Nwave .gt. 1) then           
+              step_wave = (wave_max-wave_min)/(Nwave-1)  
+            Else
+              step_wave = 0;
+            EndIf                     
+            Do ii =1,Nwave
+                Wavesle(ii) = wave_max - (ii-1)*step_wave
+            EndDo   
+        else
+            if (Nwave == 1) Then 
+                read(11,'(f7.3)'), Wavesle(1);
+            else
+                Do ii=1, Nwave-1
+                  read(11,'(f7.3,a)',advance='no'), Wavesle(Nwave-ii+1) ,ch_tmp
+                EndDo 
+                read(11,'(f7.3)',advance='no'), Wavesle(Nwave-ii+1)
+                read(11,*)
+            EndIf                        
+        endif       
+    EndIf
+    
+    read(11,*)    
+    !! Parameters of the scatterer 
+    read(11,*)
+    read(11,'(i1)');read(11,*), shape_list
+    read(11,'(a)'), Outfld_name
+    
+    ! type_p
+    read(11,*);
+    !read(11,'(i1,a,a)'), SimScatterer%type_s,SimScatterer%info_s, type_shape_in
+    read(11,'(i1,a)'), SimScatterer%type_s, inputline
+    ind_line = INDEX(inputline,' ');
+    SimScatterer%info_s = inputline(1:ind_line-1); 
+    ind_line = INDEX(inputline,'cells');
+    if (ind_line .ne. 0) then 
+      SimScatterer%ty_shape_in = 'cells'
+    else
+      SimScatterer%ty_shape_in = 'shape'
+    endif
+          
+    read(11,*);
+    if (SimScatterer%type_s .eq. 3) then ! for the moment the only different type in reading param is the cylinder : we read a and L
+        read(11,*), ac_str, lc_str
+        read(ac_str,*), r_cyl
+        read(lc_str,*),l_cyl ; ! (m or mm or um)
+        SimScatterer%a = r_cyl/(10**lamb_mag)
+        SimScatterer%dm = 2*r_cyl/(10**lamb_mag)
+        SimScatterer%dy = SimScatterer%dm
+        SimScatterer%dz = SimScatterer%dm
+        SimScatterer%dx = l_cyl/(10**lamb_mag)
+        SimScatterer%info_s ='Cylin';
+    else          
+        ! ap
+        read(11,'(a)'), ap_str
+        read(ap_str,*), ap
+        SimScatterer%a = ap/(10**lamb_mag)
+        SimScatterer%dm = 2*ap/(10**lamb_mag)
+    endif
+    
+    ! Eps_p
+    read(11,*);
+    read(11,*), dielcomp_option, Ndiel 
+    if (trim(dielcomp_option) == 'fromshapefile') then 
+        Allocate(m_file_name(Ndiel),diel_comp_perc(Ndiel)); ! Ndiel is releavant for this option, diel_comp_perc can be caluclated once dielc composition read from shape.dat
+        DO ii=1,Ndiel
+            read(11,*), m_file_name_0
+            m_file_name(ii) = trim(m_file_name_0);           
+        Enddo
+    elseif (trim(dielcomp_option) == 'fromonlymfile') then 
+        Ndiel = 1;
+        Allocate(m_file_name(Ndiel),diel_comp_perc(Ndiel)); ! Ndiel is simply equal to 1 here. one m per frequency !
+        DO ii=1,Ndiel
+            read(11,*), m_file_name_0
+            m_file_name(ii) = trim(m_file_name_0);           
+        Enddo
+    elseif (trim(dielcomp_option) == 'random1') then
+        Ndiel = 2;
+        Allocate(m_file_name(Ndiel),diel_comp_perc(Ndiel)); ! because of the totally random process Ndiel is in theory =Nbc and diel_comp_perc is not releavant here  
+        Do ii=1,2                                           
+            read(11,*), m_file_name_0
+            m_file_name(1) = trim(m_file_name_0);
+        Enddo        
+    elseif (trim(dielcomp_option) == 'random2') then
+        Allocate(m_file_name(Ndiel),diel_comp_perc(Ndiel));
+        DO ii=1,Ndiel
+            read(11,*), m_file_name_0,p
+            m_file_name(ii) = trim(m_file_name_0);  
+            diel_comp_perc(ii) = p; 
+        Enddo
+    elseif (trim(dielcomp_option) == 'fromdielcompositionfile') then
+        Allocate(m_file_name(1),diel_comp_perc(1)); ! Since each of the Nbc cell has a different refractive index here, diel_comp_perc is not releavant here 
+        m_file_name(1) = 'inputs/dielcomposition.dat'; ! this file contains the refractive index per cell        
+    else
+        if (rank == 0) then 
+            Write(*,'(a,a,a)')'Error : ', dielcomp_option, ' is an unknown dielectric decomposition option !!'
+        endif
+        error = 1
+        go to 40
+    endif    
+        
+    if (((trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'fromshapefile')) &
+        .AND. (SimScatterer%type_s .ne. 2)) then
+        if (rank == 0) then
+            Write(*,'(a,a)') 'Error : The requested dielectric decomposition option can only be used with type_scatterer = 2';
+        endif
+        error = 1
+        go to 40        
+    Endif     
+    read(11,*)
+        
+    !! Parameters of the dicretization 
+    read(11,*)
+    read(11,*), ch_tmp;
+    if (ch_tmp .eq. 'S') then
+      read(11,*), Sc;
+      if ((freq_unit == 'THz') .OR. (freq_unit == 'GHz')) then 
+        SimScatterer%Sc = 1e-6*Sc;  
+      else
+        SimScatterer%Sc = Sc;
+      endif              
+      Dlambda = 1;
+    else
+        If (rank ==0) Then
+            Write(*,'(a)') 'Error when reading discretization parameter'
+        endif
+        error = 1
+        go to 40            
+    endif
+    read(11,*)
+    
+    !!!! Parameters of the Applied methods
+    read(11,*)
+    read(11,*);read(11,*), Nber_methods
+    read(11,*);read(11,*), leng_meth
+    Allocate(character(leng_meth) :: methods_names(Nber_methods))
+    read(11,*)
+    CBFM=0; MLCBFM=0; MoM=0; RGE=0;
+    DO ii=1,Nber_methods
+        read(11,*), methods_names(ii)
+        !! The integers CBFM; MLCBFM and MoM represent the position of each method in the array methods_names 
+        !! if this method is applied, and is equal to 0 otherwise        
+        If (methods_names(ii) == 'CBFM-E') Then
+            CBFM = ii
+        Elseif (methods_names(ii) == 'MLCBFM-E') Then
+            MLCBFM = ii
+        Elseif (methods_names(ii) == 'RGE') Then
+            RGE = ii   
+        Elseif (methods_names(ii) == 'MoM') Then
+            MoM = ii        
+        Endif     
+    Enddo
+    read(11,*)
+     
+    !! Reading Transmitters ****************************************************************************************************************************************
+    read(11,*)
+    read(11,*);read(11,'(a2,a1,a2)'), NumIntType_t,ch_tmp,NumIntType_r
+    if (NumIntType_r .eq. '') then 
+        NumIntType_r = NumIntType_t;
+    endif
+    read(11,*);read(11,*), Ninc_sugg
+    read(11,*);read(11,*), Nscat_sugg
+    read(11,*);
+    read(11,*);read(11,*),theta_init_trans_comp,theta_final_trans_comp,NTrTheta
+    read(11,*);read(11,*),phi_init_trans_comp,phi_final_trans_comp,NTrPhi
+    read(11,*)
+
+    !! Reading Receivers ********************************************************************************************************
+    read(11,*);read(11,*),theta_init_Recei,theta_final_Recei,NRxTheta
+    read(11,*);read(11,*),phi_init_Recei,phi_final_Recei,NRxPhi
+    read(11,*);read(11,*),beta_init_Pol,beta_final_Pol,NPolBeta
+    
+    ! Write Scattering matrix elements for each incident direction and Q per incident direction 
+    read(11,*);read(11,*), wr_Sij
+    read(11,*);read(11,*), wr_Qij    
+    read(11,*)
+    
+    ! Get Transmitters/Scatterers depending on the type of the numerical integration used to average the scattering quantities
+    ! over incident/scattering directions
+    call get_trans_Receiv(Ninc_sugg,Nscat_sugg,Transmitters_Comp,Receivers);
+    ! if only 1 incident direction is used, we autmatically put wr_Sij and wr_Qij to 1
+    if (NTr .eq. 1) then 
+        wr_Sij=1;wr_Qij=1;
+    endif
+    
+    
+    ! Parameters of the numerical methods 
+    
+    !CBFM
+    read(11,*)
+    read(11,*);read(11,*), div_type
+    read(11,*);read(11,*), Navg_cells
+    read(11,*);read(11,*), set_Nipws   !! if set_Nipws we will use setNipws in getParameters_CBFM.f90
+    read(11,*);read(11,*), distr_ipws !! type of distribution for the N incident plane waves used 
+                                      !! to generate the CBFs (see getTransmitters_CBFM for details)
+    read(11,*);read(11,*), Nc_extended
+    read(11,*);read(11,*), DR
+    read(11,*);read(11,*), SR
+    read(11,*), res_SR
+    read(11,*);read(11,*), SR_Zc
+    read(11,*) SR_Zc_type_ch
+    read(11,*), Eps_SR_Zc
+    read(11,*)        
+         
+    !ACA !! 
+    ! As we are not using the ACA for the MPI version yet, I deleted these lines 
+    ! and simply initialized the ACA params to 0
+    !read(11,*);
+    !read(11,*);read(11,*), Use_ACA
+    !read(11,*);read(11,*), Nb_it_max                                                                                                                                                                                     
+    !read(11,*);read(11,*), Epsilon_ACA                                                                                                                                                                                           
+    !read(11,*);read(11,*), Vrb_ACA
+    !read(11,*)
+    Use_ACA = 0; Nb_it_max= 50; Epsilon_ACA = 1E-4; Vrb_ACA = 0; 
+    
+    ! decide SR_Zc_type from SR_Zc_type_ch
+    If (trim(SR_Zc_type_ch) =='threshold') Then
+        SR_Zc_type = 1; 
+    ElseIf (trim(SR_Zc_type_ch) =='edistance') Then
+        SR_Zc_type = 2;
+    ElseIf (trim(SR_Zc_type_ch) =='spalgo_dz') Then
+        SR_Zc_type = 3;
+    EndIf
+    
+    If ((Use_ACA == 1) .and.(SR_Zc==1) .and. (SR_Zc_type .ne. 1)) Then  !! The use of ACA is available with only the first sparsity approach
+        If (rank == 0) Then   
+            Write(*,'(a)') 'ERROR : Wrong combination UseACA/Sparsity !!! Exit !!'            
+        endif          
+        error = 1
+        go to 40          
+    EndIf
+    
+    ! get Far fiel approximation params
+    ! in practice, FFA = 1 for precipitation particles & FFA = 0 for asteroid simulation 
+    read(11,*);
+    read(11,*);read(11,*), FFA
+    read(11,*);read(11,*), Rso
+    read(11,*);
+    
+    ! Save Sol Elements
+    read(11,*);
+    read(11,*);read(11,*), save_Zc
+    read(11,*);read(11,*), save_Eint
+    read(11,*), save_Eint_Nmax  ! used only if save_Eint=1
+    read(11,*);read(11,*), save_Einc ! incident field (useful for inversion algorithms)        
+    
+    !! close the dat file
+40  Close(11)
+    
+END SUBROUTINE Get_InputData
 
 SUBROUTINE Read_ShapeFile(info_p,pr_NBcels,pr_lattice)
 

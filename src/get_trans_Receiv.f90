@@ -1,13 +1,9 @@
-SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,sd_type,thitrans,thftrans,phitrans,phftrans,thiRecei,thfRecei,phiRecei,phfRecei,Transmitters_Comp,Receivers);
+SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,Transmitters_Comp,Receivers);
     
     ! Calculates Transmitters and Receivers directions (theta_i, Phi_i) and (Theta_s, Phi_s) respectively
     ! Inputs : 
     ! Ninc_in  (Integer) : number of incident directions 
     ! Nscat_in (Integer) : number of scattering directions 
-    ! sd_type  (Integer) : when applicable, type of used spherical design 
-    !                     sd_type = 1 Hardin and Sloane Spherical Designs : http://people.sc.fsu.edu/~jburkardt%20/f_src/sphere_design_rule/sphere_design_rule.html
-    !                     sd_type = 2 Efficient Spherical T-Designs : https://web.maths.unsw.edu.au/~rsw/Sphere/EffSphDes/index.html
-    !                     sd_type = 3 Symmetric Efficient Spherical T-Designs : https://web.maths.unsw.edu.au/~rsw/Sphere/EffSphDes/index.html
     ! thitrans,thftrans, phitrans,phftrans (Real kind=8) : limit values of theta_i, phi_i, theta_s and phi_s (theta_i/s = 0:180 and phi_i/s=0:360 when averaging over the entire sphere surface)
     
     ! Outputs 
@@ -27,18 +23,16 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,sd_type,thitrans,thftrans,phitrans,
     !! IN/OUT ******************************************************************
     
     Integer, INTENT(IN) :: Ninc_in,Nscat_in
-    Integer, INTENT(OUT) :: sd_type
-    Real(kind=8), INTENT(IN) :: thftrans,thitrans,phftrans,phitrans 
-    Real(kind=8), INTENT(IN) :: thfRecei,thiRecei,phfRecei,phiRecei
     type (Dipole), Dimension(:), allocatable, INTENT(OUT) :: Transmitters_Comp
     type (Dipole), Dimension(:), allocatable, INTENT(OUT) :: Receivers
-    
     
     ! local    
     Integer :: ii,Ind, I,K,order,Npts,NRx_extra,Step_in_cosTh
     Integer :: RxExt_exists, RxBks_exists
     
     !! Transmitters/Receivers 
+    Real(kind=8) :: thftrans,thitrans,phftrans,phitrans 
+    Real(kind=8) :: thfRecei,thiRecei,phfRecei,phiRecei
     Real(kind=8) :: Step_theta_trans_comp,step_phi_trans_comp
     Real(kind=8) :: step_theta_Recei,step_phi_Recei  
     Real(kind=8) :: margin_trans_theta,margin_trans_phi,cosdth_init
@@ -63,7 +57,12 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,sd_type,thitrans,thftrans,phitrans,
     real ( kind = 8 ) x(mmax)
     real ( kind = 8 ) y(mmax)
     real ( kind = 8 ) z(mmax)
-    
+   
+    ! initialize from Common_variables
+    thitrans = theta_init_trans_comp; thftrans = theta_final_trans_comp
+    phitrans = phi_init_trans_comp; phftrans = phi_final_trans_comp
+    thiRecei = theta_init_Recei; thfRecei = theta_final_Recei
+    phiRecei = phi_init_Recei; phfRecei = phi_final_Recei
     
     ! Step_in_cosTh = 1 if the angular step is considered in cosTh instead of Th 
     ! (to avoid the problem of concentration around the poles) 
