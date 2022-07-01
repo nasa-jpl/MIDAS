@@ -1,4 +1,4 @@
-SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,methods_names,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks)
+SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,methods_names,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks,K_patchs,C_job_patchs)
  
     USE Initialization
     USE common_variables
@@ -15,6 +15,8 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
     type (CBFM_Block), Dimension(NBlocks), INTENT(IN):: CBFM_Blocks
     Integer, Dimension(NBlocks,Nbc_ext), INTENT(IN):: CBFM_Blocks_Ext
     Integer, Dimension(nber_procs,Nblk_proc_max+1), INTENT(IN):: MPI_CBFM_Blocks
+    Integer, Dimension(:), allocatable, INTENT(INOUT) :: K_patchs
+    COMPLEX(real64), Dimension(:,:), allocatable, INTENT(INOUT) :: C_job_patchs
         
     !! LOCAL
     Integer :: ii,I,K,Ind,RatioRLambda,rdm_ipws
@@ -32,7 +34,7 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
     Integer, dimension(4):: Comp_time    
     
     INTERFACE 
-        SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks,Transmitters,E_total)    
+        SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks,Transmitters,K_patchs,C_job_patchs,E_total)    
  
             USE Initialization
             USE common_variables
@@ -48,6 +50,8 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
             Integer, Dimension(Nblocks,Nbc_ext), INTENT(IN) :: CBFM_Blocks_Ext
             Integer, Dimension(nber_procs,Nblk_proc_max+1), INTENT(IN):: MPI_CBFM_Blocks
             type (Dipole), Dimension(NTr), INTENT(IN) ::Transmitters
+            Integer, Dimension(:), allocatable, INTENT(INOUT) :: K_patchs
+            COMPLEX(real64), Dimension(:,:), allocatable, INTENT(INOUT) :: C_job_patchs
             COMPLEX(real64), Dimension(:,:), allocatable, INTENT(OUT):: E_total
         END SUBROUTINE Compute_EFields_CBFME 
         
@@ -83,7 +87,7 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
         call date_and_time(date_init,time_init,zone_init,values_init)
         !if (SR_Zc == 0) Then  
           if (Use_ACA==0) then
-              Call Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks,Transmitters,E_total); !,cp_CBFM_Blocks)
+              Call Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks,Transmitters,K_patchs,C_job_patchs,E_total); !,cp_CBFM_Blocks)
           else
               Call Compute_EFields_CBFME_ACA(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks,Transmitters,E_total);  
           EndIf
@@ -106,26 +110,28 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
         Comp_time = 0; call date_and_time(date_init,time_init,zone_init,values_init) 
         
         ! compute and write only scattered fields (if Scattered fields == 1)
-          
-        ! Scattering matrices (if scattered fields == 0)
-        Allocate(S_total(NRx_tot,4*NTr),C_ext(NTr),C_abs((NTr)));
-        Call Compute_Scattering_Matrices('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
-        
-        ! uncomment here if Writing Sfiles in PHDF5 successful
-        ! here S files refer to Smatrices or scattering fields depending on what was used above (Compute_Scattering_Matrices or Compute_Scattered_Fields)
-        !If (wr_Sij .eq. 1) Then
-        !    Call Write_Sfiles('CBFM-E  ',Transmitters,Receivers,S_total)
-        !EndIf       
-        
-        ! Scattering cross sections and efficiency factors 
-        Call Compute_ExtAbsCsec_fromIntField('CBFM-E  ',Cells,E_total,Transmitters,C_ext,C_abs);
-        if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'tr') .OR. (NumIntType_t .eq. 'sm')) Then
-          call Compute_Scattering_Quantities_1('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
-        else
-          call Compute_Scattering_Quantities_2('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
-        endif
-        Deallocate(E_total,S_total,C_ext,C_abs);
-        
+        if (FFA .eq. 0) then ! No far field approximation, we compute and write the scattered and incident fields at observation points
+            call Compute_Scattered_Fields('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers)
+            call Incident_Field_at_Rx('CBFM-E  ',Transmitters,Receivers)        
+        else  
+            ! Scattering matrices (if scattered fields == 0)
+            Allocate(S_total(NRx_tot,4*NTr),C_ext(NTr),C_abs((NTr)));
+            Call Compute_Scattering_Matrices('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
+            ! uncomment here if Writing Sfiles in PHDF5 successful
+            ! here S files refer to Smatrices or scattering fields depending on what was used above (Compute_Scattering_Matrices or Compute_Scattered_Fields)
+            !If (wr_Sij .eq. 1) Then
+            !    Call Write_Sfiles('CBFM-E  ',Transmitters,Receivers,S_total)
+            !EndIf       
+            
+            ! Scattering cross sections and efficiency factors 
+            Call Compute_ExtAbsCsec_fromIntField('CBFM-E  ',Cells,E_total,Transmitters,C_ext,C_abs);
+            if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'tr') .OR. (NumIntType_t .eq. 'sm')) Then
+              call Compute_Scattering_Quantities_1('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
+            else
+              call Compute_Scattering_Quantities_2('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
+            endif
+            Deallocate(E_total,S_total,C_ext,C_abs)
+        Endif
         if (rank == 0) then 
             call date_and_time(date_final,time_final,zone_final,values_final)
             call Calcul_time_spent(values_init,values_final,Comp_time)

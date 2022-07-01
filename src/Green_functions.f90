@@ -1330,7 +1330,7 @@ SUBROUTINE computeBlockCol(Cells,Matrix_Green_IndexRow_inf,nbRows,Matrix_Green_I
  END SUBROUTINE computeBlockRow_SMW
  
 
-SUBROUTINE Green_s_dt(Nc,Cells_in,R,theta_capteur,phi_capteur,Green_dt) 
+SUBROUTINE Green_s_dt(Nc,Cells_in,theta_capteur,phi_capteur,Green_dt) 
 
     USE Initialization
     USE common_variables
@@ -1338,7 +1338,7 @@ SUBROUTINE Green_s_dt(Nc,Cells_in,R,theta_capteur,phi_capteur,Green_dt)
     
     Integer, INTENT(IN) :: Nc
     type (Cell), Dimension(Nc), INTENT(IN) :: Cells_in
-    Real(kind=8), INTENT(IN) :: R,theta_capteur,phi_capteur
+    Real(kind=8), INTENT(IN) :: theta_capteur,phi_capteur
     COMPLEX(real64), Dimension(3,3*Nc), INTENT(OUT) :: Green_dt
     
     !Local
@@ -1358,9 +1358,9 @@ SUBROUTINE Green_s_dt(Nc,Cells_in,R,theta_capteur,phi_capteur,Green_dt)
         zc = Cells_in(Is)%Zc
         
         ! Receiver x, y & z
-        x_cap = R*cos(theta_capteur*Pi/180.) 
-        y_cap = R*sin(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) 
-        z_cap = R*sin(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.)            
+        x_cap = Rso*cos(theta_capteur*Pi/180.) 
+        y_cap = Rso*sin(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) 
+        z_cap = Rso*sin(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.)            
         
         rx = x_cap - xc
         ry = y_cap - yc
@@ -1393,67 +1393,3 @@ SUBROUTINE Green_s_dt(Nc,Cells_in,R,theta_capteur,phi_capteur,Green_dt)
     ENDDO
 
 END SUBROUTINE Green_s_dt
- 
- 
-!SUBROUTINE Green_ff_dt(Nc,Cells_in,theta_capteur,phi_capteur,Green_dt)
-!
-!    USE Initialization
-!    USE common_variables
-!    IMPLICIT NONE
-!    
-!    Integer, INTENT(IN) :: Nc
-!    type (Cell), Dimension(Nc), INTENT(IN) :: Cells_in
-!    Real(kind=8), INTENT(IN) :: theta_capteur,phi_capteur
-!    COMPLEX(real64), Dimension(3,3*Nc), INTENT(OUT) :: Green_dt
-!    
-!    !Local
-!    Integer Is, Isx, Isy, Isz
-!    Real(kind=8) :: xc,yc,zc,x_cap,y_cap,z_cap
-!    COMPLEX(real64) :: Gr_mn, Tau_mn, f_kapChe, Fxx, Fyy, Fzz, Fxy, Fyz, Fxz
-!
-!    DO Is=1, Nc
-!        Isx=3*(Is-1)+1
-!        Isy=3*(Is-1)+2
-!        Isz=3*(Is-1)+3
-!         
-!        ! Cell in scatterer x, y & z         
-!        xc = Cells_in(Is)%Xc;
-!        yc = Cells_in(Is)%Yc;
-!        zc = Cells_in(Is)%Zc;
-!        
-!        !! Receiver x, y & z : since 3/13/2019 !
-!        x_cap = cos(theta_capteur*Pi/180.) 
-!        y_cap = sin(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) 
-!        z_cap = sin(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.)
-!        
-!        ! translation theorem E2= E1*exp(-ik*delta.u) 
-!        Gr_mn= exp(-J*k_0*(x_cap*xc+y_cap*yc+z_cap*zc))/(4*Pi)   ! ici ce n'est pas Gr_mn le terme qui depends de rmn est sorti a l'exterieur de S on l'a plus ici
-!                                                                ! ceci est le terme de dephasage du theoreme de translation E2(cell_i) = E1(0)*exp(-jk delta u)
-!                                                                ! le terme de green est mnt en fait a l'exterieur vu la definition de la matrice S !
-!                                                                ! en fait c'est une methode totalement differente de ce qu'on a ustilise pour le champ diffracte a r (inside or outside the scatterer)
-!        f_kapChe= Cells_in(Is)%Kappa_n*Cells_in(Is)%Che_n
-!        
-!        ! if simplified Fxx=Fyy=Fzz=Cells(Is)%Kappa_n*k_0**2.*exp(J*k_0*r_mn)/r_mn 
-!        Fxx= Gr_mn*k_0**2. * k_0; 
-!        Fyy= Gr_mn*k_0**2. * k_0;
-!        Fzz= Gr_mn*k_0**2. * k_0;
-!        
-!        Fxy=0
-!        Fxz=0
-!        Fyz=0
-!        
-!        Green_dt(1,Isx)=Fxx*f_kapChe !!XX
-!        Green_dt(1,Isy)=Fxy*f_kapChe !!XY
-!        Green_dt(1,Isz)=Fxz*f_kapChe !!XZ
-!        
-!        Green_dt(2,Isx)=Fxy*f_kapChe !!YX
-!        Green_dt(2,Isy)=Fyy*f_kapChe !!YY
-!        Green_dt(2,Isz)=Fyz*f_kapChe !!YZ
-!
-!        Green_dt(3,Isx)=Fxz*f_kapChe !!ZX
-!        Green_dt(3,Isy)=Fyz*f_kapChe !!ZY
-!        Green_dt(3,Isz)=Fzz*f_kapChe !!ZZ        
-!        
-!    ENDDO
-!
-!END SUBROUTINE Green_ff_dt

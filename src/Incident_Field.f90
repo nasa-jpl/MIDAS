@@ -59,7 +59,221 @@ SUBROUTINE Incident_Field(cel_init,size_Cells,Cells_in,Nb_transmitters,Transmitt
     
         curs_cel = curs_cel + 1
       Enddo  
-    Enddo  
-
-
+    Enddo 
 End Subroutine Incident_Field
+
+
+SUBROUTINE Incident_Field_at_Rx(nom_methode,Transmitters,Receivers)
+    
+    USE Initialization
+    USE common_variables
+    USE iso_fortran_env
+    Implicit none
+    
+    !IN/OUT
+    character(8), INTENT(IN):: nom_methode
+    type (Dipole), Dimension(NTr), INTENT(IN) :: Transmitters
+    type (Dipole), Dimension(NRx_tot), INTENT(IN) :: Receivers
+    
+
+    ! local
+    Integer :: NTr_wr_proc,num_trans,num_capteur
+    real(kind=8) :: theta_transmit, phi_transmit
+    real(kind=8) :: theta_capteur, phi_capteur, Rx, Ry, Rz
+    Complex :: K11x, K11y, K11z, Ex_v, Ey_v, Ez_v, Ex_h, Ey_h, Ez_h
+    Complex :: Vv, Vh, Hv, Hh
+    COMPLEX(real64), Dimension(NRx_tot,6*NTr) :: E_incident_at_Rx
+    
+    ! to write Einc 
+    Integer ::  ii,jj,dd,cc,kkt,kkr, Nths,Nphs,a
+    character(200) :: file_name_s, Eifold_name
+    CHARACTER(6) :: ty,kkt_st
+    CHARACTER(:), allocatable:: nom_meth_exact,stFreq,sim_name
+    COMPLEX(real64), Dimension(:,:), allocatable :: Ei_vv_2d,Ei_hh_2d,Ei_vh_2d,Ei_hv_2d
+    COMPLEX(real64), Dimension(:), allocatable :: Ei_vv_1d,Ei_hh_1d,Ei_vh_1d,Ei_hv_1d
+    Real(kind=8), Dimension(:), allocatable :: Thetas,Phis,RecThetasVals,RecPhisVals
+
+    NTr_wr_proc = (NTr/nber_procs)+1
+    E_incident_at_Rx = 0
+    
+    DO num_trans=1, NTr  
+        If ((num_trans .gt. (rank*NTr_wr_proc)) .and. (num_trans .le. (rank+1)*NTr_wr_proc)) then    
+          theta_transmit = Transmitters(num_trans)%theta
+          phi_transmit = Transmitters(num_trans)%phi
+    
+  	   ! The incident wave is propagating in positive x (if theta_i=phi_i=0)
+          K11x = k_0*cos(theta_transmit*Pi/180.); 
+          K11y = k_0*sin(theta_transmit*Pi/180.)*cos(phi_transmit*Pi/180.)
+          K11z = k_0*sin(theta_transmit*Pi/180.)*sin(phi_transmit*Pi/180.)   
+          
+          DO num_capteur= 1,NRx_tot
+              theta_capteur = Receivers(num_capteur)%theta
+              phi_capteur = Receivers(num_capteur)%phi
+          
+              Rx = Rso*cos(theta_capteur*Pi/180.) 
+              Ry = Rso*sin(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.)
+              Rz = Rso*sin(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.)
+      
+              !!--------------------------------Polarisation Verticale---------------------------------
+              Ex_v = - exp(J*K11x*Rx)*exp(J*K11y*Ry)*exp(J*K11z*Rz)*sin(theta_transmit*Pi/180.)  
+              Ey_v = exp(J*K11x*Rx)*exp(J*K11y*Ry)*exp(J*K11z*Rz)*cos(theta_transmit*Pi/180.)*cos(phi_transmit*Pi/180.)
+              Ez_v = exp(J*K11x*Rx)*exp(J*K11y*Ry)*exp(J*K11z*Rz)*cos(theta_transmit*Pi/180.)*sin(phi_transmit*Pi/180.)
+      
+              !!-------------------------------Polarisation Horizontale--------------------------------  
+              Ex_h = 0.0
+              Ey_h = - exp(J*K11x*Rx)*exp(J*K11y*Ry)*exp(J*K11z*Rz)*sin(phi_transmit*Pi/180.)
+              Ez_h = exp(J*K11x*Rx)*exp(J*K11y*Ry)*exp(J*K11z*Rz)*cos(phi_transmit*Pi/180.)            
+              
+              !! ????????? 
+              ! Will I will be writing 6 or 4 elements ? if 6 uncomment the next 4 equations as I will not ned Vv, Vh, Hv and Hh 
+              Vv= - Ex_v*sin(theta_capteur*Pi/180.)+ Ey_v*cos(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) &
+                +Ez_v*cos(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.)            
+              Vh= - Ey_v*sin(phi_capteur*Pi/180.)+Ez_v*cos(phi_capteur*Pi/180.);
+              Hv= - Ex_h*sin(theta_capteur*Pi/180.)+Ey_h*cos(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) &
+                + Ez_h*cos(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.);
+              Hh= - Ey_h*sin(phi_capteur*Pi/180.) + Ez_h*cos(phi_capteur*Pi/180.);
+                
+              E_incident_at_Rx(num_capteur,6*(num_trans-1)+1)= Ex_v
+              E_incident_at_Rx(num_capteur,6*(num_trans-1)+2)= Ey_v
+              E_incident_at_Rx(num_capteur,6*(num_trans-1)+3)= Ez_v
+              E_incident_at_Rx(num_capteur,6*(num_trans-1)+4)= Ex_h
+              E_incident_at_Rx(num_capteur,6*(num_trans-1)+5)= Ey_h
+              E_incident_at_Rx(num_capteur,6*(num_trans-1)+6)= Ez_h
+              
+              ! OR   ??? Update  E_incident_at_Rx dimensions above 
+              
+              !E_incident_at_Rx(num_capteur,4*(num_trans-1)+1)= Vv
+              !E_incident_at_Rx(num_capteur,4*(num_trans-1)+2)= Vh
+              !E_incident_at_Rx(num_capteur,4*(num_trans-1)+3)= Hv
+              !E_incident_at_Rx(num_capteur,4*(num_trans-1)+4)= Hh
+            Enddo 
+        EndIf          
+    Enddo
+    
+    !! ***********************************************************************************
+    ! Write E_incident_at_Rx
+    !! ***********************************************************************************
+    
+    Eifold_name = trim(SimOutfld_name)//Env_sep//'Ei_files';
+    
+    ! preparation
+    If (nom_methode=='CBFM-E  ') Then
+        Allocate(character(6) ::nom_meth_exact)
+        nom_meth_exact = trim(nom_methode)
+    Elseif ((nom_methode=='MoM     ') .OR. (nom_methode=='RGE     ')) Then 
+        Allocate(character(3) ::nom_meth_exact)
+        nom_meth_exact = trim(nom_methode)
+    Endif
+         
+    a = nint(Freq_w/10.**freq_mag);
+    if (a < 10) Then 
+        Allocate(character(4) ::stFreq)
+        ty = '(f4.2)';
+    ElseIf (a < 100) Then
+        Allocate(character(5) ::stFreq)
+        ty = '(f5.2)';
+    Else
+        Allocate(character(6) ::stFreq)
+        ty = '(f6.2)';
+    EndIf   
+
+    If (Nfreq == 1) Then
+        Allocate(character(1)::sim_name)
+        sim_name= ''
+    Else
+        if (num_freq < 10) Then
+            Allocate(character(5)::sim_name)
+            Write(sim_name,'(a,i1,a)') 'Sim', num_freq, '_'
+        ElseIf (num_freq < 100) Then
+            Allocate(character(6)::sim_name)
+            Write(sim_name,'(a,i2,a)') 'Sim', num_freq, '_'
+        Else
+            Allocate(character(7)::sim_name)
+            Write(sim_name,'(a,i3,a)') 'Sim', num_freq, '_'
+        EndIf        
+    EndIf 
+    Write(stFreq,ty) Freq_w/10.**freq_mag
+        
+    if ((NumIntType_r .eq. 'sd') .OR. (NumIntType_r .eq. 'lb')) then
+        Allocate(Ei_vv_1d(NRx),Ei_hh_1d(NRx));
+        Allocate(Ei_vh_1d(NRx),Ei_hv_1d(NRx));            
+    else
+        Allocate(Ei_vv_2d(NRxTheta,NRxPhi),Ei_hh_2d(NRxTheta,NRxPhi))
+        Allocate(Ei_vh_2d(NRxTheta,NRxPhi),Ei_hv_2d(NRxTheta,NRxPhi))
+        
+        ! Receivers theta and phi vals 
+        Allocate(Thetas(NRx),Phis(NRx))
+        Allocate(RecThetasVals(NRxTheta),RecPhisVals(NRxPhi))         
+            
+        Thetas(:) = Receivers(:)%theta;
+        Phis(:) = Receivers(:)%phi;
+        call Unique1DArray_D(NRx,Nths,Thetas)
+        call Unique1DArray_D(NRx,Nphs,Phis)
+    
+        RecThetasVals= Thetas(1:Nths); RecPhisVals= Phis(1:Nphs);
+        deallocate(Thetas,Phis)
+    endif
+    
+    DO dd=1,NTrPhi
+        Do cc=1,NTrTheta
+            kkt=(dd-1)* NTrTheta + cc;
+            
+            if ((NumIntType_r .eq. 'sd') .OR. (NumIntType_r .eq. 'lb')) then 
+                Do kkr=1, NRx      
+                    Ei_vv_1d(kkr)= E_incident_at_Rx(kkr,4*(kkt-1)+1); 
+                    Ei_vh_1d(kkr) = E_incident_at_Rx(kkr,4*(kkt-1)+2); 
+                    Ei_hv_1d(kkr) = E_incident_at_Rx(kkr,4*(kkt-1)+3); 
+                    Ei_hh_1d(kkr)= E_incident_at_Rx(kkr,4*(kkt-1)+4);      
+                EndDo
+                               
+                If ((kkt .gt. (rank*NTr_wr_proc)) .and. (kkt .le. (rank+1)*NTr_wr_proc)) then 
+                  Write(kkt_st,'(a,i4.4)') 'kt',kkt;
+                  file_name_s = trim(Eifold_name)//Env_sep//sim_name//'Einc_'//stFreq//freq_unit//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
+                  Open(unit=21+rank,File = file_name_s)    
+                  Write(21+rank,'(a,a)') '      theta       phi       Re(Evv)        Im(Evv)         Re(Evh)       Im(Ehv) ',&
+                                  '        Re(Ehv)       Im(Ehv)        Re(Ehh)        Im(Ehh) '
+                  Do jj =1, NRxPhi  
+                      Do ii =1, NRxTheta 
+                          Write(21+rank,'(f9.2,a,f9.2,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4)') &
+                          Receivers(ii)%theta,';  ',Receivers(ii)%phi,';  ',Real(Ei_vv_1d(ii)),';  ',Imag(Ei_vv_1d(ii)),';  ',Real(Ei_vh_1d(ii)),&
+                        ';  ',Imag(Ei_vh_1d(ii)),';  ', Real(Ei_hv_1d(ii)),';  ',Imag(Ei_hv_1d(ii)),';  ',Real(Ei_hh_1d(ii)),';  ',Imag(Ei_hh_1d(ii))
+                      EndDo
+                  EndDo
+                  Close(21+rank);  
+                endif        
+      
+            else                                    
+                Do jj=1, NRxPhi                   
+                    Do ii=1, NRxTheta                        
+                        kkr = (jj-1)*NRxTheta + ii;                                
+                        Ei_vv_2d(ii,jj) = E_incident_at_Rx(kkr,4*(kkt-1)+1); 
+                        Ei_vh_2d(ii,jj) = E_incident_at_Rx(kkr,4*(kkt-1)+2); 
+                        Ei_hv_2d(ii,jj) = E_incident_at_Rx(kkr,4*(kkt-1)+3); 
+                        Ei_hh_2d(ii,jj) = E_incident_at_Rx(kkr,4*(kkt-1)+4);    
+                    EndDo        
+                EndDo      
+                
+                If ((kkt .gt. (rank*NTr_wr_proc)) .and. (kkt .le. (rank+1)*NTr_wr_proc)) then 
+                    Write(kkt_st,'(a,i4.4)') 'kt',kkt;
+                    file_name_s = trim(Eifold_name)//Env_sep//sim_name//'Einc_'//stFreq//freq_unit//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
+                    
+                    Open(unit=21+rank,File = file_name_s)    
+                    Write(21+rank,'(a,a)') '      theta       phi       Re(Evv)        Im(Evv)         Re(Evh)       Im(Ehv) ',&
+                                    '        Re(Ehv)       Im(Ehv)        Re(Ehh)        Im(Ehh) '
+                    Do jj =1, NRxPhi  
+                        Do ii =1, NRxTheta 
+                            Write(21+rank,'(f9.2,a,f9.2,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4)') &
+                            RecThetasVals(ii),';  ',RecPhisVals(jj),';  ',Real(Ei_vv_2d(ii,jj)),';  ',Imag(Ei_vv_2d(ii,jj)),';  ',Real(Ei_vh_2d(ii,jj)),&
+                                ';  ',Imag(Ei_vh_2d(ii,jj)),';  ', Real(Ei_hv_2d(ii,jj)),';  ',Imag(Ei_hv_2d(ii,jj)),';  ',&
+                                Real(Ei_hh_2d(ii,jj)),';  ',Imag(Ei_hh_2d(ii,jj))
+                        EndDo
+                    EndDo
+                    Close(21+rank);   
+                EndIf
+                   
+            EndIf
+        Enddo             
+    EndDo 
+     
+
+END SUBROUTINE Incident_Field_at_Rx

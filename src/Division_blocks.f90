@@ -18,6 +18,7 @@ SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCB
     type (Cell), Dimension(:), allocatable :: Cells_after_div
     Integer, Dimension(:), allocatable :: Diff_avg
     Real(kind=8), Dimension(:), allocatable :: hB_test
+    Character(3) :: div_type_tmp 
     
     INTERFACE        
         SUBROUTINE Division_blocks_csh(SimScatterer,Cells,CBFM_Blocks,MLCBFM_BlDistr,error_division)
@@ -96,11 +97,12 @@ SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCB
     
     if (div_type == 'SPH') then   
         
-        SPH_v = 3;  ! so far 4 options : 0 to 3 
-        write(div_type,'(a2,i1)') div_type,SPH_v ! remove later if you will keep one only SPH type
+        SPH_v = 2;  ! so far 4 options : 0 to 3 
+        write(div_type_tmp,'(a2,i1)') div_type,SPH_v ! remove later if you will keep one only SPH type
+        div_type = div_type_tmp;
         
         ! Version 0
-        if (SPH_v .eq. 0) then   ! not really working, eliminate as soon as other versions tested and validated 
+        if (SPH_v .eq. 0) then   ! not perfect, eliminate as soon as other versions tested and validated 
           Call Division_blocks_sph_v0(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_div)
         
         elseif (SPH_v .eq. 1) then  ! easy option divide&eliminate empty blocks using hblock, update hblock according to average N and re-divide until achievieng desired Ncells per block
