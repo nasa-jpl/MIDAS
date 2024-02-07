@@ -262,7 +262,6 @@ SUBROUTINE Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_a
         Deallocate(ff_coeffs);
     Enddo
 
-
     !Now Compute_ExtAbsCsec_fromIntField
     DO num_emetteur=1,NTr
         Cext_e_V = 0;Cext_e_H = 0;
