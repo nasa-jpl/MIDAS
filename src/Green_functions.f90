@@ -15,7 +15,7 @@
  
 !! 3) To compute Scattered fields/ Scattering matrices 
 !! - Green_s_dt
-!! - Green_ff_dt
+!! - GetFFieldCoeff (translation theorem)
 
 
 SUBROUTINE Green_s_tr_total(Cells,Green_s_tr)
@@ -1393,3 +1393,44 @@ SUBROUTINE Green_s_dt(Nc,Cells_in,theta_capteur,phi_capteur,Green_dt)
     ENDDO
 
 END SUBROUTINE Green_s_dt
+
+SUBROUTINE GetFFieldCoeff(Nc,Cells_in,theta_capteur,phi_capteur,ff_coeffs)
+
+    USE Initialization
+    USE common_variables
+    IMPLICIT NONE
+    
+    Integer, INTENT(IN) :: Nc
+    type (Cell), Dimension(Nc), INTENT(IN) :: Cells_in
+    Real(kind=8), INTENT(IN) :: theta_capteur,phi_capteur
+    COMPLEX(real64), Dimension(Nc), INTENT(OUT) :: ff_coeffs
+    
+    !Local
+    Integer Is
+    Real(kind=8) :: xc,yc,zc,x_cap,y_cap,z_cap
+    COMPLEX(real64) :: ffc, f_kapChe
+
+    DO Is=1, Nc
+             
+        ! Cell in scatterer x, y & z         
+        xc = Cells_in(Is)%Xc;
+        yc = Cells_in(Is)%Yc;
+        zc = Cells_in(Is)%Zc;
+        
+        !! Receiver x, y & z : since 3/13/2019 !
+        x_cap = cos(theta_capteur*Pi/180.) 
+        y_cap = sin(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) 
+        z_cap = sin(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.)
+        
+        ! translation theorem E2= E1*exp(-ik*delta.u) 
+        ffc= exp(-J*k_0*(x_cap*xc+y_cap*yc+z_cap*zc))    ! ici ce n'est pas Gr_mn le terme qui depends de rmn est sorti a l'exterieur de S on l'a plus ici
+                                                                ! ceci est le terme de dephasage du theoreme de translation E2(cell_i) = E1(0)*exp(-jk delta u)
+                                                                ! le terme de green est mnt en fait a l'exterieur vu la definition de la matrice S !
+                                                                ! en fait c'est une methode totalement differente de ce qu'on a ustilise pour le champ diffracte a r (inside or outside the scatterer)
+        f_kapChe= Cells_in(Is)%Kappa_n*Cells_in(Is)%Che_n
+          
+        ff_coeffs(Is) = ffc*k_0**2.*f_kapChe /(4*Pi) * k_0    ! the last k_0 comes from the definition of the S matrix with DDSCAT  
+        
+    ENDDO
+
+END SUBROUTINE GetFFieldCoeff
