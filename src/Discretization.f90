@@ -14,7 +14,7 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
 
     ! Local
     Integer :: ii,idip,Nbcels_Dp,Qd,Ql,Dp_tmp,Dp_int,Lp_tmp,Lp_int
-    Integer :: I,Nbc_init,Comp_cel,Ix,Iy,Iz,Nbc_p
+    Integer :: I,Nbc_init,Comp_cel,Ix,Iy,Iz,Nbc_p,center_at_origin
     Integer :: dd,Ncelp_m,nb,Type_Par,ap_count,info_count
     Integer :: tot_count,pr_NBcels,Nbc_x,Nbc_y,Nbc_z
     Integer :: Nbcelsx, Nbcelsy, Nbcelsz, hcy_rcy, Nbcelsz_sphe
@@ -371,12 +371,15 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
         EndDo 
         
         ! Here center the scatterer at the origin
-        Dx = maxval(TmpCells(:)%Xc) - minval(TmpCells(:)%Xc)
-        Dy = maxval(TmpCells(:)%Yc) - minval(TmpCells(:)%Yc)
-        Dz = maxval(TmpCells(:)%Zc) - minval(TmpCells(:)%Zc) 
-        TmpCells(:)%Xc = TmpCells(:)%Xc - Dx/2.0
-        TmpCells(:)%Yc = TmpCells(:)%Yc - Dy/2.0         
-        TmpCells(:)%Zc = TmpCells(:)%Zc - Dz/2.0
+        center_at_origin = 0;
+        if (center_at_origin .eq. 1) then 
+          Dx = maxval(TmpCells(:)%Xc) - minval(TmpCells(:)%Xc)
+          Dy = maxval(TmpCells(:)%Yc) - minval(TmpCells(:)%Yc)
+          Dz = maxval(TmpCells(:)%Zc) - minval(TmpCells(:)%Zc) 
+          TmpCells(:)%Xc = TmpCells(:)%Xc - Dx/2.0
+          TmpCells(:)%Yc = TmpCells(:)%Yc - Dy/2.0         
+          TmpCells(:)%Zc = TmpCells(:)%Zc - Dz/2.0
+        Endif
         
         ! we recall that the scatterer attributes pb_xmin, pb_xmax,pb_ymin, pb_ymax 
         ! pb_zmin and pb_zmax of the current scatterer will be assigned in the subroutine Division_blocks  
