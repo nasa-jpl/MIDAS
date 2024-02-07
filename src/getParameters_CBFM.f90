@@ -38,8 +38,9 @@
         ! delta = b**2-4ac and solution = (-b+sqrt(delta))/2a
         ! ou aussi 2*k^2+3*k+1-N = 0 si k =180/step
         delta = (360+180)**2.+4*(Nipws-1)*(360*180);
-        step_theta_CBFM = ((360+180)+sqrt(delta))/(2*(Nipws-1));
+        step_theta_CBFM = ((360+180)+sqrt(delta))/(2*(Nipws-1))
         step_phi_CBFM = step_theta_CBFM;
+       
         ! finalement ca revient a :
         !step_theta_CBFM = 720./(sqrt(8.*Nipws+1.)-3.)
         !step_phi_CBFM = 720./(sqrt(8.*Nipws+1.)-3.)
