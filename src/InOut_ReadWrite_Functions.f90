@@ -327,7 +327,8 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     !! Reading Receivers ********************************************************************************************************
     read(11,*);read(11,*),theta_init_Recei,theta_final_Recei,NRxTheta
     read(11,*);read(11,*),phi_init_Recei,phi_final_Recei,NRxPhi
-    read(11,*);read(11,*),beta_init_Pol,beta_final_Pol,NPolBeta
+    read(11,*);read(11,*),NPolBeta
+    beta_init_Pol= 0; beta_final_Pol=360.; ! we only consider 0-2Pi polar rotation 
     
     ! Write Scattering matrix elements for each incident direction and Q per incident direction 
     read(11,*);read(11,*), wr_Sij
@@ -701,7 +702,7 @@ SUBROUTINE Write_Sfiles(nom_methode,Transmitters,Receivers,S_total)
     USE Initialization
     USE common_variables
     USE MPI
-    USE HDF5 ! This module contains all necessary modules
+    !USE HDF5 ! This module contains all necessary modules
     
     IMPLICIT NONE
 
@@ -731,15 +732,15 @@ SUBROUTINE Write_Sfiles(nom_methode,Transmitters,Receivers,S_total)
 
     CHARACTER(LEN=100) :: filename  ! File name
     INTEGER        :: fnamelen	     ! File name length
-    INTEGER(HID_T) :: file_id       ! File identifier
-    INTEGER(HID_T) :: dset_id       ! Dataset identifier
-    INTEGER(HID_T) :: filespace     ! Dataspace identifier in file
-    INTEGER(HID_T) :: plist_id      ! Property list identifier
+    !INTEGER(HID_T) :: file_id       ! File identifier
+    !INTEGER(HID_T) :: dset_id       ! Dataset identifier
+    !INTEGER(HID_T) :: filespace     ! Dataspace identifier in file
+    !INTEGER(HID_T) :: plist_id      ! Property list identifier
 
-    INTEGER(HSIZE_T), DIMENSION(2) :: dimsf = (/5,8/) ! Dataset dimensions.
+!    INTEGER(HSIZE_T), DIMENSION(2) :: dimsf = (/5,8/) ! Dataset dimensions.
 !     INTEGER, DIMENSION(7) :: dimsfi = (/5,8,0,0,0,0,0/)
 !     INTEGER(HSIZE_T), DIMENSION(2) :: dimsfi = (/5,8/)
-    INTEGER(HSIZE_T), DIMENSION(2) :: dimsfi
+!    INTEGER(HSIZE_T), DIMENSION(2) :: dimsfi
 
     INTEGER, ALLOCATABLE :: data(:,:)   ! Data to write
     INTEGER :: data_rank = 2 ! Dataset rank
@@ -794,132 +795,248 @@ SUBROUTINE Write_Sfiles(nom_methode,Transmitters,Receivers,S_total)
         file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//trim(freq_unit)//'_'//nom_meth_exact//'.h5';
     endif
 
-    Allocate(S_towrite(NRx,8*NTr));
-    S_towrite(1:NRx,1:8*NTr) = 0.45       
+    !COMPLEX(real64), Dimension(NRx_tot,4*NTr), INTENT(IN):: S_total
+    
+    Allocate(S_towrite(8*NTr,NRx));
+    Do ii=1,NTr
+        Do jj=1,NRx
+            S_towrite(8*(ii-1)+1,jj) = real(S_total(jj,4*(ii-1)+1));
+            S_towrite(8*(ii-1)+2,jj) = imag(S_total(jj,4*(ii-1)+1));
+            S_towrite(8*(ii-1)+3,jj) = real(S_total(jj,4*(ii-1)+2));
+            S_towrite(8*(ii-1)+4,jj) = imag(S_total(jj,4*(ii-1)+2));
+            S_towrite(8*(ii-1)+5,jj) = real(S_total(jj,4*(ii-1)+3));
+            S_towrite(8*(ii-1)+6,jj) = imag(S_total(jj,4*(ii-1)+3));
+            S_towrite(8*(ii-1)+7,jj) = real(S_total(jj,4*(ii-1)+4));
+            S_towrite(8*(ii-1)+8,jj) = imag(S_total(jj,4*(ii-1)+4));
+        EndDo
+    Enddo
+    !S_towrite(1:NRx,1:8*NTr) = 0.27       
      
-     ! Let's try to write S_total(NRx,4*NTr)
-     ! S_towrite(NRx,4*NTr) for data
-     dimsf(1) = NRx
-     dimsf(2) = 4*NTr
+     !dimsf(1) = 8*NTr
+     !dimsf(2) = NRx
      
-     !
-     ! Initialize FORTRAN interface
-     !
-     if (rank == 0) then 
-     Write(*,*) 'Here 1'
-     endif
-     CALL h5open_f(error)
-     if (rank == 0) then 
-     Write(*,*) 'Here 2'
-     endif
-     !
-     ! Setup file access property list with parallel I/O access.
-     !
-     CALL h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
-     if (rank == 0) then 
-     Write(*,*) 'Here 3'
-     endif
-     CALL h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, error)
-     if (rank == 0) then 
-     Write(*,*) 'Here 4'
-     endif
-     !
-     ! Figure out the filename to use.  If your system does not support
-     ! getenv, comment that statement with this,
-     ! filename = ""
-!     CALL getenv("HDF5_PARAPREFIX", filename)
-!     fnamelen = LEN_TRIM(filename)
-!     if ( fnamelen == 0 ) then
-!	filename = default_fname
-!     else
-!	filename = filename(1:fnamelen) // "/" // default_fname
+     !! **********************************************************
+     !! **********************************************************
+     !! COMMENTED WAITING for PHDF5
+     
+!     !
+!     ! Initialize FORTRAN interface
+!     !
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 1'
 !     endif
-!     print *, "Using filename = ", filename
-
-     !
-     ! Create the file collectively.
-     !
-     if (rank == 0) then 
-        Write(*,*) 'file_name_s = ',file_name_s
-     endif
-     CALL h5fcreate_f(file_name_s, H5F_ACC_TRUNC_F, file_id, error, access_prp = plist_id)
-     if (rank == 0) then 
-     Write(*,*) 'Here 5'
-     endif
-     CALL h5pclose_f(plist_id, error)
-     !
-     ! Create the data space for the  dataset.
-     !
-     if (rank == 0) then 
-     Write(*,*) 'Here 6'
-     endif
-     CALL h5screate_simple_f(data_rank, dimsf, filespace, error)
-     if (rank == 0) then 
-     Write(*,*) 'Here 7'
-     endif
-     !
-     ! Create the dataset with default properties.
-     !
-     if (rank == 0) then 
-     Write(*,*) 'Here 8'
-     endif
-     CALL h5dcreate_f(file_id, dsetname, H5T_NATIVE_DOUBLE, filespace, &
-                      dset_id, error)
-     !
-     ! Create property list for collective dataset write
-     !
-     if (rank == 0) then 
-     Write(*,*) 'Here 9'
-     endif
-     CALL h5pcreate_f(H5P_DATASET_XFER_F, plist_id, error)
-     if (rank == 0) then 
-     Write(*,*) 'Here 10'
-     endif
-     CALL h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, error)
-     if (rank == 0) then 
-     Write(*,*) 'Here 11'
-     endif
-     !
-     ! For independent write use
-     ! CALL h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_INDEPENDENT_F, error)
-     !
-
-     !
-     ! Write the dataset collectively.
-     !
-     if (rank == 0) then 
-     Write(*,*) 'Here 12'
-     endif
-     CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, S_towrite, dimsfi, error, &
-                      xfer_prp = plist_id)
-     !
-     ! Deallocate data buffer.
-     !
-     if (rank == 0) then 
-     Write(*,*) 'Here 13'
-     endif
-     DEALLOCATE(S_towrite)
-
-     !
-     ! Close resources.
-     !
-     CALL h5sclose_f(filespace, error)
-     CALL h5dclose_f(dset_id, error)
-     CALL h5pclose_f(plist_id, error)
-     CALL h5fclose_f(file_id, error)
-     ! Attempt to remove the data file.  Remove the line if the compiler
-     ! does not support it.
-     !CALL unlink(filename)
-
-     !
-     ! Close FORTRAN interface
-     !
-     CALL h5close_f(error)
-
+!     CALL h5open_f(error)
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 2'
+!     endif
+!     !
+!     ! Setup file access property list with parallel I/O access.
+!     !
+!     CALL h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 3'
+!     endif
+!     CALL h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, error)
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 4'
+!     endif
+!     !
+!     ! Figure out the filename to use.  If your system does not support
+!     ! getenv, comment that statement with this,
+!     ! filename = ""
+!!     CALL getenv("HDF5_PARAPREFIX", filename)
+!!     fnamelen = LEN_TRIM(filename)
+!!     if ( fnamelen == 0 ) then
+!!	filename = default_fname
+!!     else
+!!	filename = filename(1:fnamelen) // "/" // default_fname
+!!     endif
+!!     print *, "Using filename = ", filename
+!
+!     !
+!     ! Create the file collectively.
+!     !
+!     if (rank == 0) then 
+!        Write(*,*) 'file_name_s = ',file_name_s
+!     endif
+!     CALL h5fcreate_f(file_name_s, H5F_ACC_TRUNC_F, file_id, error, access_prp = plist_id)
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 5'
+!     endif
+!     CALL h5pclose_f(plist_id, error)
+!     !
+!     ! Create the data space for the  dataset.
+!     !
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 6'
+!     endif
+!     CALL h5screate_simple_f(data_rank, dimsf, filespace, error)
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 7'
+!     endif
+!     !
+!     ! Create the dataset with default properties.
+!     !
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 8'
+!     endif
+!     CALL h5dcreate_f(file_id, dsetname, H5T_NATIVE_DOUBLE, filespace, &
+!                      dset_id, error)
+!     !
+!     ! Create property list for collective dataset write
+!     !
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 9'
+!     endif
+!     CALL h5pcreate_f(H5P_DATASET_XFER_F, plist_id, error)
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 10'
+!     endif
+!     CALL h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, error)
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 11'
+!     endif
+!     !
+!     ! For independent write use
+!     ! CALL h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_INDEPENDENT_F, error)
+!     !
+!
+!     !
+!     ! Write the dataset collectively.
+!     !
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 12'
+!     endif
+!     CALL h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, S_towrite, dimsfi, error, &
+!                      xfer_prp = plist_id)
+!     !
+!     ! Deallocate data buffer.
+!     !
+!     if (rank == 0) then 
+!     Write(*,*) 'Here 13'
+!     endif
+!     DEALLOCATE(S_towrite)
+!
+!     !
+!     ! Close resources.
+!     !
+!     CALL h5sclose_f(filespace, error)
+!     CALL h5dclose_f(dset_id, error)
+!     CALL h5pclose_f(plist_id, error)
+!     CALL h5fclose_f(file_id, error)
+!     ! Attempt to remove the data file.  Remove the line if the compiler
+!     ! does not support it.
+!     !CALL unlink(filename)
+!
+!     !
+!     ! Close FORTRAN interface
+!     !
+!     CALL h5close_f(error)
+     !! COMMENTED BECAUSE WINDOWS
+     !! **********************************************************
      !CALL MPI_FINALIZE(mpierror)   
 
 END SUBROUTINE Write_Sfiles
 
+SUBROUTINE Write_txt_Sfiles(nom_methode,Transmitters,Receivers,S_total)
+
+    USE Initialization
+    USE common_variables
+    USE MPI
+    
+    IMPLICIT NONE
+
+    !IN/OUT 
+    character(8), INTENT(IN):: nom_methode
+    type (Dipole), Dimension(NTr), INTENT(IN) :: Transmitters
+    type (Dipole), Dimension(NRx_tot), INTENT(IN) :: Receivers
+    COMPLEX(real64), Dimension(NRx_tot,4*NTr), INTENT(IN):: S_total
+    
+    ! local 
+    Integer :: ii,jj,kkt,kkr,a,Nths,Nphs
+    Integer :: id,nthreads,p,d,NTr_wr_proc 
+    Real(kind=8) :: th_i,ph_i
+    COMPLEX(real64) :: Vv, Vh, Hv, Hh
+    
+    CHARACTER(:), allocatable:: nom_meth_exact,stFreq,sim_name
+    CHARACTER(200) :: file_name_s,Sfold_name
+    CHARACTER(6) :: ty,kkt_st
+    
+    Sfold_name = trim(SimOutfld_name)//Env_sep//'S_files';
+    
+    NTr_wr_proc = (NTr/nber_procs)+1;
+    If (nom_methode=='CBFM-E  ') Then
+        Allocate(character(6) ::nom_meth_exact)
+        nom_meth_exact = trim(nom_methode)
+    Else ! MoM or RGE 
+        Allocate(character(3) ::nom_meth_exact)
+        nom_meth_exact = trim(nom_methode)
+    Endif
+     
+    
+    a = nint(Freq_w/10.**freq_mag);
+    if (a < 10) Then 
+        Allocate(character(4) ::stFreq)
+        ty = '(f4.2)';
+    ElseIf (a < 100) Then
+        Allocate(character(5) ::stFreq)
+        ty = '(f5.2)';
+    Else
+        Allocate(character(6) ::stFreq)
+        ty = '(f6.2)';
+    EndIf   
+
+    If (Nfreq == 1) Then
+        Allocate(character(1)::sim_name)
+        sim_name= ''
+    Else
+        if (num_freq < 10) Then
+            Allocate(character(5)::sim_name)
+            Write(sim_name,'(a,i1,a)') 'Sim', num_freq, '_'
+        ElseIf (num_freq < 100) Then
+            Allocate(character(6)::sim_name)
+            Write(sim_name,'(a,i2,a)') 'Sim', num_freq, '_'
+        Else
+            Allocate(character(7)::sim_name)
+            Write(sim_name,'(a,i3,a)') 'Sim', num_freq, '_'
+        EndIf        
+    EndIf 
+    Write(stFreq,ty) Freq_w/10.**freq_mag
+    
+
+    DO kkt=1,NTr
+          th_i =  Transmitters(kkt)%theta;
+          ph_i = Transmitters(kkt)%phi;
+          
+              
+              ! Comment here if PHDF5 S_files successful
+              If (wr_Sij .eq. 1) Then
+                  If ((kkt .gt. (rank*NTr_wr_proc)) .and. (kkt .le. (rank+1)*NTr_wr_proc)) then 
+                    Write(kkt_st,'(a,i4.4)') 'kt',kkt;
+                    if (EqSph == 0) then
+                        file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//freq_unit//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
+                    else
+                        file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//freq_unit//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
+                    endif
+                    Open(unit=21+rank,File = file_name_s)  
+                    Write(21+rank, '(a,f10.4,a,f10.4)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi  
+                    Write(21+rank,'(a,a)') '      theta       phi       Re(Svv)        Im(Svv)         Re(Svh)       Im(Svh) ',&
+                                    '        Re(Shv)       Im(Shv)        Re(Shh)        Im(Shh) '
+                    Do kkr=1, NRx  
+                        Vv = S_total(kkr,4*(kkt-1)+1);
+                        Vh = S_total(kkr,4*(kkt-1)+2); 
+                        Hv = S_total(kkr,4*(kkt-1)+3); 
+                        Hh = S_total(kkr,4*(kkt-1)+4);
+                          
+                        Write(21+rank,'(f9.2,a,f9.2,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4)') &
+                        Receivers(kkr)%theta,';  ',Receivers(kkr)%phi,';  ',Real(Vv),';  ',Imag(Vv),';  ',Real(Vh),&
+                      ';  ',Imag(Vh),';  ', Real(Hv),';  ',Imag(Hv),';  ',Real(Hh),';  ',Imag(Hh)
+                    EndDo
+                    Close(21+rank);  
+                  Endif  
+              EndIf  
+    EndDo
+END SUBROUTINE Write_txt_Sfiles
 
 SUBROUTINE Write_jobs_sim_info(CBFM_Blocks,MPI_CBFM_Blocks,K_patchs_all)
 
