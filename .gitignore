@@ -13,6 +13,7 @@ midas
 /src/*.o
 /src/*.mod
 /src/midas
+/src/Makefile_LS6
 
 # Simulations outputs & performance analysis #
 *-ap=*m/
