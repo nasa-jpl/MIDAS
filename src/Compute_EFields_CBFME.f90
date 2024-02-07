@@ -101,6 +101,9 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     COMPLEX(real64), Dimension(:,:), allocatable :: Matrice1, Matrice2,Matrice3,Mat_Inter,MatProduit,Vect_Inter
     COMPLEX(real64), Dimension(:,:), allocatable :: Zreduite, E_ref_incident,Vreduit, Alphas,Uin,Uout
 
+    ! test 1/9/24
+    CHARACTER(200) :: file_name_svd
+    CHARACTER(10) :: k_st
 
     INTERFACE
         SUBROUTINE getTransmitters_CBFM(Transmitters_CBFM)
@@ -135,7 +138,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     EndIf
 
     ! Threshold for the generation of the CBFs
-    Threshold_CBFM = 1e-3;
+    Threshold_CBFM = 1e-8;
 
     ! HERE GET MY NBlocks ! attention to the difference with NBlocks_job that can use for any other job
     ! MyNBlocks is the NBlocks_job of the current job
@@ -267,6 +270,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         Write(*,'(a,ES7.1E1,a,f5.2)') ' -- > fSR for CBFM = ',fct_SR, ' -> spr % = ',spr_perc
     EndIf
     if (rank == 0) then
+        Nipws = 240 ! Test Test 1-10-2024 ! next try 2701 
         Write(*,'(a,i6)') ' -- > Nipws for CBFM = ',Nipws
         call date_and_time(date_final_N1,time_final_N1,zone_final_N1,values_final_N1)
         call Calcul_time_spent(values_init_N1,values_final_N1, time_calcul_N1)
@@ -379,8 +383,17 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         call print_allocate(16,'U(3*size,3*size)','DCOMP',3*size*3*size);
         call print_allocate(25,'VT(2*NTr_CBFM,2*NTr_CBFM)','DCOMP',2*NTr_CBFM*2*NTr_CBFM);
 
-        CALL GESVD(A=Epatch_e,S=S,U=U, VT=VT, JOB='U')
+        CALL GESVD(A=Epatch_e,S=S,U=U, VT=VT, JOB='U')              
 
+        
+         ! let's write S to dipslay it an dsee how it changes with the dielectric constant increase
+        Write(k_st,'(a,i4.4)') 'block_',kk;
+        file_name_svd = trim(SimOutfld_name)//Env_sep//'S_'//k_st//'.dat';
+        Open(unit=21+rank,File =file_name_svd);
+        Do dd=1, MIN(M,N)
+            Write(21+rank, '(f14.8)') S(dd)
+        EndDo 
+        
         !! Normalisation et comparaison au seuil, K designera le nombre de valeurs singulieres retenues (non nulles)
         K = 0
         norme = S(1)
@@ -394,12 +407,17 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
             EndIF
         ENDDO
 
+
         !! the local C_patch (K first columns of the matrix U)
         ! Fill C_tot_patchs from Cpatch_e
         ! we only take the CBFs corresponding to the original size of the block kk (not extended)
         C_job_patchs(curs_B_Cpatch(kk_job):curs_B_Cpatch(kk_job)+3*Nbc_b-1,1:K) = U(1:3*Nbc_b,1:K);
         K_patchs(kk_job) = K
 
+        ! let's write S to dipslay it an dsee how it changes with the dielectric constant increase
+        Write(21+rank, '(a,i4)') 'K = ',K
+        Close(21+rank);
+         
         !! Deallocaton de tous les vecteurs propores au bloc (Interieur de la boucle)
         Deallocate(EREFpatch_e,Epatch_e)
         Deallocate(S,U,VT,WW)
@@ -970,7 +988,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
 
     If ((save_Eint .eq. 1) .and. (Nbc .le. save_Eint_Nmax)) then
 
-        file_name = trim(SimOutfld_name)//Env_sep//'Ein_MPI.dat';
+        file_name = trim(SimOutfld_name)//Env_sep//'Ein_CBFME_MPI.dat';
         if (rank == 0) then
             Write(*,'(a)',advance='no') '--> to write Ein_tot '
             time_calcul_N1 = 0
