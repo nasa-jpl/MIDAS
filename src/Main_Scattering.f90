@@ -641,20 +641,18 @@ Program Main_Scattering
               endif
               go to 30;
             endif
-
-            !if (Nbc .lt. 4e5) then
-            	call date_and_time(date_init,time_init,zone_init,values_init);
-            	call Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,'NEW');   !! TO CHECK AND MPI OPTIMIZE  1/29/2019
-            	call date_and_time(date_final,time_final,zone_final,values_final)
-            	call Calcul_time_spent(values_init,values_final,Comp_time_write)
-	        !endif
-
         Else
             ! to avoid segmentation fault errors at the input of Compute_Electric_Fields.
             NBlocks = 1; Allocate(CBFM_Blocks(NBlocks));
             Nbc_ext =1; Allocate(CBFM_Blocks_Ext(NBlocks,Nbc_ext));
             Nblk_proc_max =1; Allocate(MPI_CBFM_Blocks(nber_procs,Nblk_proc_max+1));
         EndIf
+        
+        ! write geometry files 
+        call date_and_time(date_init,time_init,zone_init,values_init);
+        call Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,'NEW');   !! TO CHECK AND MPI OPTIMIZE  1/29/2019
+        call date_and_time(date_final,time_final,zone_final,values_final)
+        call Calcul_time_spent(values_init,values_final,Comp_time_write)
         !! END DISCRETIZATION & DIVISION INTO BLOCKS***********************************************************************
 
         if (rank == 0) Then
@@ -1081,5 +1079,5 @@ Program Main_Scattering
     endif
 
 30  Call MPI_FINALIZE (code);
-
+!pause;
 End PROGRAM Main_Scattering
