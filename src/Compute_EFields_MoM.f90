@@ -19,7 +19,7 @@ SUBROUTINE Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs)
     COMPLEX(real64), Dimension(NTr), INTENT(OUT) :: C_ext,C_abs
     
     !! Local 
-    Integer :: ii, jj, kk, Nbc_proc_max,Nd,Nr,num_cel_min,num_cel_max
+    Integer :: ii,iic, jj, kk, Nbc_proc_max,Nd,Nr,num_cel_min,num_cel_max
     Integer :: prev_job, next_job,IGlob_min,IGlob_max, Nelts
     Integer :: size2, pp, Eff_rank, iLoc_proc 
     DOUBLE COMPLEX :: Ztot_i_j, Vtot_i_j
@@ -241,9 +241,13 @@ SUBROUTINE Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs)
         
         if (rank == 0) then
             open(unit=14, file = trim(file_name));!, form = 'unformatted')
-            Do ii=1,3*Nbc_proc
-                Do kk=1,2*NTr          
-                    Write(14,'(es16.8,a,es16.8)') real(E_total(ii,kk)),';',imag(E_total(ii,kk)); 
+            Do kk=1,2*NTr 
+                Do ii=1,Nbc_proc        
+                    Write(14,'(i8,i6,f12.6,f12.6,f12.6,es16.8,es16.8,es16.8,es16.8,es16.8,es16.8)') &
+                            Cells(ii)%n_cell,Cells(ii)%n_block,Cells(ii)%Xc,Cells(ii)%Yc,Cells(ii)%Zc,&
+                            real(E_total(3*(ii-1)+1,kk)),imag(E_total(3*(ii-1)+1,kk)), &
+                            real(E_total(3*(ii-1)+2,kk)),imag(E_total(3*(ii-1)+2,kk)), &
+                            real(E_total(3*(ii-1)+3,kk)),imag(E_total(3*(ii-1)+3,kk))
                 EndDo
             EndDo
             close(14)
@@ -252,9 +256,13 @@ SUBROUTINE Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs)
         do pp = 1, nber_procs - 1
             if(rank == pp) then
                 open(unit = 14, file = trim(file_name), status = 'old', position = 'append')
-                Do ii=1,3*Nbc_proc        
-                    Do kk=1,2*NTr                           
-                        Write(14,'(es16.8,a,es16.8)') real(E_total(ii,kk)),';',imag(E_total(ii,kk)); 
+                Do kk=1,2*NTr 
+                    Do ii=1,Nbc_proc
+                        Write(14,'(i8,i6,f12.6,f12.6,f12.6,es16.8,es16.8,es16.8,es16.8,es16.8,es16.8)') &
+                            Cells(ii)%n_cell,Cells(ii)%n_block,Cells(ii)%Xc,Cells(ii)%Yc,Cells(ii)%Zc,&
+                            real(E_total(3*(ii-1)+1,kk)),imag(E_total(3*(ii-1)+1,kk)), &
+                            real(E_total(3*(ii-1)+2,kk)),imag(E_total(3*(ii-1)+2,kk)), &
+                            real(E_total(3*(ii-1)+3,kk)),imag(E_total(3*(ii-1)+3,kk))
                     EndDo
                 EndDo
                 close(14)
