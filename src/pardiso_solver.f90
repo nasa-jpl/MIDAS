@@ -71,8 +71,8 @@ SUBROUTINE pardiso_solver(n,nrhs,nnz,mtype,iparm3,ia,ja,a,b,x)
   !Write(*,*) 'ia(1:10) =', ia(1:10)
   !Write(*,*) 'ja(1:10) =', ja(1:10)
   !Write(*,*) 'a(1:10) =', a(1:10)
-  
-  
+  !
+  !
   !Write(*,*) 'ia = '
   !Write(*,*) ia(1:n+1);
   !Write(*,*) 'ja = '
@@ -87,7 +87,7 @@ SUBROUTINE pardiso_solver(n,nrhs,nnz,mtype,iparm3,ia,ja,a,b,x)
   !   WRITE(*,*) ' b(',i,',',c,') = ', b(i,c)
   !  End DO
   !END DO
-  
+  !
   
   !ALLOCATE( ia ( n + 1 ) )
   !ia = (/ 1, 5, 8, 10, 12, 15, 17, 18, 19 /)
@@ -163,7 +163,7 @@ SUBROUTINE pardiso_solver(n,nrhs,nnz,mtype,iparm3,ia,ja,a,b,x)
   phase = 11 ! only reordering and symbolic factorization
   CALL pardiso (pt, maxfct, mnum, mtype, phase, n, a, ia, ja, &
   idum, nrhs, iparm, msglvl, ddum, ddum, error)
-     
+  
   !WRITE(*,*) 'Reordering completed ... '
   IF (error /= 0) THEN
      WRITE(*,*) 'The following ERROR was detected: ', error
