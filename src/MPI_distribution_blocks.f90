@@ -23,15 +23,18 @@ SUBROUTINE MPI_distribution_blocks(CBFM_Blocks,MPI_CBFM_Blocks)
     
     !Doption = 2; ! Distribution option1 guaranty successive blocks for each proc not option 2
     
-    Allocate(MPI_CBFM_Blocks(nber_procs,Nblocks)); ! TMP
-    MPI_CBFM_Blocks = 0;
-    
     If (nber_procs .eq. 1) Then ! inefficient but to consider
+        Allocate(MPI_CBFM_Blocks(nber_procs,Nblocks+1)); ! TMP
+        MPI_CBFM_Blocks = 0;
         Write(*,'(a)') 'Please Note that Nb_procs == 1 !! ';
         MPI_CBFM_Blocks(1,1) = Nblocks;
         MPI_CBFM_Blocks(1,2:2+Nblocks-1) = (/(ii, ii=1,Nblocks)/);
          
     ElseIf (Nblocks .gt. nber_procs) Then 
+      Allocate(MPI_CBFM_Blocks(nber_procs,Nblocks/2)); ! TMP
+      MPI_CBFM_Blocks = 0;
+    
+    
       Nblks_min_proc = Nblocks/nber_procs;            
       !if (Doption == 1) then
       !    ! we start by attributing Nblks_min_proc to each proc
