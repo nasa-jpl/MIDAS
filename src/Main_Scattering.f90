@@ -846,7 +846,12 @@ Program Main_Scattering
             endif
 
             ! Create the Solution files (Eint, Zc, CBFs, Zcinv) if required
-            If ((save_Eint .eq. 1) .OR. (save_Zc .eq. 1)) then
+            If (((save_Eint .eq. 1) .and. (Nbc .le. save_Eint_Nmax)) .OR. (save_Zc .eq. 1)) then
+                if (rank .eq. 0) then
+                write(*,*) 'save_Eint =', save_Eint
+                write(*,*) 'Nbc =', Nbc
+                write(*,*) 'save_Eint_Nmax =', save_Eint_Nmax
+                endif
                 Solfold_name = trim(SimOutfld_name)//Env_sep//'Sol_files';
                 inquire(directory=trim(Solfold_name),exist=dirExists);
                 if (dirExists) Then
@@ -928,7 +933,7 @@ Program Main_Scattering
                   endif
               endif
               ! Create the Solution files (Eint, Zc, CBFs, Zcinv) if required
-              If ((save_Eint .eq. 1) .OR. (save_Zc .eq. 1)) then
+              If (((save_Eint .eq. 1) .and. (Nbc .le. save_Eint_Nmax)) .OR. (save_Zc .eq. 1)) then
                   Solfold_name = trim(SimOutfld_name)//Env_sep//'Sol_files';
                   inquire(directory=trim(Solfold_name),exist=dirExists);
                   if (.not. dirExists) Then
