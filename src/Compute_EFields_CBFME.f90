@@ -385,15 +385,6 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
 
         CALL GESVD(A=Epatch_e,S=S,U=U, VT=VT, JOB='U')              
 
-        
-         ! let's write S to dipslay it an dsee how it changes with the dielectric constant increase
-        Write(k_st,'(a,i4.4)') 'block_',kk;
-        file_name_svd = trim(SimOutfld_name)//Env_sep//'S_'//k_st//'.dat';
-        Open(unit=21+rank,File =file_name_svd);
-        Do dd=1, MIN(M,N)
-            Write(21+rank, '(f14.8)') S(dd)
-        EndDo 
-        
         !! Normalisation et comparaison au seuil, K designera le nombre de valeurs singulieres retenues (non nulles)
         K = 0
         norme = S(1)
@@ -414,10 +405,6 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         C_job_patchs(curs_B_Cpatch(kk_job):curs_B_Cpatch(kk_job)+3*Nbc_b-1,1:K) = U(1:3*Nbc_b,1:K);
         K_patchs(kk_job) = K
 
-        ! let's write S to dipslay it an dsee how it changes with the dielectric constant increase
-        Write(21+rank, '(a,i4)') 'K = ',K
-        Close(21+rank);
-         
         !! Deallocaton de tous les vecteurs propores au bloc (Interieur de la boucle)
         Deallocate(EREFpatch_e,Epatch_e)
         Deallocate(S,U,VT,WW)
