@@ -98,9 +98,8 @@ SUBROUTINE MPI_distribution_blocks(CBFM_Blocks,MPI_CBFM_Blocks)
           EndDo
       !endif
     Else
-      MPI_CBFM_Blocks(1:Nblocks,1) = 1; 
-      MPI_CBFM_Blocks(Nblocks+1:nber_procs,1) = 0;
-      MPI_CBFM_Blocks(1:Nblocks,2) = CBFM_Blocks(1:Nblocks)%num_block;
+      Allocate(MPI_CBFM_Blocks(Nblocks,1));
+      MPI_CBFM_Blocks(1:Nblocks,1) = 1; ! just to exit the subroutine. This option is inefficient the code will exit after the subroutine
     EndIf 
     
     ! Nblk_proc_max needed to know the size of MPI_CBFM_Blocks
