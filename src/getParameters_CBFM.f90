@@ -92,11 +92,12 @@
         Enddo
     elseif ((distr_ipws == 3) .OR. (distr_ipws == 4)) Then ! spherical T-design (x) or Lebedev quad points
         if (distr_ipws == 3) then
-            call design_closer_order (NTr_CBFM,order,Npts);
+            !call design_closer_order (NTr_CBFM,order,Npts); ! update 2/23/2024
+            call ESD_design_closer_order (NTr_CBFM,order,Npts);
             NTr_CBFM = Npts;
             Nipws = Npts;
             Allocate(XYZstd(3,Npts));
-            call design_points(order,Npts,XYZstd);
+            call ESD_design_points(order,Npts,XYZstd)
         else
             call lb_get_closer_Npts(NTr_CBFM,Npts); !
             call ld_by_order (Npts,x,y,z,w) ;
@@ -107,13 +108,13 @@
         endif
 
         Allocate(hypotxy(Npts));
-        ! convert cartesian to spherical
-        hypotxy = hypot(XYZstd(1,:),XYZstd(2,:)); !hypotxy = sqrt(abs(x).^2 + abs(y).^2)
+        ! convert cartesian to spherical ! while taking into account the propagation along x of the incident direction (theta_r and phi_r are defined % x not z)
+        hypotxy = hypot(XYZstd(2,:),XYZstd(3,:)); !hypotxy = sqrt(abs(x).^2 + abs(y).^2)
 
         Allocate(thetas_rd(Npts),phis_rd(Npts));
-        thetas_rd = Pi/2.-atan2(XYZstd(3,:),hypotxy);
-        phis_rd = atan2(XYZstd(2,:),XYZstd(1,:)); ! az = atan2(y,x);
-
+        thetas_rd = Pi/2.-atan2(XYZstd(1,:),hypotxy);
+        phis_rd = atan2(XYZstd(3,:),XYZstd(2,:)); ! az = atan2(y,x);
+        
         Allocate(Transmitters_CBFM(NTr_CBFM));
         DO Ind=1, NTr_CBFM
             theta_dipole = thetas_rd(Ind)/Pi*180.;
