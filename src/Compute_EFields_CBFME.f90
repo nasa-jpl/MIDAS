@@ -269,6 +269,9 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         Write(*,'(a)') ''
         Write(*,'(a,ES7.1E1,a,f5.2)') ' -- > fSR for CBFM = ',fct_SR, ' -> spr % = ',spr_perc
     EndIf
+    
+    !! Here generate Transmitters_CBFM
+    call getTransmitters_CBFM(Transmitters_CBFM);
     if (rank == 0) then
         Nipws = 240 ! Test Test 1-10-2024 ! next try 2701 
         Write(*,'(a,i6)') ' -- > Nipws for CBFM = ',Nipws
@@ -278,9 +281,6 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         ,'h',time_calcul_N1(3),'min', time_calcul_N1(4),'sec'
         Write (*,'(a)') ''
     endif
-
-    !! Here generate Transmitters_CBFM
-    call getTransmitters_CBFM(Transmitters_CBFM);
 
     Allocate(C_job_patchs(3*Nbc_proc,2*NTr_CBFM));
     call print_allocate(35,'C_job_patchs(3*Nbc_proc,2*NTr_CBFM)','DCOMP',3*Nbc_proc*2*NTr_CBFM); !(Nchar,allocate_str,type_str,size)
