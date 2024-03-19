@@ -15,7 +15,7 @@ midas
 /src/*.mod
 /src/midas
 /src/Makefile_LS6
-/src/Makfile_discover
+/src/Makefile_discover
 # Simulations outputs & performance analysis #
 *-ap=*m/
 Sim_MPI_MIDAS_*
