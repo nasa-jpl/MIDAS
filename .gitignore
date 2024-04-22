@@ -24,6 +24,15 @@ mpi_job.o*
 remora_*/ 
 impi_data.txt
 
+# VS project files/folders on windows
+/Debug
+MIDAS.sln
+MIDAS.u2d
+MIDAS.vfproj
+MIDAS.vfproj.ifenni.user
+/x64
+/outputs
+
 # Some common .gitignore configurations (keep even if na & uncomment if needed) #
 # Compiled source #
 ###################
@@ -62,3 +71,4 @@ impi_data.txt
 #.Trashes
 #ehthumbs.db
 #Thumbs.db
+
