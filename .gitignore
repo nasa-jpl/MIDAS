@@ -14,8 +14,13 @@ midas
 /src/*.o
 /src/*.mod
 /src/midas
+<<<<<<< HEAD
 /src/Makefile_LS6
 /src/Makefile_discover
+=======
+/src/Makefile_LS6
+
+>>>>>>> origin/main
 # Simulations outputs & performance analysis #
 *-ap=*m/
 Sim_MPI_MIDAS_*
@@ -23,6 +28,15 @@ mpi_job.e*
 mpi_job.o*
 remora_*/ 
 impi_data.txt
+
+# VS project files/folders on windows
+/Debug
+MIDAS.sln
+MIDAS.u2d
+MIDAS.vfproj
+MIDAS.vfproj.ifenni.user
+/x64
+/outputs
 
 # Some common .gitignore configurations (keep even if na & uncomment if needed) #
 # Compiled source #
@@ -62,3 +76,4 @@ impi_data.txt
 #.Trashes
 #ehthumbs.db
 #Thumbs.db
+

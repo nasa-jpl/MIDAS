@@ -367,7 +367,9 @@
                 EndDo
             EndIf
             If (rr .eq. 9) Then
+                if (rank .eq. 0) then
                 Write(*,'(a,f8.4,a)') 'WARNING : Problem when selecting Nipws :  r0/lambda =',r_lambda,'  > 8'
+                endif
                 Nipws = Nipws_f_rlamb(8);
                 Nipws = Nipws_f_rlamb(4);
                 !Stop 1;
