@@ -15,6 +15,7 @@ midas
 /src/*.mod
 /src/midas
 /src/Makefile_LS6
+/src/Makefile_discover
 
 # Simulations outputs & performance analysis #
 *-ap=*m/
@@ -35,6 +36,10 @@ MIDAS.vfproj.ifenni.user
 
 # merge tool files
 *.swp
+*.orig
+*.swn
+*.swo
+*.gitignore
 
 # Some common .gitignore configurations (keep even if na & uncomment if needed) #
 # Compiled source #
