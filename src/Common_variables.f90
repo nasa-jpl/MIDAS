@@ -87,6 +87,9 @@ MODULE common_variables
     SAVE rank,nber_procs,INFO,code,Nbc_proc,Nblk_proc_max 
     SAVE Mlocal, Nlocal, NRHSlocal, Myrow, Mycol, NPROW, NPCOL
     
+    ! debug and perfromance 
+    Integer :: debug_mode
+    SAVE debug_mode
     ! track memory performance
     Integer :: track_memory, Njob_max
     SAVE track_memory, Njob_max
