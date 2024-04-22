@@ -62,3 +62,12 @@ impi_data.txt
 #.Trashes
 #ehthumbs.db
 #Thumbs.db
+
+# VS project files/folders on windows
+/Debug
+MIDAS.sln
+MIDAS.u2d
+MIDAS.vfproj
+MIDAS.vfproj.ifenni.user
+/x64
+
