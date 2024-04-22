@@ -137,9 +137,6 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
       mtype = 13 !complex nonsymmetric matrix
     EndIf
 
-    ! Threshold for the generation of the CBFs
-    Threshold_CBFM = 1e-8;
-
     ! HERE GET MY NBlocks ! attention to the difference with NBlocks_job that can use for any other job
     ! MyNBlocks is the NBlocks_job of the current job
     MyNBlocks = MPI_CBFM_Blocks(rank+1,1);
@@ -270,11 +267,23 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         Write(*,'(a,ES7.1E1,a,f5.2)') ' -- > fSR for CBFM = ',fct_SR, ' -> spr % = ',spr_perc
     EndIf
     
-    !! Here generate Transmitters_CBFM
+    ! Threshold for the generation of the CBFs
+    Threshold_CBFM = 1e-3;
+    if (rank .eq. 0) then 
+        write(*,'(a,ES7.1E1)') 'Threshold_CBFM = ',Threshold_CBFM
+    endif
+    
+    ! for distr_ipws = 1, try [91,190,231,325,496,703,861]; for distr_ipws=3 try among 289,366,482,579,723,842,926; for distr_ipws=4 try among [110,194,230,350,434,590,770,974,1202]
+    distr_ipws = 3; Nipws = 482 ! fix it here for now until debugging 4/9/2024 
     call getTransmitters_CBFM(Transmitters_CBFM);
-    if (rank == 0) then
-        Nipws = 240 ! Test Test 1-10-2024 ! next try 2701 
-        Write(*,'(a,i6)') ' -- > Nipws for CBFM = ',Nipws
+    if (rank == 0) then 
+        if (distr_ipws .eq. 1) then 
+            Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (uniform in cos(theta) and phi)'
+        elseif (distr_ipws .eq. 3) then 
+            Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (sd)'
+        elseif (distr_ipws .eq. 4) then
+            Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (lb)'
+        endif
         call date_and_time(date_final_N1,time_final_N1,zone_final_N1,values_final_N1)
         call Calcul_time_spent(values_init_N1,values_final_N1, time_calcul_N1)
         Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') ' --> to set CBFM parameters : ',time_calcul_N1(1),'j',time_calcul_N1(2)&
