@@ -291,8 +291,7 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     !!!! Parameters of the Applied methods
     read(11,*)
     read(11,*);read(11,*), Nber_methods
-    read(11,*);read(11,*), leng_meth
-    Allocate(character(leng_meth) :: methods_names(Nber_methods))
+    leng_meth=8;Allocate(character(leng_meth) :: methods_names(Nber_methods))
     read(11,*)
     CBFM=0; MLCBFM=0; MoM=0; RGE=0;
     DO ii=1,Nber_methods
