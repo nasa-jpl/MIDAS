@@ -349,28 +349,14 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     read(11,*)
     read(11,*);read(11,*), div_type
     read(11,*);read(11,*), Navg_cells
-    read(11,*);read(11,*), set_Nipws   !! if set_Nipws we will use setNipws in getParameters_CBFM.f90
-    read(11,*);read(11,*), distr_ipws !! type of distribution for the N incident plane waves used 
-                                      !! to generate the CBFs (see getTransmitters_CBFM for details)
-    read(11,*);read(11,*), Nc_extended
-    read(11,*);read(11,*), DR
-    read(11,*);read(11,*), SR
-    read(11,*), res_SR
-    read(11,*);read(11,*), SR_Zc
-    read(11,*) SR_Zc_type_ch
-    read(11,*), Eps_SR_Zc
     read(11,*)        
-         
-    !ACA !! 
-    ! As we are not using the ACA for the MPI version yet, I deleted these lines 
-    ! and simply initialized the ACA params to 0
-    !read(11,*);
-    !read(11,*);read(11,*), Use_ACA
-    !read(11,*);read(11,*), Nb_it_max                                                                                                                                                                                     
-    !read(11,*);read(11,*), Epsilon_ACA                                                                                                                                                                                           
-    !read(11,*);read(11,*), Vrb_ACA
-    !read(11,*)
+    
+    ! CBFM parameters
+    set_Nipws = 0; distr_ipws =3; Nc_extended =1; 
+    DR=0; SR=1; res_SR=1e-2; SR_Zc = 0;
     Use_ACA = 0; Nb_it_max= 50; Epsilon_ACA = 1E-4; Vrb_ACA = 0; 
+    SR_Zc_type_ch = 'threshold' ! takes 3 values 'threshold' or 'edistance' or 'spalgo_dz'
+    Eps_SR_Zc = 1e3;
     
     ! decide SR_Zc_type from SR_Zc_type_ch
     If (trim(SR_Zc_type_ch) =='threshold') Then
