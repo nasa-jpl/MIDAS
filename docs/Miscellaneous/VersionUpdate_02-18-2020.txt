@@ -1,5 +1,0 @@
-! modif 2-18-2020 in get_trans_Receiv
-correction of the transformation (X,Y,Z) --> (theha, phi), It impacts only the SD and LB configurations
-correction also for mod(Phi+2Pi,2Pi) to have phi between 0 and 2Pi instead of -Pi->Pi  
-
-See matlab function Check_SD_XYZ_thph.m in the JGR paper simulation and analysis folders for more details
