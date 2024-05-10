@@ -764,7 +764,7 @@ Program Main_Scattering
             ! Create and edit IncScattDirs file
             Open(unit=41,File = trim(SimOutfld_name)//Env_sep//'IncScattDirs.dat');
             Write(41,'(a)') 'INCIDENT DIRECTIONS : '
-            Write(41,'(a,i5)') 'Ninc = ', NTr
+            Write(41,'(a,i5)') 'Ninc', NTr
             if (NumIntType_t .ne. 'sd') then
                 Write(41,'(a,a)') 'Dist Type = ', NumIntType_t
             else
@@ -785,7 +785,7 @@ Program Main_Scattering
             EndDo
             Write(41,'(a)') ''
             Write(41,'(a)') 'SCATTERING DIRECTIONS : '
-            Write(41,'(a,i5)') 'Nscat = ', NRx
+            Write(41,'(a,i5)') 'Nscat', NRx
             if (NumIntType_r .ne. 'sd') then
                 Write(41,'(a,a)') 'Dist Type = ', NumIntType_r
             else

@@ -735,7 +735,7 @@
           deallocate(x_leb,y_leb,z_leb);
         endif
            
-        if ((NumIntType_r == 'lb') .OR. (NumIntType_r == 'sd')) then 
+        if ((NumIntType_r == 'lb') .OR. (NumIntType_r == 'sd') .OR. (NumIntType_r == 'rf')) then 
             Allocate(Svv_1d(NRx),Shh_1d(NRx))
             Allocate(Svh_1d(NRx),Shv_1d(NRx))  
         else
@@ -769,7 +769,7 @@
                  
             ! Recovering S matrix elements taking into account
             ! ddscat and Mie code angle convention (forward direction <-->theta=0)
-            if ((NumIntType_r .eq. 'sd') .OR. (NumIntType_r .eq. 'lb')) then 
+            if ((NumIntType_r .eq. 'sd') .OR. (NumIntType_r .eq. 'lb') .OR. (NumIntType_r == 'rf')) then  ! 5-10-24 I dont see what are the other options but I will keep the if else 
                 Do kkr=1, NRx      !! LOOP ON RECEIVERS/SCATTERERS
                     Svv_1d(kkr)= S_total(kkr,4*(kkt-1)+1); 
                     Svh_1d(kkr) = S_total(kkr,4*(kkt-1)+2); 
@@ -865,8 +865,8 @@
      
                 ! g                            
                 g(kkt) = 1./(2.*k_0**2.*c_sca)*sum(fxy_g_1d);
-		Deallocate(fxy_1d,fxy_g_1d); 
-            elseif (NumIntType_r == 'sd') then ! SPHERICAL DESIGN
+		        Deallocate(fxy_1d,fxy_g_1d); 
+            elseif (NumIntType_r == 'sd' .OR. NumIntType_r == 'rf') then ! SPHERICAL DESIGN
                 Allocate(fxy_1d(NRx));Allocate(fxy_g_1d(NRx));     
                 Do kkr =1, NRx
                     ! Q_scat
@@ -952,7 +952,7 @@
             Q_abs_intf(kkt) = C_abs(kkt)/(Pi*ap**2.);
             
             ! bkwd direction
-            if ((NTr .eq. NRx) .and. ((NumIntType_r == 'lb') .OR. (NumIntType_r == 'sd'))) then 
+            if ((NTr .eq. NRx) .and. ((NumIntType_r == 'lb') .OR. (NumIntType_r == 'sd') .OR. (NumIntType_r == 'rf'))) then 
                 ind_bkw_dir = NRx + kkt ; ! see get_trans_Receiv to understand how the receivers are cerated and organized
             else
                 ind_bkw_dir = NRx + NTr + kkt; 
@@ -966,7 +966,7 @@
 
 	if (NumIntType_r == 'lb') then 
             Deallocate(Svv_1d,Shh_1d,Svh_1d,Shv_1d,w);
-        elseif (NumIntType_r == 'sd') then 
+        elseif (NumIntType_r == 'sd' .OR. NumIntType_r == 'rf') then 
             Deallocate(Svv_1d,Shh_1d,Svh_1d,Shv_1d);
         else
             Deallocate(Svv_2d,Shh_2d,Svh_2d,Shv_2d);
@@ -990,7 +990,7 @@
             
             N = NTr; 
             
-            if (NumIntType_t == 'sd') then        
+            if (NumIntType_t == 'sd' .OR. NumIntType_t == 'rf') then        
                 Q_ext_av = sum(Q_ext)/N; ! sd : (4*Pi/N)*sum(Q_ext) + divided by solid angle/(4*Pi);
                 Q_abs_av = sum(Q_abs)/N; 
                 Q_sca_av = sum(Q_sca)/N; 

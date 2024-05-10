@@ -14,6 +14,7 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,Transmitters_Comp,Receivers);
     ! We also replaced Phi+Pi by mod(Phi+2Pi,2Pi). thinking that +Pi doesn't change the outcoming result was wrong, mod(Phi+2Pi,2Pi) is the correct way to convert -Pi<Phi<Pi to 0<Phi<2Pi
     ! modif 2-24-2020 : correction of the call to ld_by_order. a subroutine lb_get_closer_Npts was created in sphere_lebedev_rule.f90 et the changes impacted get_trans_Receiv.f90,
     ! Compute_Scattering_Quantities.f90 and getParamaters_CBFM.f90
+    ! modif 5-8-2024 : added an 'rf' option to read thetas, phis, betas from file 
 
     USE Initialization
     USE common_variables
@@ -29,6 +30,7 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,Transmitters_Comp,Receivers);
     ! local
     Integer :: ii,Ind, I,K,order,Npts,NRx_extra,Step_in_cosTh
     Integer :: RxExt_exists, RxBks_exists
+    Character(4) :: ch_tmp
 
     !! Transmitters/Receivers
     Real(kind=8) :: thftrans,thitrans,phftrans,phitrans
@@ -93,23 +95,18 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,Transmitters_Comp,Receivers);
     If (NumIntType_t .eq. 'rf') Then
 
         !! Open the dat file and read the simulation parameters.
-        Open(41,File = 'inputs'//Env_sep//'InScattDirs.dat')
-        Do I=1,5
-            Read(41,*)
-        EndDo
-
-        NTr = NTrTheta*NTrPhi
+        Open(41,File = 'inputs'//Env_sep//'IncScattDirs.dat')
+        Read(41,*)
+        Read(41,*) ch_tmp,NTr
+        Read(41,*);Read(41,*);
         Allocate(Transmitters_Comp(NTr))
-        Ind = 1
-        DO I=1, NTrPhi
-            DO K=1, NTrTheta
-                Read(41,'(f9.4,f9.4)') theta, phi
-                Transmitters_Comp(Ind) = Dipole(theta,phi)
-                Ind = Ind + 1;
-            Enddo
+        DO Ind=1, NTr
+            Read(41,'(f9.4,f9.4)') theta, phi
+            Transmitters_Comp(Ind) = Dipole(theta,phi)
         Enddo
-
         Close(41);
+        call Unique1DArray_D(NTr,NTrTheta,Transmitters_Comp(:)%theta)
+        call Unique1DArray_D(NTr,NTrPhi,Transmitters_Comp(:)%phi)
         
     ! Spherical T_designs
     Elseif (NumIntType_t .eq. 'sd') Then
@@ -299,37 +296,53 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,Transmitters_Comp,Receivers);
     !! Rx ************************************************************************
     !!****************************************************************************
     If (NumIntType_r .eq. 'rf') Then
-
-        !! Open the dat file and read the simulation parameters.
-        Open(41,File = 'inputs'//Env_sep//'InScattDirs.dat')
-        NTr = NTrTheta*NTrPhi
-        Do I=1,NTr+11 ! 11 = 5+1+5
-            Read(41,*)
-        EndDo
-
-        NRx = NTr ;
-        !NRx_tot = NRx
-        NRx_tot = NRx+NTr; ! for this option, given the values I have right now from Mark I will just add the bkw directions
-        Allocate(Receivers(NRx_tot));
-        Ind = 1
-        DO I=1, NRxPhi
-            DO K=1, NRxTheta
-                Read(41,'(f9.4,f9.4)') theta, phi
-                Receivers(Ind) = Dipole(theta,phi)
-                Ind = Ind + 1;
-            Enddo
+        Open(41,File = 'inputs'//Env_sep//'IncScattDirs.dat')
+        Read(41,*);Read(41,*);
+        Read(41,*);Read(41,*);
+        DO Ind=1, NTr
+            Read(41,*);
         Enddo
-
-        ! Now add the NTr bkw directions for the NTr transmitters
-        DO I=1, NTr
-            ! bkw direction
+        Read(41,*);Read(41,*);
+        Read(41,*) ch_tmp,NRx
+        Read(41,*);Read(41,*);
+        NRx_tot = NRx + 2*NTr ! temporarily
+        Allocate(Receivers(NRx_tot))
+        DO Ind=1, NRx
+            Read(41,'(f9.4,f9.4)') theta, phi
+            Receivers(Ind) = Dipole(theta,phi)
+        Enddo
+        Close(41);
+        call Unique1DArray_D(NRx,NRxTheta,Receivers(1:NRx)%theta)
+        call Unique1DArray_D(NRx,NRxPhi,Receivers(1:NRx)%phi)
+        
+        !! add extra-scatterers needed to calculate Cext and Cbks for all
+        ! the available Transmitters/Incident directions
+        NRx_extra = 0;
+        Do I =1, NTr
+            ! Forward direction
+            theta = Transmitters_Comp(I)%Theta;
+            phi = Transmitters_Comp(I)%Phi;
+            call getTxRxIndex(NRx,Receivers(1:NRx),theta,phi,RxExt_exists);
+            if (RxExt_exists .eq. 0) then ! add corresponding Rx
+                NRx_extra = NRx_extra + 1;
+                Receivers(NRx+NRx_extra) = Dipole(theta,phi);
+            endif
+            ! backward direction
             theta = (180.-Transmitters_Comp(I)%Theta);
             phi = mod(Transmitters_Comp(I)%Phi+180.,360.);
-            Receivers(Ind) = Dipole(theta,phi);
-            Ind = Ind + 1;
+            call getTxRxIndex(NRx,Receivers(1:NRx),theta,phi,RxBks_exists);
+            if (RxBks_exists .eq. 0) then ! add corresponding Rx
+                NRx_extra = NRx_extra + 1;
+                Receivers(NRx+NRx_extra) = Dipole(theta,phi);
+            endif
         EndDo
 
-        Close(41);
+        NRx_tot = NRx + NRx_extra;
+        Allocate(Receivers_tmp(NRx_tot));
+        Receivers_tmp(1:NRx_tot) = Receivers(1:NRx_tot);
+        deallocate(Receivers); allocate(Receivers(NRx_tot));
+        Receivers(1:NRx_tot) = Receivers_tmp(1:NRx_tot);
+        deallocate(Receivers_tmp);
     Elseif (NumIntType_r .eq. 'sd') Then
 
         ! Spherical Design
