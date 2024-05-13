@@ -105,15 +105,16 @@ SUBROUTINE Compute_EFields_ST_MoM_InWork(nom_methode,Cells,Transmitters,Receiver
     endif
 
     if (rank == 0) then
-      Write (*,*) ''
-      Write (*,*) ''
-      Write (*,'(a)') '-------------------------------------------------------------------------------'
-      Write (*,'(a)') '-----Conventional MoM to Compute the Electric Fields Inside the Scatterer------'
-      Write (*,'(a)') '-------------------------------------------------------------------------------'
-      Write (*,*) ''
-
-      Write(10,*) ''
-      Write(10,'(a)') 'Conventional Method of Moments'
+      Write(*,*) ''
+      Write(*,*) ''
+      Write(*,'(a)') '-------------------------------------------------------------------------------'
+      Write(*,'(a)') '-----Conventional MoM to Compute the Electric Fields Inside the Scatterer------'
+      Write(*,'(a)') '-------------------------------------------------------------------------------'
+      Write(*,*) ''
+      if (debug_mode .eq. 1) then
+          Write(10,*) ''
+          Write(10,'(a)') 'Conventional Method of Moments'
+      endif
     endif
     Comp_time = 0
     call date_and_time(date_init,time_init,zone_init,values_init);
@@ -128,21 +129,23 @@ SUBROUTINE Compute_EFields_ST_MoM_InWork(nom_methode,Cells,Transmitters,Receiver
     Call Green_s_tr_total(Cells,Mat_Green)
 
     if (rank == 0) then
-    Write(*,*) ''
-    Write(*,'(a,i12)') 'Resolution of the original EM problem of size 3*Nbc =',3*Nbc
-    Write(*,*) ''
+        Write(*,*) ''
+        Write(*,'(a,i12)') 'Resolution of the original EM problem of size 3*Nbc =',3*Nbc
+        Write(*,*) ''
     endif
 
     !! MoM
     Call gesvx(Mat_Green,E_ref_incident,E_total,RCOND=RCOND)
 
     if (rank == 0) then
-    Write(*,'(a,e12.3)') 'RCOND of the Green matrix = ', RCOND
-    Write(*,*) ''
-    Write(*,*) ''
-    Write(10,*) ''
-    Write(10,'(a,e12.3)') 'RCOND of the Green matrix = ', RCOND
-    Write(10,*) ''
+        Write(*,'(a,e12.3)') 'RCOND of the Green matrix = ', RCOND
+        Write(*,*) ''
+        Write(*,*) ''
+        if (debug_mode .eq. 1) then
+            Write(10,*) ''
+            Write(10,'(a,e12.3)') 'RCOND of the Green matrix = ', RCOND
+            Write(10,*) ''
+        endif
     endif
 
     Deallocate(Mat_Green,E_ref_incident)

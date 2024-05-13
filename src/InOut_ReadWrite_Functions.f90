@@ -1215,7 +1215,7 @@ subroutine print_allocate(Nchar,allocate_str,type_str,size)
     character(5)  :: zone
     integer,dimension(8) :: values
     
-    if ((track_memory == 1) .and. (rank .lt. Njob_max)) then 
+    if ((debug_mode .eq. 1) .and. (track_memory == 1) .and. (rank .lt. Njob_max)) then 
         call date_and_time(date,time,zone,values);
         time_allocate = date(5:6)//'-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//':'//time(3:4)//':'//time(5:6);
     
