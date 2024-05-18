@@ -30,7 +30,7 @@ SUBROUTINE MPI_distribution_blocks(CBFM_Blocks,MPI_CBFM_Blocks)
         MPI_CBFM_Blocks(1,1) = Nblocks;
         MPI_CBFM_Blocks(1,2:2+Nblocks-1) = (/(ii, ii=1,Nblocks)/);
          
-    ElseIf (Nblocks .gt. nber_procs) Then 
+    ElseIf (Nblocks .ge. nber_procs) Then 
       Allocate(MPI_CBFM_Blocks(nber_procs,Nblocks/2)); ! TMP
       MPI_CBFM_Blocks = 0;
     
