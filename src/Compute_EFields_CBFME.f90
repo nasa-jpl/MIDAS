@@ -190,7 +190,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     testedBlks(3) = maxloc(ExtSizes(:),1);
     testedBlks(4) = minloc(ExtSizes(:),1);
     deallocate(ExtSizes);
-    if (vrb_cbfm_param == 1) then
+    if (vrb_cbfm_param == 1 .and. rank == 0) then
       Write(*,'(a)') ' '
       Write(*,'(a)') 'Characteristic blocks : [maxh, minh, maxNbc, minNbc]'
       Write(*,*) testedBlks(1:4)

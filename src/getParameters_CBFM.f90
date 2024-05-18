@@ -187,7 +187,7 @@
 
         res = abs(norm_Z-norm_Zspr)/norm_Z*100.
         perc_spr = (100.*nnz)/(9.*size**2.);
-        if (vrb == 1) then
+        if (vrb == 1 .and. rank ==0) then
             Write(*,*) 'nnz= ',nnz
             Write(*,'(a,ES7.1E1,a,f5.2,a,f7.2,a,ES7.1E1,a)') 'fSR = ',fct_SR_blk,' : with ',perc_spr,&
             ' % of Zii, NormZspr = ',norm_Zspr,'; Res = ',res,' %'
@@ -196,7 +196,7 @@
         jj = jj + 1;
     EndDo
 
-    if (vrb .eq. 1) then
+    if (vrb .eq. 1 .and. rank ==0) then
         Write(*,'(a)') ' '
     endif
 
@@ -238,7 +238,7 @@
         END SUBROUTINE getTransmitters_CBFM
     END INTERFACE
 
-    if (vrb .eq. 1) then
+    if (vrb .eq. 1 .and. rank ==0) then
         Write(*,'(a)') '-> Set Nipws :'
     endif
 

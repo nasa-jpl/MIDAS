@@ -1141,6 +1141,9 @@ END SUBROUTINE Write_jobs_sim_info
 subroutine system_mem_usage(valueRSS)
 
     use ifport !if on intel compiler
+    USE Initialization
+    USE common_variables
+    USE MPI
 
     ! You should know that : RSS is Resident Set Size (physically resident memory - 
     ! this is currently occupying space in the machine's physical memory),
@@ -1174,8 +1177,10 @@ subroutine system_mem_usage(valueRSS)
 
     inquire (file=filename,exist=ifxst)
     if (.not.ifxst) then
-      write (*,*) 'system file does not exist'
-      return
+        if (rank == 0) then 
+            write (*,*) 'system file does not exist'
+        endif
+        return
     endif
 
     open(unit=100, file=filename, action='read')

@@ -118,7 +118,9 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,Transmitters_Comp,Receivers);
         elseif (sd_type .eq. 3) then
             call ESSD_design_closer_order (Ninc_in,order,Npts);
         else
-            write(*,'(a)') 'invalid value of sd_type; set automatically to 2'
+            if (rank .eq. 0) then 
+                write(*,'(a)') 'invalid value of sd_type; set automatically to 2'
+            endif
             sd_type = 2;
             call ESD_design_closer_order (Ninc_in,order,Npts);
         endif
@@ -133,16 +135,7 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,Transmitters_Comp,Receivers);
             call ESSD_design_points(order,Npts,XYZstd);
         endif
 
-        !!! Test 2/11/2020
-        !Open(21,File = 'ESSTD_XYZ.dat');
-        !Do ii=1,Npts
-        !    Write(21,'(es25.16,a,es25.16,a,es25.16,a)')  XYZstd(1,ii),',', XYZstd(2,ii),',',XYZstd(3,ii),', &'
-        !EndDo
-        !Close(21);
-        !!!***********************************************************************************
-
-
-
+        
         Allocate(hypotxy(Npts));
         ! convert cartesian to spherical
         hypotxy = hypot(XYZstd(2,:),XYZstd(3,:)); !hypotxy = sqrt(abs(x).^2 + abs(y).^2)
