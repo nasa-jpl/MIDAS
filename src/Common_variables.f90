@@ -63,8 +63,8 @@ MODULE common_variables
     SAVE NumIntType_t, NumIntType_r
     
     ! Scattering Quantitites from Internal field
-    Integer :: QextIFDisp
-    SAVE QextIFDisp
+    Integer :: CextIntFields
+    SAVE CextIntFields
     
     ! In/Output files
     Integer :: wr_Sij,wr_Qij,EqSph,shape_list

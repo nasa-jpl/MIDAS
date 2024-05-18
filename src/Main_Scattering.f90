@@ -232,9 +232,6 @@ Program Main_Scattering
 
     !! for now for the MPI code I will not use the spherical shape option 'define & use Copies', I will see if interesting later
     define_use_Copies = 0;
-    ! If IFDisp == 1, we will keep and display the Extenction cross section
-    ! calculated from the Internal Field
-    QextIFDisp = 0;
 
     ! track memory use
     track_memory = 1;

@@ -378,6 +378,8 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     ! get Far fiel approximation params
     ! in practice, FFA = 1 for precipitation particles & FFA = 0 for asteroid simulation 
     read(11,*);
+    read(11,*);read(11,*),CextIntFields !default 0; If CextIntFields == 1, we will keep and display the Extenction cross section
+                                        ! calculated from the Internal Field
     read(11,*);read(11,*), FFA
     read(11,*);read(11,*), Rso
     read(11,*);

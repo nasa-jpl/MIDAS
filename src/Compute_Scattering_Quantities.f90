@@ -442,7 +442,7 @@
          
         
         ! IF DISPLAY Qext and Qabs from INTERNAL FIELD (Yurkin & Hoekstra)
-        if (QextIFDisp == 1) then 
+        if (CextIntFields == 1) then 
             Q_ext=0D0; Q_ext = Q_ext_intf;
             Qextintfst = ' (IntField)';
         else
@@ -974,7 +974,7 @@
         
         
         ! IF DISPLAY Qext and Qabs from INTERNAL FIELD (Yurkin & Hoekstra)
-        if (QextIFDisp == 1) then 
+        if (CextIntFields == 1) then 
             Q_ext=0D0; Q_ext = Q_ext_intf;
             Qextintfst = ' (IntField)';
         else
