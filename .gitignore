@@ -37,6 +37,7 @@ MIDAS.vfproj
 MIDAS.vfproj.ifenni.user
 /x64
 /outputs
+fort.*
 
 # Some common .gitignore configurations (keep even if na & uncomment if needed) #
 # Compiled source #
