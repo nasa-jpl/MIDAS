@@ -101,9 +101,11 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
             Write (*, '(a)') 'The total time to compute the internal electric field with 1L CBFM-E';
             Write (*, '(a,i2,a,i2,a,i2,a,i2,a)')'is ', Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),&
                 'min', Comp_time(4),'sec'
-            Write (10, '(a,i2,a,i2,a,i2,a,i2,a)') 'The total time to compute the internal electric field &
+            if (debug_mode .eq. 1) then
+                Write (10, '(a,i2,a,i2,a,i2,a,i2,a)') 'The total time to compute the internal electric field &
                 &with 1L CBFM-E is ',&
                 Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),'min', Comp_time(4),'sec'
+            endif
         endif
                        
         ! Compute scattered fields ************************************************** 
