@@ -46,8 +46,6 @@
         Real(kind=8), Dimension(:,:), allocatable :: fxy_2d,fy,fxy_g_2d,fy_g,fy_ext,fy_abs,fy_sca,fy_bks
         Real(kind=8), Dimension(:,:), allocatable :: Q_ext,Q_sca,Q_abs,Q_bks,g,Q_ext_intf,Q_abs_intf
         
-        wr_Sij = 0;
-        
         if (rank .eq. 0) then 
             Write (*,*) ''
             Write (*,*) '-------------------- Scattered Quantities (',NumIntType_t,'/',NumIntType_r,') --------------------' 
@@ -184,31 +182,7 @@
                         Svh_1d(kkr) = S_total(kkr,4*(kkt-1)+2); 
                         Shv_1d(kkr) = S_total(kkr,4*(kkt-1)+3); 
                         Shh_1d(kkr)= S_total(kkr,4*(kkt-1)+4);      
-                    EndDo 
-                    
-                    ! Comment here if PHDF5 S_files successful
-                    If (wr_Sij .eq. 1) Then
-                        If ((kkt .gt. (rank*NTr_wr_proc)) .and. (kkt .le. (rank+1)*NTr_wr_proc)) then 
-                          Write(kkt_st,'(a,i4.4)') 'kt',kkt;
-                          if (EqSph == 0) then
-                              file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//freq_unit//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
-                          else
-                              file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//freq_unit//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
-                          endif
-                          Open(unit=21+rank,File = file_name_s)    
-                          Write(21+rank,'(a,a)') '      theta       phi       Re(Svv)        Im(Svv)         Re(Svh)       Im(Shv) ',&
-                                          '        Re(Shv)       Im(Shv)        Re(Shh)        Im(Shh) '
-                          Do jj =1, NRxPhi  
-                              Do ii =1, NRxTheta 
-                                  Write(21+rank,'(f9.2,a,f9.2,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4)') &
-                                  Receivers(ii)%theta,';  ',Receivers(ii)%phi,';  ',Real(Svv_1d(ii)),';  ',Imag(Svv_1d(ii)),';  ',Real(Svh_1d(ii)),&
-                                ';  ',Imag(Svh_1d(ii)),';  ', Real(Shv_1d(ii)),';  ',Imag(Shv_1d(ii)),';  ',Real(Shh_1d(ii)),';  ',Imag(Shh_1d(ii))
-                              EndDo
-                          EndDo
-                          Close(21+rank);  
-                        endif  
-                    EndIf        
-          
+                    EndDo
                 else                                    
                     Do jj=1, NRxPhi                   
                         Do ii=1, NRxTheta                        
@@ -218,30 +192,7 @@
                             Shv_2d(ii,jj) = S_total(kkr,4*(kkt-1)+3); 
                             Shh_2d(ii,jj) = S_total(kkr,4*(kkt-1)+4);    
                         EndDo        
-                    EndDo 
-                
-                    If (wr_Sij .eq. 1) Then 
-                        If ((kkt .gt. (rank*NTr_wr_proc)) .and. (kkt .le. (rank+1)*NTr_wr_proc)) then 
-                        Write(kkt_st,'(a,i4.4)') 'kt',kkt;
-                        if (EqSph == 0) then
-                            file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//freq_unit//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
-                        else
-                            file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//freq_unit//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
-                        endif
-                        Open(unit=21+rank,File = file_name_s)    
-                        Write(21+rank,'(a,a)') '      theta       phi       Re(Svv)        Im(Svv)         Re(Svh)       Im(Shv) ',&
-                                        '        Re(Shv)       Im(Shv)        Re(Shh)        Im(Shh) '
-                        Do jj =1, NRxPhi  
-                            Do ii =1, NRxTheta 
-                                Write(21+rank,'(f9.2,a,f9.2,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4)') &
-                                RecThetasVals(ii),';  ',RecPhisVals(jj),';  ',Real(Svv_2d(ii,jj)),';  ',Imag(Svv_2d(ii,jj)),';  ',Real(Svh_2d(ii,jj)),&
-                                    ';  ',Imag(Svh_2d(ii,jj)),';  ', Real(Shv_2d(ii,jj)),';  ',Imag(Shv_2d(ii,jj)),';  ',&
-                                    Real(Shh_2d(ii,jj)),';  ',Imag(Shh_2d(ii,jj))
-                            EndDo
-                        EndDo
-                        Close(21+rank);   
-                        EndIf
-                    EndIf     
+                    EndDo
                 EndIf
                     
                 ! Computing The scattering coefficients 
@@ -619,9 +570,7 @@
             Write(*,'(a,es12.4)') '- Q_bks  = ', Q_bks_av
             Write(*,'(a,es12.4)') '- g(1)   = ', g_av
             Write(*,'(a,es12.4)') ' ' 
-        EndIf        
-
-         wr_Sij = 1;
+        EndIf 
     End Subroutine Compute_Scattering_Quantities_1
     
     
@@ -776,27 +725,6 @@
                     Shv_1d(kkr) = S_total(kkr,4*(kkt-1)+3); 
                     Shh_1d(kkr)= S_total(kkr,4*(kkt-1)+4);      
                 EndDo 
-            
-                If (wr_Sij .eq. 1) Then
-                    If ((kkt .gt. (rank*NTr_wr_proc)) .and. (kkt .le. (rank+1)*NTr_wr_proc)) then 
-                      Write(kkt_st,'(a,i4.4)') 'kt',kkt;
-                      if (EqSph == 0) then
-                          file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//trim(freq_unit)//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
-                      else
-                          file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//trim(freq_unit)//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
-                      endif
-                      
-                      Open(unit=21+rank,File = file_name_s)    
-                      Write(21+rank,'(a,a)') '      theta       phi       Re(Svv)        Im(Svv)         Re(Svh)       Im(Shv) ',&
-                                      '        Re(Shv)       Im(Shv)        Re(Shh)        Im(Shh) '
-                      Do ii =1, NRx 
-                          Write(21+rank,'(f9.2,a,f9.2,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4)') &
-                          Receivers(ii)%theta,';  ',Receivers(ii)%phi,';  ',Real(Svv_1d(ii)),';  ',Imag(Svv_1d(ii)),';  ',Real(Svh_1d(ii)),&
-                            ';  ',Imag(Svh_1d(ii)),';  ', Real(Shv_1d(ii)),';  ',Imag(Shv_1d(ii)),';  ',Real(Shh_1d(ii)),';  ',Imag(Shh_1d(ii))
-                      EndDo
-                      Close(21+rank);    
-                    endif
-                EndIf       
             Else
                 Do jj=1, NRxPhi                   
                     Do ii=1, NRxTheta                        
@@ -807,27 +735,6 @@
                         Shh_2d(ii,jj) = S_total(kkr,4*(kkt-1)+4);    
                     EndDo        
                 EndDo 
-                
-                If (wr_Sij .eq. 1) Then 
-                    Write(kkt_st,'(a,i4.4)') 'kt',kkt;
-                    if (EqSph == 0) then
-                        file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//trim(freq_unit)//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
-                    else
-                        file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//trim(freq_unit)//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
-                    endif
-                    Open(unit=20+id,File = file_name_s)    
-                    Write(20+id,'(a,a)') '      theta       phi       Re(Svv)        Im(Svv)         Re(Svh)       Im(Shv) ',&
-                                    '        Re(Shv)       Im(Shv)        Re(Shh)        Im(Shh) '
-                    Do jj =1, NRxPhi  
-                        Do ii =1, NRxTheta 
-                            Write(20+id,'(f9.2,a,f9.2,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4)') &
-                            RecThetasVals(ii),';  ',RecPhisVals(jj),';  ',Real(Svv_2d(ii,jj)),';  ',Imag(Svv_2d(ii,jj)),';  ',Real(Svh_2d(ii,jj)),&
-                                ';  ',Imag(Svh_2d(ii,jj)),';  ', Real(Shv_2d(ii,jj)),';  ',Imag(Shv_2d(ii,jj)),';  ',&
-                                Real(Shh_2d(ii,jj)),';  ',Imag(Shh_2d(ii,jj))
-                        EndDo
-                    EndDo
-                    Close(20+id);    
-                EndIf    
             EndIf
                          
             ! Computing The scattering coefficients 
