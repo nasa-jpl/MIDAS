@@ -218,7 +218,7 @@
                                                                                                           
                             Write(kkt_st,'(a,i4.4)') 'kt',kkt_abs;
                             if (EqSph == 0) then
-                                file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableInWork_'//stFreq//trim(freq_unit)//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
+                                file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//trim(freq_unit)//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
                             else
                                 file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//trim(freq_unit)//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
                             endif
@@ -227,8 +227,8 @@
                             else
                                 Open(unit=21+rank,File = file_name_s);
                                 Write(21+rank, '(a,f10.4,a,f10.4,a,f10.4)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi,'; BETA =', Beta
-                                Write(21+rank,'(a,a)') '      theta       phi      Re(Svv)        Im(Svv)         Re(Svh)       Im(Svh) ',&
-                                            '        Re(Shv)       Im(Shv)        Re(Shh)        Im(Shh) '
+                                Write(21+rank,'(a,a)') '    theta       phi    Re(Svv)      Im(Svv)     Re(Svh)     Im(Svh) ',&
+                                            '    Re(Shv)     Im(Shv)    Re(Shh)      Im(Shh) '
                             endif
                                 
                             Write(21+rank,'(f10.4,f10.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4)') &
