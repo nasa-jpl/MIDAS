@@ -109,9 +109,11 @@ SUBROUTINE Compute_EFields_ST_MoM_init(Cells,Transmitters,Receivers,S_total,C_ex
     Write (*, '(a)') 'The total time to compute the internal electric field with Single-Task MoM';
     Write (*, '(a,i2,a,i2,a,i2,a,i2,a)')'is ', Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),&
         'min', Comp_time(4),'sec'
-    Write (10, '(a,i2,a,i2,a,i2,a,i2,a)') 'The total time to compute the internal electric field &
+    if (debug_mode .eq. 1) then
+        Write (10, '(a,i2,a,i2,a,i2,a,i2,a)') 'The total time to compute the internal electric field &
         &with Single-Task MoM is ',&
         Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),'min', Comp_time(4),'sec'
+    endif
     endif
 
     ! Write Etot inside the scatterer
