@@ -116,15 +116,17 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
         else  
             ! Scattering matrices (if scattered fields == 0)
             Allocate(S_total(NRx_tot,4*NTr),C_ext(NTr),C_abs((NTr)));
-            !Call Compute_Scattering_Matrices('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total); 
-            !Call Write_txt_Sfiles('CBFM-E  ',Transmitters,Receivers,S_total);
-	        !Call Compute_Scattering_Matrices_InWork('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
-            Call Compute_Scattering_Matrices_Check('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
+            Call Compute_Scattering_Matrices('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
+            ! test options *******************************************************************************************************
+            !Call Compute_Scattering_Matrices_init('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total); 
             ! uncomment here if Writing Sfiles in PHDF5 successful
+            !Call Write_txt_Sfiles('CBFM-E  ',Transmitters,Receivers,S_total);
+            !Call Compute_Scattering_Matrices_Check('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
             ! here S files refer to Smatrices or scattering fields depending on what was used above (Compute_Scattering_Matrices or Compute_Scattered_Fields)
             If (wr_Sij .eq. 1) Then
                 !Call Write_Sfiles('CBFM-E  ',Transmitters,Receivers,S_total)
             EndIf       
+            ! test options *******************************************************************************************************
             
             ! Scattering cross sections and efficiency factors 
             Call Compute_ExtAbsCsec_fromIntField('CBFM-E  ',Cells,E_total,Transmitters,C_ext,C_abs);

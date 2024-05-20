@@ -256,9 +256,8 @@
                                             '        Re(Shv)       Im(Shv)        Re(Shh)        Im(Shh) '
                             endif
                                 
-                            Write(21+rank,'(f10.4,a,f10.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4)') &
-                            theta_capteur,';  ',phi_capteur,';  ',Real(Vv_pol),';  ',Imag(Vv_pol),';  ',Real(Vh_pol),&
-                              ';  ',Imag(Vh_pol),';  ', Real(Hv_pol),';  ',Imag(Hv_pol),';  ',Real(Hh_pol),';  ',Imag(Hh_pol)
+                            Write(21+rank,'(f10.4,f10.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4)') &
+                            theta_capteur,phi_capteur,Real(Vv_pol),Imag(Vv_pol),Real(Vh_pol),Imag(Vh_pol), Real(Hv_pol),Imag(Hv_pol),Real(Hh_pol),Imag(Hh_pol)
                             
                             Close(21+rank);
                       Endif
