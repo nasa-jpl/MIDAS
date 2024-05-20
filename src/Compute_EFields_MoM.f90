@@ -180,14 +180,18 @@ SUBROUTINE Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs)
             Write(*,'(a)') 'SINGULAR MATRIX';
         endif            
     elseif (3*Nbc .gt. 0) then 
-        ! Get Reciprocal condition number RCOND of Zc
-        !CALL PZGECON( 'I', 3*Nbc,ZLoc,IA,JA,DESCA, ANORM, RCOND,WORK,LWORK,IWORK,LIWORK,INFO);
-        !RCOND = max(RCOND,EPSMCH);
-        !ERRBD = EPSMCH/ RCOND
+        if (Nbc .le. save_Eint_Nmax) then 
+            ! Get Reciprocal condition number RCOND of Zc
+            CALL PZGECON( 'I', 3*Nbc,ZLoc,IA,JA,DESCA, ANORM, RCOND,WORK,LWORK,IWORK,LIWORK,INFO);
+            RCOND = max(RCOND,EPSMCH);
+            ERRBD = EPSMCH/ RCOND
+        endif
         if (rank == 0) then 
           Write(*,'(a,es10.3)') '--> ANORM(ZLoc) = ',ANORM  
-          !Write(*,'(a,es12.5)') '--> RCOND = ',RCOND
-          !Write(*,'(a,es12.5,a,es12.5)') '--> With EPSMCH =',EPSMCH,'; ERRBD =',ERRBD
+          if (Nbc .le. save_Eint_Nmax) then 
+              Write(*,'(a,es12.5)') '--> RCOND = ',RCOND
+              Write(*,'(a,es12.5,a,es12.5)') '--> With EPSMCH =',EPSMCH,'; ERRBD =',ERRBD
+          endif
         endif
     endif  
     
