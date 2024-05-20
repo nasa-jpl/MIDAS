@@ -557,8 +557,8 @@ SUBROUTINE Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,o
             !    ';',Cells(ii)%Zc,';',Cells(ii)%Sc,';',Cells(ii)%num_block,';',Cells(ii)%num_diel,';',&
             !    real(Cells(ii)%m_cell),' + j*',imag(Cells(ii)%m_cell),';', real(Cells(ii)%Eps_cell),' + j*',imag(Cells(ii)%Eps_cell);
         
-            Write(14,'(f12.6,a,f12.6,a,f12.6,a,f12.6,a,i8,a,i6)') Cells(ii)%Xc,';',Cells(ii)%Yc, &
-                ';',Cells(ii)%Zc,';',Cells(ii)%Sc,';',Cells(ii)%n_diel,';',Cells(ii)%n_block
+            Write(14,'(f12.6,f12.6,f12.6,f12.6,i8,i6)') Cells(ii)%Xc,Cells(ii)%Yc, &
+                Cells(ii)%Zc,Cells(ii)%Sc,Cells(ii)%n_diel,Cells(ii)%n_block
         EndDo
         Close(14);
     endif
