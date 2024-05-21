@@ -678,11 +678,12 @@ Program Main_Scattering
             endif
             !Wavelength inside scatterer
             p = SimScatterer%lambda_min*10**lamb_mag
-            Write(10,'(f8.3)',advance='no') p
+            
             !Size of cell per scatterer (m/mm/um)
             Sc = SimScatterer%Sc*10**lamb_mag
             
             if (debug_mode ==1) then 
+                Write(10,'(f8.3)',advance='no') p
                 Write(10,'(f8.3)',advance='no') Sc
                 Write(10,*) ''
                 Write(10,*) ''
