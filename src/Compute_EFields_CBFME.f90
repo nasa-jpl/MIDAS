@@ -271,7 +271,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     ! Threshold for the generation of the CBFs
     Threshold_CBFM = 1e-3;
     if (rank .eq. 0) then 
-        write(11,'(a,ES7.1E1)') ' -- > Threshold_CBFM = ',Threshold_CBFM
+        write(*,'(a,ES7.1E1)') ' -- > Threshold_CBFM = ',Threshold_CBFM
     endif
     
     ! for distr_ipws = 1, try [91,190,231,325,496,703,861]; for distr_ipws=3 try among 289,366,482,579,723,842,926; for distr_ipws=4 try among [110,194,230,350,434,590,770,974,1202]
