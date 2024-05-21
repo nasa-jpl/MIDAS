@@ -956,7 +956,9 @@ Program Main_Scattering
         !! START THE COMPUTING OF THE ELECTRIC FIELDS DEPENDING ON THE FREQUENCY
         Do ii=1,Nfreq
             if (rank == 0) then
-                Write(10,*) ''; Write(10,*) ''
+                if (debug_mode ==1) then 
+                    Write(10,*) ''; Write(10,*) ''
+                endif
                 Write(*,*) '';  Write(*,*) '';
             endif
             !! here we define the wavelength of the current experience
