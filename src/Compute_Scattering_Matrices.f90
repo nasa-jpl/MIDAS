@@ -132,6 +132,7 @@
                 Beta =  beta_init_Pol + (num_pol-1)*step_beta
                 
                 ! E_v_pol and E_h_pol (x, y and z) (the scattered field resulting from a polarized incident wave is the linear sum of the solution for Ev and Eh)
+                ! the beta here is the rotation of the incident direction polarization (same as scattered polar rotation)
                 E_v_pol = cos(Beta*Pi/180.)*E_v + sin(Beta*Pi/180.)*E_h
                 E_h_pol = -sin(Beta*Pi/180.)*E_v + cos(Beta*Pi/180.)*E_h
                 
