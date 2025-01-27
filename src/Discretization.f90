@@ -1,5 +1,8 @@
 SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
     
+    !! update on 1/27/2025: Now Cells.dat as input have X,Y,Z in m, mm or um depending on the frequency range, 
+    ! so we updated the use of these coordiantes after calling ReadCellsFile 
+    
     USE Initialization
     USE common_variables
     USE iso_fortran_env
@@ -73,6 +76,7 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
     !! FIRST THE EASIEST CONFIG 
     if (SimScatterer%ty_shape_in == 'cells') then 
         ! simply read Cells.dat to fill in the Intent(out) Cells 
+        ! Update 1/27/2025: Cells.dat has X,Y,Z in m, mm or um depending on the simulation frequency 
         Call Read_CellsFile(Nbc,Cells_xyz_Sc,Cells_m_ind); 
        
         Allocate(Cells(Nbc));           
@@ -82,11 +86,11 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
         
         Do ii = 1,Nbc
             Cells(ii)%n_cell = ii
-            Cells(ii)%Xc = Cells_xyz_Sc(ii,1)
-            Cells(ii)%Yc = Cells_xyz_Sc(ii,2)
-            Cells(ii)%Zc = Cells_xyz_Sc(ii,3)
+            Cells(ii)%Xc = 10**(-lamb_mag)*Cells_xyz_Sc(ii,1)
+            Cells(ii)%Yc = 10**(-lamb_mag)*Cells_xyz_Sc(ii,2)
+            Cells(ii)%Zc = 10**(-lamb_mag)*Cells_xyz_Sc(ii,3)
             
-            Cells(ii)%Sc = Cells_xyz_Sc(ii,4)     
+            Cells(ii)%Sc = 10**(-lamb_mag)*Cells_xyz_Sc(ii,4)     
             Cells(ii)%n_diel = Cells_m_ind(ii)         
         EndDo  
         
