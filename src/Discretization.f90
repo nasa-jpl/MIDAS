@@ -86,11 +86,11 @@ SUBROUTINE Discretization(SimScatterer,Cells,Ncells_SphDomains)
         
         Do ii = 1,Nbc
             Cells(ii)%n_cell = ii
-            Cells(ii)%Xc = 10**(-lamb_mag)*Cells_xyz_Sc(ii,1)
-            Cells(ii)%Yc = 10**(-lamb_mag)*Cells_xyz_Sc(ii,2)
-            Cells(ii)%Zc = 10**(-lamb_mag)*Cells_xyz_Sc(ii,3)
+            Cells(ii)%Xc = 10.**(-lamb_mag)*Cells_xyz_Sc(ii,1)
+            Cells(ii)%Yc = 10.**(-lamb_mag)*Cells_xyz_Sc(ii,2)
+            Cells(ii)%Zc = 10.**(-lamb_mag)*Cells_xyz_Sc(ii,3)
             
-            Cells(ii)%Sc = 10**(-lamb_mag)*Cells_xyz_Sc(ii,4)     
+            Cells(ii)%Sc = 10.**(-lamb_mag)*Cells_xyz_Sc(ii,4)     
             Cells(ii)%n_diel = Cells_m_ind(ii)         
         EndDo  
         
