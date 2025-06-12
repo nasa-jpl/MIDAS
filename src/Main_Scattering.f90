@@ -466,8 +466,7 @@ Program Main_Scattering
                 endif
             EndDo
         EndDo
-        if ((trim(dielcomp_option) == 'fromonlymfile') .OR. &
-            ((trim(dielcomp_option) == 'fromshapefile') .AND. (Ndiel .eq.1))) then
+        if ((trim(dielcomp_option) == 'fromonlymfile') .OR. (Ndiel .eq.1)) then
             homogs = 1;
         else
             homogs = 0;

@@ -230,5 +230,45 @@ CONTAINS
       a    = b
       b    = Temp
    END SUBROUTINE  Swap
+   
+   subroutine split_line(str, tokens, count)
+      character(len=*), intent(in) :: str
+      character(len=32), dimension(:), allocatable, intent(out) :: tokens
+      integer, intent(out) :: count
+      character(len=32) :: token
+      integer :: i, istart, iend, len_str
+      character(len=32), allocatable :: temp(:)
+
+      len_str = len_trim(str)
+      count = 0
+      istart = 1
+
+      ! Allocate a large enough array initially
+      allocate(tokens(100))
+
+      do while (istart <= len_str)
+        ! Skip spaces
+        do while (istart <= len_str .and. str(istart:istart) == ' ')
+          istart = istart + 1
+        end do
+        if (istart > len_str) exit
+
+        ! Find end of word
+        iend = istart
+        do while (iend <= len_str .and. str(iend:iend) /= ' ')
+          iend = iend + 1
+        end do
+
+        count = count + 1
+        tokens(count) = str(istart:iend-1)
+        istart = iend + 1
+      end do
+
+      ! Resize array safely using a temporary allocatable
+      allocate(temp(count))
+      temp = tokens(1:count)
+      call move_alloc(temp, tokens)
+    end subroutine split_line
+
 
 END MODULE DiverseUtil

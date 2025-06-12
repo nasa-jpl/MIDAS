@@ -248,8 +248,11 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
             diel_comp_perc(ii) = p; 
         Enddo
     elseif (trim(dielcomp_option) == 'fromdielcompositionfile') then
-        Allocate(m_file_name(1),diel_comp_perc(1)); ! Since each of the Nbc cell has a different refractive index here, diel_comp_perc is not releavant here 
-        m_file_name(1) = 'inputs/dielcomposition.dat'; ! this file contains the refractive index per cell        
+        Allocate(m_file_name(1)) 
+        m_file_name(1) = 'inputs/dielcomposition.dat'; ! this file contains the refractive index per cell    
+    elseif (trim(dielcomp_option) == 'fromdieltable') then ! This option is useful for a number of dielectric larger than 3 and/or are dependent on frequency  
+        Allocate(m_file_name(1)) 
+        m_file_name(1) = 'inputs'//Env_sep//'dielectric_table.txt'; 
     else
         if (rank == 0) then 
             Write(*,'(a,a,a)')'Error : ', dielcomp_option, ' is an unknown dielectric decomposition option !!'
@@ -258,7 +261,7 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
         go to 40
     endif    
         
-    if (((trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'fromshapefile')) &
+    if (((trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'fromshapefile') .OR. (trim(dielcomp_option) == 'fromdieltable')) &
         .AND. (SimScatterer%type_s .ne. 2)) then
         if (rank == 0) then
             Write(*,'(a,a)') 'Error : The requested dielectric decomposition option can only be used with type_scatterer = 2';
