@@ -250,7 +250,7 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     elseif (trim(dielcomp_option) == 'fromdielcompositionfile') then
         Allocate(m_file_name(1)) 
         m_file_name(1) = 'inputs/dielcomposition.dat'; ! this file contains the refractive index per cell    
-    elseif (trim(dielcomp_option) == 'fromdieltable') then ! This option is useful for a number of dielectric larger than 3 and/or are dependent on frequency  
+    elseif trim(adjustl(dielcomp_option) == 'fromdieltable') then ! This option is useful for a number of dielectric larger than 3 and/or are dependent on frequency  
         Allocate(m_file_name(1)) 
         m_file_name(1) = 'inputs'//Env_sep//'dielectric_table.txt'; 
     else
