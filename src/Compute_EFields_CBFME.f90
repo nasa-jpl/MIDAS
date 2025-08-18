@@ -1,6 +1,6 @@
 SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks,Transmitters,K_patchs,C_job_patchs,E_total)
-    ! Modifs 12/10 : check RCOND and ERROR BOUND using SCALAPACK PZGECON; a commented extra-lines of code can be used to do the same with the expert
-    ! drive PZGECONX
+    ! Modifs 12/10/2023 : check RCOND and ERROR BOUND using SCALAPACK PZGECON; a commented extra-lines of code can be used to do the same with the expert
+    ! Modif 8/16/2025 : adding CBFM threshold and Nipws selection as function of the dielectric properties 
     USE Initialization
     USE common_variables
     USE lapack95
@@ -53,7 +53,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     !! LOCAL
     Integer :: I,id,nthreads,p,d,kk,ii,jj,dd,pp,klu_cel,klu,CBFs_for_all_freqs
     Integer :: size,curs_lig_E,M,N,K,Diag_Representation,Nbc_b,Ncps
-    Integer :: Nbc_b_ext, K_total,tdis,ii1,ii2
+    Integer :: Nbc_b_ext, K_total,tdis,ii1,ii2,m_max_relative
     Integer :: size1,size3,NbreLig_mat1,NbreLig_mat3,NbreCol_mat1,NbreCol_mat3
     Integer :: curseurf,BlockSize,num_cel_fichier,num_fichier
     Integer :: nb,mtype,iparm3,pack_size,ii_beg,ii_end,jj_beg,jj_end,fu_ii,fu_jj,pack_ii,loc_ii,loc_jj
@@ -93,7 +93,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     Integer, Dimension(:), allocatable :: nb_elements_rec,deplts,vect_tmp
     type (Dipole), Dimension(:),allocatable :: Transmitters_CBFM
     type(Cell), Dimension(:), allocatable :: Cells_Block,Cells_Block_ii,Cells_Block_jj
-    Real(kind=8), Dimension(:), allocatable :: spr_perc_blocks, fSR_blocks, S, WW
+    Real(kind=8), Dimension(:), allocatable :: spr_perc_blocks, fSR_blocks, S, WW,vals
     Real(kind=8),Dimension(:,:),allocatable :: abs_Zpatch_e
     COMPLEX(real64), Dimension(:),allocatable :: Zpatch_e_spr,Vect,VectProduit,Zred_pack
     COMPLEX(real64), Dimension(:,:),allocatable :: Zpatch_e, EREFpatch_e, Epatch_e, Cpatch_e
@@ -268,8 +268,10 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         Write(*,'(a,ES7.1E1,a,f5.2)') ' -- > fSR for CBFM = ',fct_SR, ' -> spr % = ',spr_perc
     EndIf
     
-    ! Threshold for the generation of the CBFs
-    Threshold_CBFM = 1e-3;
+    ! Threshold for the generation of the CBFs, decided as function of max(|m|)
+    vals = abs(Cells(1:Nbc)%m_n) 
+    m_max_relative = ceiling(maxval(vals)) - 2. ! we will add this difference to the power of the threshold
+    Threshold_CBFM = 10.**(-3-m_max_relative)
     if (rank .eq. 0) then 
         write(*,'(a,ES7.1E1)') ' -- > Threshold_CBFM = ',Threshold_CBFM
     endif
