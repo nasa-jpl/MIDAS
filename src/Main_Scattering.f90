@@ -29,7 +29,7 @@ Program Main_Scattering
     ! Database code
     Integer :: eastat,numlines,NbSimulations,SimShape
     Real(kind=8) :: MaxDim, dim_ref, h_LargePart
-    CHARACTER(60) ::  shapefile_path
+    CHARACTER(60) ::  shapefile_path,suffix_str
     CHARACTER(300) ,allocatable::ShapesDirNamesParams(:)
     CHARACTER(2)  :: type_str
     character(240) :: inputline
@@ -42,7 +42,7 @@ Program Main_Scattering
 
     ! others
     Integer :: a,ii,jj,rr,Ind,I,K,m,ios,N_vals_m,old_Nbc,error_read,error_div
-    Integer :: tdistr_sca,Nval_eps_r,Nval_eps_i
+    Integer :: tdistr_sca,Nval_eps_r,Nval_eps_i,ii1,ii2
     Integer :: N,NBlks_exp,m_read_opt,err,Type_Par,pr_d,d,selected,num_bin,Nbins
     Real(kind=8) :: Volume,q, rp, ip,mrp , mip, p, Sc,Dp,h,ap,theta_dipole, phi_dipole
     Real(kind=8) :: x_l, y_l, z_l, xmax,xeq,xmax_m,xeq_m
@@ -257,7 +257,7 @@ Program Main_Scattering
 
     !! Initialization ************************************************************************************************************
     !! ***************************************************************************************************************************
-    If (shape_list .eq. 1) then
+    If (shape_list .ge. 1) then
         ! First all the jobs will wait until job 0 check the existence and create if needed the SimShape.dat file
         if (rank == 0) then
             inquire(file='inputs/SimShapes.dat', exist=fileExists)
@@ -312,7 +312,7 @@ Program Main_Scattering
 
     ! HERE START SCATTERER
     Do num_sim=1, NbSimulations
-        If (shape_list .eq. 1) then
+        If (shape_list .ge. 1) then
             ShapeFilePathParam = ShapesDirNamesParams(num_sim)
             ii = index(ShapeFilePathParam,':')
             if (ii == 0) then
@@ -368,13 +368,21 @@ Program Main_Scattering
             endif
         Endif
         ! Scatterer Output Folder
-        If (shape_list .eq. 1) then
+        If (shape_list .ge. 1) then
+            If (shape_list .eq. 2) then
+                ! if shape_list == 2, the sim folder name will include whatever suffix the shapefile has in its pathname
+                ii1 = index(ShapeFilePath,'shape', BACK=.TRUE.) 
+                ii2 = index(ShapeFilePath,'.dat') 
+                suffix_str = ShapeFilePath(ii1+5:ii2-1)
+            else
+                suffix_str =''
+            endif            
             if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then
-                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ap='//trim(ap_str)//lamb_unit;
+                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//trim(suffix_str)//'-ap='//trim(ap_str)//lamb_unit;
             elseif (SimScatterer%type_s == 3) then
-                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ac='//trim(ac_str)//lamb_unit//'-lc='//trim(lc_str)//lamb_unit;
+                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//trim(suffix_str)//'-ac='//trim(ac_str)//lamb_unit//'-lc='//trim(lc_str)//lamb_unit;
             elseif (SimScatterer%type_s == 1) then
-                SimOutfld_name = trim(Outfld_name)//Env_sep//'Sphere-ap='//trim(ap_str)//lamb_unit;
+                SimOutfld_name = trim(Outfld_name)//Env_sep//'Sphere'//trim(suffix_str)//'-ap='//trim(ap_str)//lamb_unit;
             endif
         else
             if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then
