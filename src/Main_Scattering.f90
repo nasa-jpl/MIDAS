@@ -41,7 +41,7 @@ Program Main_Scattering
     Integer, Dimension(:), allocatable :: all_NBlocks
 
     ! others
-    Integer :: a,ii,jj,rr,Ind,I,K,m,ios,N_vals_m,Sim,old_Nbc,error_read,error_div
+    Integer :: a,ii,jj,rr,Ind,I,K,m,ios,N_vals_m,old_Nbc,error_read,error_div
     Integer :: tdistr_sca,Nval_eps_r,Nval_eps_i
     Integer :: N,NBlks_exp,m_read_opt,err,Type_Par,pr_d,d,selected,num_bin,Nbins
     Real(kind=8) :: Volume,q, rp, ip,mrp , mip, p, Sc,Dp,h,ap,theta_dipole, phi_dipole
@@ -311,9 +311,9 @@ Program Main_Scattering
     endif
 
     ! HERE START SCATTERER
-    Do Sim=1, NbSimulations
+    Do num_sim=1, NbSimulations
         If (shape_list .eq. 1) then
-            ShapeFilePathParam = ShapesDirNamesParams(Sim)
+            ShapeFilePathParam = ShapesDirNamesParams(num_sim)
             ii = index(ShapeFilePathParam,':')
             if (ii == 0) then
                 if (rank == 0) then
@@ -356,7 +356,7 @@ Program Main_Scattering
             if (rank == 0) Then
                 Write(*,'(a)')' '
                 Write(*,'(a)')  '+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++';
-                Write(*,'(a,i5,a,i5,a)') '++ SIM ',Sim,' OUT OF ',NbSimulations,' ++++++++++++++++++++++++++++++++';
+                Write(*,'(a,i5,a,i5,a)') '++ SIM ',num_sim,' OUT OF ',NbSimulations,' ++++++++++++++++++++++++++++++++';
                 Write(*,'(a)') '+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++';
                 Write(*,'(a)')' '
             endif

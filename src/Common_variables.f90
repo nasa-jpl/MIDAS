@@ -2,10 +2,10 @@ MODULE common_variables
         
     ! EM wave
     Real(kind=8) :: Freq_w,Omega_w,lambda_w,k_0
-    Integer :: Nfreq,num_freq,freq_mag,lamb_mag
+    Integer :: Nfreq,num_freq,num_sim,freq_mag,lamb_mag
     Character(3) :: freq_unit
     Character(2) :: lamb_unit
-    SAVE Nfreq, num_freq, Freq_w, freq_unit, freq_mag 
+    SAVE Nfreq, num_freq, num_sim, Freq_w, freq_unit, freq_mag 
     SAVE Omega_w, lambda_w, lamb_unit, lamb_mag, k_0
     
     ! Transmitters/Receivers

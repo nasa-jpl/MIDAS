@@ -175,266 +175,269 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     ! Added 6/22 to force the code to calculate CBFs for all freqs : need to be improved later (input by user maybe, or determined % frequency range/step)
     CBFs_for_all_freqs = 1
     if ((CBFs_for_all_freqs .eq. 1) .OR. (num_freq .eq. 1)) then
-    if (num_freq .gt. 1) then 
-      deallocate(K_patchs,C_job_patchs);
-    endif
-    Allocate(K_patchs(MyNBlocks))
-    !! Here we start by defining the adequate fSR
-    !! here we define the tested blocks for which we will determine adequate fSR and Nipws.
-    !! The calculated fSR and Nipws for these blocks will be then applied to all the other blocks
-    Ntests = 4; Allocate(testedBlks(Ntests))
-    testedBlks(1) = maxloc(CBFM_Blocks(:)%BSphCont(4),1);
-    testedBlks(2) = minloc(CBFM_Blocks(:)%BSphCont(4),1);
-    Allocate(ExtSizes(NBlocks));
-    ExtSizes(:) = CBFM_Blocks(:)%Nbc_b + CBFM_Blocks(:)%Nbc_ext
-    testedBlks(3) = maxloc(ExtSizes(:),1);
-    testedBlks(4) = minloc(ExtSizes(:),1);
-    deallocate(ExtSizes);
-    if (vrb_cbfm_param == 1 .and. rank == 0) then
-      Write(*,'(a)') ' '
-      Write(*,'(a)') 'Characteristic blocks : [maxh, minh, maxNbc, minNbc]'
-      Write(*,*) testedBlks(1:4)
-      Write(*,'(a)') ' '
-    endif
-
-    call MPI_BARRIER(MPI_COMM_WORLD,code);
-    ! SET fSR FOR EACH BLOCK
-    Allocate(fSR_blocks(MyNBlocks),nnz_blocks(MyNBlocks),spr_perc_blocks(MyNBlocks));
-    fSR_blocks = 0.;
-    nnz_blocks = 0;
-    time_calcul_N1 = 0
-    call date_and_time(date_init_N1,time_init_N1,zone_init_N1,values_init_N1);
-    If ((SR == 1) .and. (SMWA .ne. 1)) Then
-        if (rank == 0 .and. debug_mode == 1) then
-            Write(*,'(a)') ''; Write(*,'(a)') '-> Set fSR :'
+        if (num_freq .gt. 1 .OR. num_sim .gt. 1) then 
+          deallocate(K_patchs);
         endif
-        ! To ensure a higher accuracy, let us test all the blocks, I do not think that this has
-        ! a huge impact on the cpu time but strongly helps to be totally sure about fSR and spr_perc
-        do ii_job =1,MyNBlocks
-            ii = MPI_CBFM_Blocks(rank+1,1+ii_job);
-            Nbc_b = CBFM_Blocks(ii)%Nbc_b
-            Nbc_b_ext = CBFM_Blocks(ii)%Nbc_ext
-            size = Nbc_b + Nbc_b_ext
-            Allocate(Cells_Block(size))
-            if (debug_mode ==1 .and. vrb_cbfm_param ==0) Write(*,'(a,i4,a,i6)') 'Block ',ii,' of size',size;
-            Cells_Block(1:Nbc_b) = Cells(curs_B_cel(ii):curs_B_cel(ii)+Nbc_b-1)
-            Do kk=1,Nbc_b_ext
-                Cells_Block(Nbc_b+kk) = Cells(CBFM_Blocks_Ext(ii,kk))
-            EndDo
-            call setfSR(ii,size,Cells_Block,vrb_cbfm_param,fct_SR_blk,nnz);
-            fSR_blocks(ii_job) = fct_SR_blk;
-            nnz_blocks(ii_job) = nnz
-            spr_perc_blocks(ii_job) = (100.*nnz)/(9.*size**2.)
-            deallocate(Cells_Block);
-        enddo
-    EndIf
-
-    ! To use in case if the user would not test all the blocks for fSR and spr_ii (which is not recommended)
-    spr_perc_loc = maxval(spr_perc_blocks);
-    Call MPI_ALLREDUCE(spr_perc_loc,spr_perc,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,code)
-    fct_SR = maxval(fSR_blocks);     ! this f_SR max is also used to calculate Nipws in the next step
-    deallocate(spr_perc_blocks);
-
-    ! SET Nipws FOR SELECTED BLOCKS
-    if (set_Nipws .ne. 0) then
-        if (rank == 0) then
-            Write(*,'(a)') ''; Write(*,'(a)') '-> Set Nipws :'
+        if (num_freq .gt. 1) then
+            deallocate(C_job_patchs)
         endif
-        !! to avoid the expensive cpu time cost of the resolution + aca
-        ! in the open mp versin we test the results obtained with the 4 characteristic blocks,
-        !to reduce the cpu time we parallelize this paragraph
-        ! let us here for the mpi version test all the blocks to start with !
-        ! we can later for example re-define these 4 blocks per job (or globally maybe since the job is not seeing what the other jobs got as Nipws ??!!)
-        do ii =1,MyNBlocks !4
-            !! lb1 ***************************************
-            !nb = testedBlks(ii)
-            nb = MPI_CBFM_Blocks(rank+1,1+ii_job);
-            Nbc_b = CBFM_Blocks(nb)%Nbc_b
-            Nbc_b_ext = CBFM_Blocks(nb)%Nbc_ext
-            size = Nbc_b + Nbc_b_ext
-            if (vrb_cbfm_param ==0) Write(*,'(a,i4,a,i6)') 'Block ',nb,' of size',size;
-            Allocate(Cells_Block(size))
-            Cells_Block(1:Nbc_b) = Cells(curs_B_cel(nb):curs_B_cel(nb)+Nbc_b-1)
-            Do kk=1,Nbc_b_ext
-                Cells_Block(Nbc_b+kk) = Cells(CBFM_Blocks_Ext(nb,kk))
-            EndDo
-            call setNipws(nb,size,Cells_Block,nnz_blocks(ii),vrb_cbfm_param);
-            deallocate(Cells_Block);
-        enddo
-    endif
-
-    call MPI_BARRIER(MPI_COMM_WORLD,code);
-    If ((rank == 0) .and. (SR == 1) .and. (SMWA .ne. 1)) Then
-        Write(*,'(a,ES7.1E1,a,f5.2)') ' -- > fSR for CBFM = ',fct_SR, ' -> spr % = ',spr_perc
-    EndIf
-    
-    ! Threshold for the generation of the CBFs, decided as function of max(|m|)
-    vals = abs(Cells(1:Nbc)%m_n) 
-    m_max_relative = ceiling(maxval(vals)) - 2. ! we will add this difference to the power of the threshold
-    Threshold_CBFM = 10.**(-3-m_max_relative)
-    if (rank .eq. 0) then 
-        write(*,'(a,ES7.1E1)') ' -- > Threshold_CBFM = ',Threshold_CBFM
-    endif
-    
-    ! for distr_ipws = 1, try [91,190,231,325,496,703,861]; for distr_ipws=3 try among 289,366,482,579,723,842,926; for distr_ipws=4 try among [110,194,230,350,434,590,770,974,1202]
-    distr_ipws = 3; Nipws = 482 ! fix it here for now until debugging 4/9/2024 
-    call getTransmitters_CBFM(Transmitters_CBFM);
-    if (rank == 0) then 
-        if (distr_ipws .eq. 1) then 
-            Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (uniform in cos(theta) and phi)'
-        elseif (distr_ipws .eq. 3) then 
-            Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (sd)'
-        elseif (distr_ipws .eq. 4) then
-            Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (lb)'
+        Allocate(K_patchs(MyNBlocks))
+        !! Here we start by defining the adequate fSR
+        !! here we define the tested blocks for which we will determine adequate fSR and Nipws.
+        !! The calculated fSR and Nipws for these blocks will be then applied to all the other blocks
+        Ntests = 4; Allocate(testedBlks(Ntests))
+        testedBlks(1) = maxloc(CBFM_Blocks(:)%BSphCont(4),1);
+        testedBlks(2) = minloc(CBFM_Blocks(:)%BSphCont(4),1);
+        Allocate(ExtSizes(NBlocks));
+        ExtSizes(:) = CBFM_Blocks(:)%Nbc_b + CBFM_Blocks(:)%Nbc_ext
+        testedBlks(3) = maxloc(ExtSizes(:),1);
+        testedBlks(4) = minloc(ExtSizes(:),1);
+        deallocate(ExtSizes);
+        if (vrb_cbfm_param == 1 .and. rank == 0) then
+          Write(*,'(a)') ' '
+          Write(*,'(a)') 'Characteristic blocks : [maxh, minh, maxNbc, minNbc]'
+          Write(*,*) testedBlks(1:4)
+          Write(*,'(a)') ' '
         endif
-        call date_and_time(date_final_N1,time_final_N1,zone_final_N1,values_final_N1)
-        call Calcul_time_spent(values_init_N1,values_final_N1, time_calcul_N1)
-        Write(*,'(a,i2,a,i2,a,i2,a,i2,a)') ' --> to set CBFM parameters : ',time_calcul_N1(1),'j',time_calcul_N1(2)&
-        ,'h',time_calcul_N1(3),'min', time_calcul_N1(4),'sec'
-        Write(*,'(a)') ''
-    endif
 
-    Allocate(C_job_patchs(3*Nbc_proc,2*NTr_CBFM));
-    call print_allocate(35,'C_job_patchs(3*Nbc_proc,2*NTr_CBFM)','DCOMP',3*Nbc_proc*2*NTr_CBFM); !(Nchar,allocate_str,type_str,size)
-    C_job_patchs = 0D0;
-
-    call MPI_BARRIER(MPI_COMM_WORLD,code);
-    ! Here generation of the CBFS *************************************************************************************************
-    if (rank == 0 ) Then
-        if (debug_mode .eq. 1) then 
-            Write(10,*) '';Write(10,'(a,e14.5)') 'Singular Values generated by the SVD with a threshold equal to ', Threshold_CBFM
-        endif
-        Write(*,*) ''
-        If (DR == 1) Then
-            Write(*,'(a)') 'Calculation of the CBFs (+DR):'
-        ElseIf (SMWA == 1) Then
-            Write(*,'(a)',advance='no') 'Calculation of the CBFs (+SMWF'
-            If (SR ==1) Then
-                Write(*,'(a)') '+SR):'
-            else
-                Write(*,'(a)') '):'
-            endif
-        ElseIf (SR ==1) Then
-            if (homogs ==1) then
-                Write(*,'(a,ES7.1E1,a)') 'Calculation of the CBFs (+SR-PardisoSym; fct_SR_max = ',fct_SR,'):'
-            else
-                Write(*,'(a,ES7.1E1,a)') 'Calculation of the CBFs (+SR-PardisoNonSym; fct_SR_max = ',fct_SR,'):'
-            endif
-        Else
-            Write(*,'(a)') 'Calculation of the CBFs :'
-        EndIf
+        call MPI_BARRIER(MPI_COMM_WORLD,code);
+        ! SET fSR FOR EACH BLOCK
+        Allocate(fSR_blocks(MyNBlocks),nnz_blocks(MyNBlocks),spr_perc_blocks(MyNBlocks));
+        fSR_blocks = 0.;
+        nnz_blocks = 0;
         time_calcul_N1 = 0
-        call date_and_time(date_init_N1,time_init_N1,zone_init_N1,values_init_N1)
-    endif
-
-    ! START CBFS HERE
-    call MPI_BARRIER(MPI_COMM_WORLD,code);
-    curs_lig_E = 1; K_patchs= 0;
-    DO kk_job=1,MyNBlocks
-        kk = MPI_CBFM_Blocks(rank+1,1+kk_job);
-	      ! define the cells belonging to the extended block kk
-        Nbc_b = CBFM_Blocks(kk)%Nbc_b
-        Nbc_b_ext = CBFM_Blocks(kk)%Nbc_ext
-        size = Nbc_b + Nbc_b_ext
-        Allocate(Cells_Block(size))
-        Cells_Block(1:Nbc_b) = Cells(curs_B_cel(kk):curs_B_cel(kk)+Nbc_b-1)
-        Do ii=1,Nbc_b_ext
-            Cells_Block(Nbc_b+ii) = Cells(CBFM_Blocks_Ext(kk,ii))
-        EndDo
-
-        !! Incident field used to compute the CBFs (different from the scattering problem incident field )
-        Allocate(EREFpatch_e(3*size,2*NTr_CBFM));
-        call print_allocate(30,'EREFpatch_e(3*size,2*NTr_CBFM)','DCOMP',3*size*2*NTr_CBFM);
-
-        Call Incident_Field(1,size,Cells_Block,NTr_CBFM,Transmitters_CBFM,1,NTr_CBFM,EREFpatch_e);
-        !! Resolve locally the scattering problem (compute the electric field inside the block kk
-        !! resulting from the CBFM incident field : EM plane waves from the entire space)
-        Allocate(Epatch_e(3*size,2*NTr_CBFM));
-        call print_allocate(27,'Epatch_e(3*size,2*NTr_CBFM)','DCOMP',3*size*2*NTr_CBFM);
-
-	      time_calcul_ii = 0
-        call date_and_time(date_init_ii,time_init_ii,zone_init_ii,values_init_ii);
-        If (DR == 1) Then
-            klu_cel= 0  ! finally since we're considering only Diagonal elements Klu_cel will always == 0
-            klu = 3*(klu_cel+1)-1;
-            Allocate(Zpatch_e(2*klu+1,3*size))
-            Call DR_Green_s_tr_partial(size,Cells_Block,klu_cel,klu,Zpatch_e)
-            Write(*,'(a,i4,a,i6,a,i6)') 'j',rank,': Solving blk ',kk,' of size',size
-            call gbsvx(Zpatch_e,EREFpatch_e,Epatch_e,RCOND=RCOND)
-            Deallocate(Zpatch_e)
-        ElseIf ((SR == 1) .and. (SMWA .ne. 1)) Then
-            fct_SR_blk = fSR_blocks(kk_job); nnz  = nnz_blocks(kk_job); spr_perc = 100.*nnz/(9*size**2.);
-            Allocate(Zpatch_e_spr(nnz),row_sprZ(3*size+1),col_sprZ(nnz));
-            call print_allocate(17,'Zpatch_e_spr(nnz)','DCOMP',nnz);
-            call print_allocate(13,'col_sprZ(nnz)','SINTG',nnz);
-
-            Call SR_Green_s_tr_partial(size,Cells_Block,fct_SR_blk,nnz,Zpatch_e_spr,row_sprZ,col_sprZ);
-	        Write(*,'(a,i4,a,i6,a,i6,a,f5.2,a)',advance='no') 'j',rank,': Solving blk ',kk,' of size',size,': nnz = ',spr_perc,' % of Zii'
-
-            iparm3 = 0; ! here iparm3 is not used
-            Call pardiso_solver(3*size,2*NTr_CBFM,nnz,mtype,iparm3,row_sprZ,col_sprZ,Zpatch_e_spr,EREFpatch_e,Epatch_e)
-            Deallocate(Zpatch_e_spr,row_sprZ,col_sprZ);
-        ElseIf (SMWA == 1) Then
-            lev_SMW = 1;
-            Write(*,'(a,i4,a,i6,a,i6)') 'j',rank,': Solving blk ',kk,' of size',size
-            Call SMWFB_algorithm(lev_SMW,Cells,Cells_Block,size,2*NTr_CBFM,EREFpatch_e,Epatch_e);
-        Else
-            Allocate(Zpatch_e(3*size,3*size))
-            Call Green_s_tr_partial(size,Cells_Block,size,Cells_Block,Zpatch_e)
-            Write(*,'(a,i4,a,i6,a,i6)') 'j',rank,': Solving blk ',kk,' of size',size
-            Call gesvx(Zpatch_e,EREFpatch_e,Epatch_e,RCOND=RCOND)
-            Deallocate(Zpatch_e)
+        call date_and_time(date_init_N1,time_init_N1,zone_init_N1,values_init_N1);
+        If ((SR == 1) .and. (SMWA .ne. 1)) Then
+            if (rank == 0 .and. debug_mode == 1) then
+                Write(*,'(a)') ''; Write(*,'(a)') '-> Set fSR :'
+            endif
+            ! To ensure a higher accuracy, let us test all the blocks, I do not think that this has
+            ! a huge impact on the cpu time but strongly helps to be totally sure about fSR and spr_perc
+            do ii_job =1,MyNBlocks
+                ii = MPI_CBFM_Blocks(rank+1,1+ii_job);
+                Nbc_b = CBFM_Blocks(ii)%Nbc_b
+                Nbc_b_ext = CBFM_Blocks(ii)%Nbc_ext
+                size = Nbc_b + Nbc_b_ext
+                Allocate(Cells_Block(size))
+                if (debug_mode ==1 .and. vrb_cbfm_param ==0) Write(*,'(a,i4,a,i6)') 'Block ',ii,' of size',size;
+                Cells_Block(1:Nbc_b) = Cells(curs_B_cel(ii):curs_B_cel(ii)+Nbc_b-1)
+                Do kk=1,Nbc_b_ext
+                    Cells_Block(Nbc_b+kk) = Cells(CBFM_Blocks_Ext(ii,kk))
+                EndDo
+                call setfSR(ii,size,Cells_Block,vrb_cbfm_param,fct_SR_blk,nnz);
+                fSR_blocks(ii_job) = fct_SR_blk;
+                nnz_blocks(ii_job) = nnz
+                spr_perc_blocks(ii_job) = (100.*nnz)/(9.*size**2.)
+                deallocate(Cells_Block);
+            enddo
         EndIf
-        Deallocate(Cells_Block);
-	    call date_and_time(date_final_ii,time_final_ii,zone_final_ii,values_final_ii)
-        call Calcul_time_spent(values_init_ii,values_final_ii, time_calcul_ii)
-        Write(*,'(a,i6,a)') ' : ',time_calcul_ii(1)*86400+time_calcul_ii(2)*3600+time_calcul_ii(3)*60+time_calcul_ii(4),' sec'
 
-        !! Decomposition en valeurs singulieres
-        M = 3*size; N = 2*NTr_CBFM
-        Allocate(S(MIN(M,N)),U(M,M),VT(N,N), WW(MIN(M,N)-1))
-        call print_allocate(16,'U(3*size,3*size)','DCOMP',3*size*3*size);
-        call print_allocate(25,'VT(2*NTr_CBFM,2*NTr_CBFM)','DCOMP',2*NTr_CBFM*2*NTr_CBFM);
+        ! To use in case if the user would not test all the blocks for fSR and spr_ii (which is not recommended)
+        spr_perc_loc = maxval(spr_perc_blocks);
+        Call MPI_ALLREDUCE(spr_perc_loc,spr_perc,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,code)
+        fct_SR = maxval(fSR_blocks);     ! this f_SR max is also used to calculate Nipws in the next step
+        deallocate(spr_perc_blocks);
 
-        CALL GESVD(A=Epatch_e,S=S,U=U, VT=VT, JOB='U')              
+        ! SET Nipws FOR SELECTED BLOCKS
+        if (set_Nipws .ne. 0) then
+            if (rank == 0) then
+                Write(*,'(a)') ''; Write(*,'(a)') '-> Set Nipws :'
+            endif
+            !! to avoid the expensive cpu time cost of the resolution + aca
+            ! in the open mp versin we test the results obtained with the 4 characteristic blocks,
+            !to reduce the cpu time we parallelize this paragraph
+            ! let us here for the mpi version test all the blocks to start with !
+            ! we can later for example re-define these 4 blocks per job (or globally maybe since the job is not seeing what the other jobs got as Nipws ??!!)
+            do ii =1,MyNBlocks !4
+                !! lb1 ***************************************
+                !nb = testedBlks(ii)
+                nb = MPI_CBFM_Blocks(rank+1,1+ii_job);
+                Nbc_b = CBFM_Blocks(nb)%Nbc_b
+                Nbc_b_ext = CBFM_Blocks(nb)%Nbc_ext
+                size = Nbc_b + Nbc_b_ext
+                if (vrb_cbfm_param ==0) Write(*,'(a,i4,a,i6)') 'Block ',nb,' of size',size;
+                Allocate(Cells_Block(size))
+                Cells_Block(1:Nbc_b) = Cells(curs_B_cel(nb):curs_B_cel(nb)+Nbc_b-1)
+                Do kk=1,Nbc_b_ext
+                    Cells_Block(Nbc_b+kk) = Cells(CBFM_Blocks_Ext(nb,kk))
+                EndDo
+                call setNipws(nb,size,Cells_Block,nnz_blocks(ii),vrb_cbfm_param);
+                deallocate(Cells_Block);
+            enddo
+        endif
 
-        !! Normalisation et comparaison au seuil, K designera le nombre de valeurs singulieres retenues (non nulles)
-        K = 0
-        norme = S(1)
-        DO dd=1, MIN(M,N)
-            S_val = S(dd)/norme
-            If (S_val >= Threshold_CBFM) Then
-                S(dd) = S_val
-                K = K + 1
+        call MPI_BARRIER(MPI_COMM_WORLD,code);
+        If ((rank == 0) .and. (SR == 1) .and. (SMWA .ne. 1)) Then
+            Write(*,'(a,ES7.1E1,a,f5.2)') ' -- > fSR for CBFM = ',fct_SR, ' -> spr % = ',spr_perc
+        EndIf
+        
+        ! Threshold for the generation of the CBFs, decided as function of max(|m|)
+        vals = abs(Cells(1:Nbc)%m_n) 
+        m_max_relative = ceiling(maxval(vals)) - 2. ! we will add this difference to the power of the threshold
+        Threshold_CBFM = 10.**(-3-m_max_relative)
+        if (rank .eq. 0) then 
+            write(*,'(a,ES7.1E1)') ' -- > Threshold_CBFM = ',Threshold_CBFM
+        endif
+        
+        ! for distr_ipws = 1, try [91,190,231,325,496,703,861]; for distr_ipws=3 try among 289,366,482,579,723,842,926; for distr_ipws=4 try among [110,194,230,350,434,590,770,974,1202]
+        distr_ipws = 3; Nipws = 482 ! fix it here for now until debugging 4/9/2024 
+        call getTransmitters_CBFM(Transmitters_CBFM);
+        if (rank == 0) then 
+            if (distr_ipws .eq. 1) then 
+                Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (uniform in cos(theta) and phi)'
+            elseif (distr_ipws .eq. 3) then 
+                Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (sd)'
+            elseif (distr_ipws .eq. 4) then
+                Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (lb)'
+            endif
+            call date_and_time(date_final_N1,time_final_N1,zone_final_N1,values_final_N1)
+            call Calcul_time_spent(values_init_N1,values_final_N1, time_calcul_N1)
+            Write(*,'(a,i2,a,i2,a,i2,a,i2,a)') ' --> to set CBFM parameters : ',time_calcul_N1(1),'j',time_calcul_N1(2)&
+            ,'h',time_calcul_N1(3),'min', time_calcul_N1(4),'sec'
+            Write(*,'(a)') ''
+        endif
+
+        Allocate(C_job_patchs(3*Nbc_proc,2*NTr_CBFM));
+        call print_allocate(35,'C_job_patchs(3*Nbc_proc,2*NTr_CBFM)','DCOMP',3*Nbc_proc*2*NTr_CBFM); !(Nchar,allocate_str,type_str,size)
+        C_job_patchs = 0D0;
+
+        call MPI_BARRIER(MPI_COMM_WORLD,code);
+        ! Here generation of the CBFS *************************************************************************************************
+        if (rank == 0 ) Then
+            if (debug_mode .eq. 1) then 
+                Write(10,*) '';Write(10,'(a,e14.5)') 'Singular Values generated by the SVD with a threshold equal to ', Threshold_CBFM
+            endif
+            Write(*,*) ''
+            If (DR == 1) Then
+                Write(*,'(a)') 'Calculation of the CBFs (+DR):'
+            ElseIf (SMWA == 1) Then
+                Write(*,'(a)',advance='no') 'Calculation of the CBFs (+SMWF'
+                If (SR ==1) Then
+                    Write(*,'(a)') '+SR):'
+                else
+                    Write(*,'(a)') '):'
+                endif
+            ElseIf (SR ==1) Then
+                if (homogs ==1) then
+                    Write(*,'(a,ES7.1E1,a)') 'Calculation of the CBFs (+SR-PardisoSym; fct_SR_max = ',fct_SR,'):'
+                else
+                    Write(*,'(a,ES7.1E1,a)') 'Calculation of the CBFs (+SR-PardisoNonSym; fct_SR_max = ',fct_SR,'):'
+                endif
             Else
-                S(dd) = 0
-            EndIF
+                Write(*,'(a)') 'Calculation of the CBFs :'
+            EndIf
+            time_calcul_N1 = 0
+            call date_and_time(date_init_N1,time_init_N1,zone_init_N1,values_init_N1)
+        endif
+
+        ! START CBFS HERE
+        call MPI_BARRIER(MPI_COMM_WORLD,code);
+        curs_lig_E = 1; K_patchs= 0;
+        DO kk_job=1,MyNBlocks
+            kk = MPI_CBFM_Blocks(rank+1,1+kk_job);
+    	      ! define the cells belonging to the extended block kk
+            Nbc_b = CBFM_Blocks(kk)%Nbc_b
+            Nbc_b_ext = CBFM_Blocks(kk)%Nbc_ext
+            size = Nbc_b + Nbc_b_ext
+            Allocate(Cells_Block(size))
+            Cells_Block(1:Nbc_b) = Cells(curs_B_cel(kk):curs_B_cel(kk)+Nbc_b-1)
+            Do ii=1,Nbc_b_ext
+                Cells_Block(Nbc_b+ii) = Cells(CBFM_Blocks_Ext(kk,ii))
+            EndDo
+
+            !! Incident field used to compute the CBFs (different from the scattering problem incident field )
+            Allocate(EREFpatch_e(3*size,2*NTr_CBFM));
+            call print_allocate(30,'EREFpatch_e(3*size,2*NTr_CBFM)','DCOMP',3*size*2*NTr_CBFM);
+
+            Call Incident_Field(1,size,Cells_Block,NTr_CBFM,Transmitters_CBFM,1,NTr_CBFM,EREFpatch_e);
+            !! Resolve locally the scattering problem (compute the electric field inside the block kk
+            !! resulting from the CBFM incident field : EM plane waves from the entire space)
+            Allocate(Epatch_e(3*size,2*NTr_CBFM));
+            call print_allocate(27,'Epatch_e(3*size,2*NTr_CBFM)','DCOMP',3*size*2*NTr_CBFM);
+
+    	      time_calcul_ii = 0
+            call date_and_time(date_init_ii,time_init_ii,zone_init_ii,values_init_ii);
+            If (DR == 1) Then
+                klu_cel= 0  ! finally since we're considering only Diagonal elements Klu_cel will always == 0
+                klu = 3*(klu_cel+1)-1;
+                Allocate(Zpatch_e(2*klu+1,3*size))
+                Call DR_Green_s_tr_partial(size,Cells_Block,klu_cel,klu,Zpatch_e)
+                Write(*,'(a,i4,a,i6,a,i6)') 'j',rank,': Solving blk ',kk,' of size',size
+                call gbsvx(Zpatch_e,EREFpatch_e,Epatch_e,RCOND=RCOND)
+                Deallocate(Zpatch_e)
+            ElseIf ((SR == 1) .and. (SMWA .ne. 1)) Then
+                fct_SR_blk = fSR_blocks(kk_job); nnz  = nnz_blocks(kk_job); spr_perc = 100.*nnz/(9*size**2.);
+                Allocate(Zpatch_e_spr(nnz),row_sprZ(3*size+1),col_sprZ(nnz));
+                call print_allocate(17,'Zpatch_e_spr(nnz)','DCOMP',nnz);
+                call print_allocate(13,'col_sprZ(nnz)','SINTG',nnz);
+
+                Call SR_Green_s_tr_partial(size,Cells_Block,fct_SR_blk,nnz,Zpatch_e_spr,row_sprZ,col_sprZ);
+    	        Write(*,'(a,i4,a,i6,a,i6,a,f5.2,a)',advance='no') 'j',rank,': Solving blk ',kk,' of size',size,': nnz = ',spr_perc,' % of Zii'
+
+                iparm3 = 0; ! here iparm3 is not used
+                Call pardiso_solver(3*size,2*NTr_CBFM,nnz,mtype,iparm3,row_sprZ,col_sprZ,Zpatch_e_spr,EREFpatch_e,Epatch_e)
+                Deallocate(Zpatch_e_spr,row_sprZ,col_sprZ);
+            ElseIf (SMWA == 1) Then
+                lev_SMW = 1;
+                Write(*,'(a,i4,a,i6,a,i6)') 'j',rank,': Solving blk ',kk,' of size',size
+                Call SMWFB_algorithm(lev_SMW,Cells,Cells_Block,size,2*NTr_CBFM,EREFpatch_e,Epatch_e);
+            Else
+                Allocate(Zpatch_e(3*size,3*size))
+                Call Green_s_tr_partial(size,Cells_Block,size,Cells_Block,Zpatch_e)
+                Write(*,'(a,i4,a,i6,a,i6)') 'j',rank,': Solving blk ',kk,' of size',size
+                Call gesvx(Zpatch_e,EREFpatch_e,Epatch_e,RCOND=RCOND)
+                Deallocate(Zpatch_e)
+            EndIf
+            Deallocate(Cells_Block);
+    	    call date_and_time(date_final_ii,time_final_ii,zone_final_ii,values_final_ii)
+            call Calcul_time_spent(values_init_ii,values_final_ii, time_calcul_ii)
+            Write(*,'(a,i6,a)') ' : ',time_calcul_ii(1)*86400+time_calcul_ii(2)*3600+time_calcul_ii(3)*60+time_calcul_ii(4),' sec'
+
+            !! Decomposition en valeurs singulieres
+            M = 3*size; N = 2*NTr_CBFM
+            Allocate(S(MIN(M,N)),U(M,M),VT(N,N), WW(MIN(M,N)-1))
+            call print_allocate(16,'U(3*size,3*size)','DCOMP',3*size*3*size);
+            call print_allocate(25,'VT(2*NTr_CBFM,2*NTr_CBFM)','DCOMP',2*NTr_CBFM*2*NTr_CBFM);
+
+            CALL GESVD(A=Epatch_e,S=S,U=U, VT=VT, JOB='U')              
+
+            !! Normalisation et comparaison au seuil, K designera le nombre de valeurs singulieres retenues (non nulles)
+            K = 0
+            norme = S(1)
+            DO dd=1, MIN(M,N)
+                S_val = S(dd)/norme
+                If (S_val >= Threshold_CBFM) Then
+                    S(dd) = S_val
+                    K = K + 1
+                Else
+                    S(dd) = 0
+                EndIF
+            ENDDO
+
+
+            !! the local C_patch (K first columns of the matrix U)
+            ! Fill C_tot_patchs from Cpatch_e
+            ! we only take the CBFs corresponding to the original size of the block kk (not extended)
+            C_job_patchs(curs_B_Cpatch(kk_job):curs_B_Cpatch(kk_job)+3*Nbc_b-1,1:K) = U(1:3*Nbc_b,1:K);
+            K_patchs(kk_job) = K
+
+            !! Deallocaton de tous les vecteurs propores au bloc (Interieur de la boucle)
+            Deallocate(EREFpatch_e,Epatch_e)
+            Deallocate(S,U,VT,WW)
         ENDDO
 
+        Kmax_job = maxval(K_patchs);
+        Do kk_job = 1, nber_procs !! re-allocating per job is all what I was able to do here to reduce memory use for the total node
+            if ((rank-1) .eq. kk_job) then
+                Allocate(C_job_patchs_tmp(3*Nbc_proc,Kmax_job)); C_job_patchs_tmp = 0D0;
+                call print_allocate(37,'C_job_patchs_tmp(3*Nbc_proc,Kmax_job)','DCOMP',3*Nbc_proc*Kmax_job);
 
-        !! the local C_patch (K first columns of the matrix U)
-        ! Fill C_tot_patchs from Cpatch_e
-        ! we only take the CBFs corresponding to the original size of the block kk (not extended)
-        C_job_patchs(curs_B_Cpatch(kk_job):curs_B_Cpatch(kk_job)+3*Nbc_b-1,1:K) = U(1:3*Nbc_b,1:K);
-        K_patchs(kk_job) = K
-
-        !! Deallocaton de tous les vecteurs propores au bloc (Interieur de la boucle)
-        Deallocate(EREFpatch_e,Epatch_e)
-        Deallocate(S,U,VT,WW)
-    ENDDO
-
-    Kmax_job = maxval(K_patchs);
-    Do kk_job = 1, nber_procs !! re-allocating per job is all what I was able to do here to reduce memory use for the total node
-        if ((rank-1) .eq. kk_job) then
-            Allocate(C_job_patchs_tmp(3*Nbc_proc,Kmax_job)); C_job_patchs_tmp = 0D0;
-            call print_allocate(37,'C_job_patchs_tmp(3*Nbc_proc,Kmax_job)','DCOMP',3*Nbc_proc*Kmax_job);
-
-            C_job_patchs_tmp(1:3*Nbc_proc,1:Kmax_job) = C_job_patchs(1:3*Nbc_proc,1:Kmax_job);
-            deallocate(C_job_patchs); Allocate(C_job_patchs(3*Nbc_proc,Kmax_job));
-            C_job_patchs = C_job_patchs_tmp; deallocate(C_job_patchs_tmp);
-        endif
-        call MPI_BARRIER(MPI_COMM_WORLD,code);
-    EndDo
+                C_job_patchs_tmp(1:3*Nbc_proc,1:Kmax_job) = C_job_patchs(1:3*Nbc_proc,1:Kmax_job);
+                deallocate(C_job_patchs); Allocate(C_job_patchs(3*Nbc_proc,Kmax_job));
+                C_job_patchs = C_job_patchs_tmp; deallocate(C_job_patchs_tmp);
+            endif
+            call MPI_BARRIER(MPI_COMM_WORLD,code);
+        EndDo
     else
     	if (rank == 0) then
         Write(*,'(a)') 'Re-Using CBFs of previous SIM : '
