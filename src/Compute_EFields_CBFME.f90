@@ -53,7 +53,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     !! LOCAL
     Integer :: I,id,nthreads,p,d,kk,ii,jj,dd,pp,klu_cel,klu,CBFs_for_all_freqs
     Integer :: size,curs_lig_E,M,N,K,Diag_Representation,Nbc_b,Ncps
-    Integer :: Nbc_b_ext, K_total,tdis,ii1,ii2,m_max_relative
+    Integer :: Nbc_b_ext, K_total,tdis,ii1,ii2
     Integer :: size1,size3,NbreLig_mat1,NbreLig_mat3,NbreCol_mat1,NbreCol_mat3
     Integer :: curseurf,BlockSize,num_cel_fichier,num_fichier
     Integer :: nb,mtype,iparm3,pack_size,ii_beg,ii_end,jj_beg,jj_end,fu_ii,fu_jj,pack_ii,loc_ii,loc_jj
@@ -64,7 +64,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     Integer :: spr_size,nnz,nnz_elts_Zc
 
     Real(kind=8) :: Threshold_CBFM,RCOND,norme,S_val,z_max,spr_perc,spr_perc_loc,CR,perc_ii
-    Real(kind=8) :: f_Zc,locThresh_Zc,bandThresh_Zc,abs_elt,spr_ii,fct_SR_blk
+    Real(kind=8) :: f_Zc,locThresh_Zc,bandThresh_Zc,abs_elt,spr_ii,fct_SR_blk,m_max_relative
     character(8)  :: date_init_N1, date_final_N1, date_init_ii, date_final_ii
     character(10) :: time_init_N1, time_final_N1, time_init_ii, time_final_ii
     character(5)  :: zone_init_N1, zone_final_N1, zone_init_ii, zone_final_ii
@@ -178,7 +178,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         if (num_freq .gt. 1 .OR. num_sim .gt. 1) then 
           deallocate(K_patchs);
         endif
-        if (num_freq .gt. 1) then
+        if (num_freq .gt. 1 .or. (num_sim .gt. 1 .and. num_freq .eq. 1)) then
             deallocate(C_job_patchs)
         endif
         Allocate(K_patchs(MyNBlocks))
@@ -273,14 +273,14 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         
         ! Threshold for the generation of the CBFs, decided as function of max(|m|)
         vals = abs(Cells(1:Nbc)%m_n) 
-        m_max_relative = ceiling(maxval(vals)) - 2. ! we will add this difference to the power of the threshold
-        Threshold_CBFM = 10.**(-3-m_max_relative)
+        m_max_relative = ceiling(maxval(vals)) - 2.0 ! we will add this difference to the power of the threshold
+        Threshold_CBFM = max(10.0**(-3.0-m_max_relative),1e-8)
         if (rank .eq. 0) then 
             write(*,'(a,ES7.1E1)') ' -- > Threshold_CBFM = ',Threshold_CBFM
         endif
         
         ! for distr_ipws = 1, try [91,190,231,325,496,703,861]; for distr_ipws=3 try among 289,366,482,579,723,842,926; for distr_ipws=4 try among [110,194,230,350,434,590,770,974,1202]
-        distr_ipws = 3; Nipws = 482 ! fix it here for now until debugging 4/9/2024 
+        distr_ipws = 3; Nipws = 842 ! fix it here for now until debugging 4/9/2024 
         call getTransmitters_CBFM(Transmitters_CBFM);
         if (rank == 0) then 
             if (distr_ipws .eq. 1) then 
