@@ -13,7 +13,7 @@ LDFLAGS= -Wl,--start-group  /cm/shared/apps/intel/oneapi/mkl/latest/lib/intel64/
         /cm/shared/apps/spack/opt/spack/linux-rhel9-sapphirerapids/oneapi-2023.2.0/hdf5-1.14.2-5v6orvlkvaeztm4ja23c3mobgfw25tqe/lib/libhdf5.a \-Wl,--end-group \
         -lz -lpthread -lm -ldl
 
-FFLAGS= -f90=ifort -O3 -g -heap-arrays -warn noalignments \
+FFLAGS= -f90=ifort -O3 -g -warn noalignments \
         -I /cm/shared/apps/intel/oneapi/mkl/latest/include/intel64/lp64 \
         -I /cm/shared/apps/intel/oneapi/mkl/latest/include \
 	    -I /cm/shared/apps/spack/opt/spack/linux-rhel9-sapphirerapids/oneapi-2023.2.0/hdf5-1.14.2-5v6orvlkvaeztm4ja23c3mobgfw25tqe/include \
