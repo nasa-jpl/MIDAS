@@ -136,7 +136,7 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
         ! read separately the first dielectric to make sure we have the correct number of frequencies 
         read(11,'(a)') line
         call split_line(line, diel_freqs, n_columns)
-        if (n_columns .ne. 2*Nfreq+1) then
+        if (n_columns .lt. 2*Nfreq+1) then ! update with .lt. instead of .eq. to be flexible and alllow for extra columns for vf_i vf_l vf_a
             stop 1
             Write(*,'(a,a,a)') 'Error while reading m values from ',fname,': the number of columns does not correspond to the number of frequencies!'
         endif 
