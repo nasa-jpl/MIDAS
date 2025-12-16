@@ -111,12 +111,14 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
                 do jj = 1,Nfreq
                     m_lambdas(ii,jj) = lamb_ii(2*jj-1)+J*lamb_ii(2*jj);                    
                 EndDo                
-            EndDo   
+            EndDo 
+            close(11)  
         elseif (Nfreq_dielfile .eq. 1) then ! we use this single value for all calculated frequencies 
             Do ii= 1,Ndiel
                 read(11,'(i8,f9.4,f9.4)') jj,mrp,mip
                 m_lambdas(ii,:) = mrp+J*mip;                                   
             EndDo
+            close(11)
         else ! too complicated to decide here -> error 
             stop 1;
             Write(*,'(a,a)') 'Nfreq_dielfile < Nfreq and .ne. to 1 ! Please use another dielcompositionfile !! '            
