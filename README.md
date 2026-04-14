@@ -19,7 +19,9 @@ midas/
 
 ---
 
-## Quick start
+## Docs
+- [Documentation Home](./docs/)
+- [Getting Started](./docs/getting_started.md)
 
 ## License information
 ----------------------
