@@ -62,7 +62,7 @@ SUBROUTINE Incident_Field(cel_init,size_Cells,Cells_in,Nb_transmitters,Transmitt
     Enddo 
 End Subroutine Incident_Field
     
-SUBROUTINE Incident_Field_spherical(cel_init,size_Cells,Cells_in,Nb_transmitters,Transmitters,num_tr_start, num_tr_end,E_ref_incident)
+SUBROUTINE Incident_Field_Spherical(cel_init,size_Cells,Cells_in,Nb_transmitters,Transmitters,num_tr_start, num_tr_end,E_ref_incident)
 
     USE Initialization
     USE common_variables
@@ -79,12 +79,22 @@ SUBROUTINE Incident_Field_spherical(cel_init,size_Cells,Cells_in,Nb_transmitters
 
     ! local
     Complex :: K11x, K11y, K11z, Ex, Ey, Ez
-    real(kind=8) :: theta_transmit, phi_transmit, Rx, Ry, Rz
-    real(kind=8) :: Rsource, Xs, Ys, Zs, Dx, Dy, Dz, R, ux, uy, uz, theta, phi
+    real(kind=8) :: theta_transmit, phi_transmit, Rx, Ry, Rz, Rbl
+    real(kind=8) :: Dp, Rsource, Xs, Ys, Zs, Dx, Dy, Dz, R, ux, uy, uz, theta, phi
+    real(kind=8) :: Pbl(size_Cells,3), Cbl(3)
     Complex :: phase
     Integer :: NcalcTr,num_trans,num_Eref_v, num_Eref_h,num_cel, sol,curs_cel
+    
+    ! get the minimum enclosing sphere parameters
+    call minimum_enclosing_sphere(Pbl, size_Cells, Cbl, Rbl)
 
-    Rsource = 10*lambda_w
+    !Rsource = 10000 !10*lambda_w
+    ! Rsource = 10*lambda_w
+    Dp = 1e-3
+    Rsource = 10* Dp/2.
+    if (rank .eq. 0) then
+        write(*,*) 'Rsource = ',Rsource*1e3, ' mm'
+    endif
     E_ref_incident = 0
     NcalcTr = num_tr_end-num_tr_start+1;
 
@@ -130,9 +140,9 @@ SUBROUTINE Incident_Field_spherical(cel_init,size_Cells,Cells_in,Nb_transmitters
             phi   = atan2(uz, uy)
 
             !!--------------------------------Polarisation Verticale---------------------------------
-            Ex = - phase * sin(theta*Pi/180.)  
-            Ey = phase * cos(theta*Pi/180.)*cos(phi*Pi/180.)
-            Ez = phase * cos(theta*Pi/180.)*sin(phi*Pi/180.)
+            Ex = - phase * sin(theta)  
+            Ey = phase * cos(theta)*cos(phi)
+            Ez = phase * cos(theta)*sin(phi)
     
 	        E_ref_incident(3*(curs_cel-1)+1,num_Eref_v)= Ex
             E_ref_incident(3*(curs_cel-1)+2,num_Eref_v)= Ey
@@ -140,8 +150,8 @@ SUBROUTINE Incident_Field_spherical(cel_init,size_Cells,Cells_in,Nb_transmitters
 
             !!-------------------------------Polarisation Horizontale--------------------------------  
             Ex = 0.0
-            Ey = - phase * sin(phi*Pi/180.)
-            Ez = phase * cos(phi*Pi/180.)
+            Ey = - phase * sin(phi)
+            Ez = phase * cos(phi)
 
             E_ref_incident(3*(curs_cel-1)+1, num_Eref_h)= Ex
             E_ref_incident(3*(curs_cel-1)+2, num_Eref_h)= Ey
@@ -150,8 +160,7 @@ SUBROUTINE Incident_Field_spherical(cel_init,size_Cells,Cells_in,Nb_transmitters
             curs_cel = curs_cel + 1
         Enddo  
     Enddo 
-End Subroutine Incident_Field_spherical    
-
+End Subroutine Incident_Field_Spherical  
 
 SUBROUTINE Incident_Field_at_Rx(nom_methode,Transmitters,Receivers)
     
