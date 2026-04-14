@@ -20,8 +20,14 @@ midas/
 ---
 
 ## Docs
-- [Documentation Home](./docs/)
-- [Getting Started](./docs/getting_started.md)
+Use the links below to navigate the documentation:
+
+- [Getting Started](./docs/getting_started.md) – Quickstart instructions and setup
+- [Architecture](./docs/architecture.md) – Overview of code structure and workflow
+- [Usage](./docs/usage.md) – How to run simulations and process outputs
+- [FAQ](./docs/faq.md) – Frequently asked questions
+- [References](./docs/references.md) – External resources and related literature
+
 
 
 ## Contact
