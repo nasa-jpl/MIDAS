@@ -162,7 +162,7 @@ SUBROUTINE Incident_Field_Spherical(cel_init,size_Cells,Cells_in,Nb_transmitters
     Enddo 
 End Subroutine Incident_Field_Spherical  
 
-SUBROUTINE Incident_Field_at_Rx(nom_methode,Transmitters,Receivers)
+SUBROUTINE Incident_Field_at_Rx(nom_methode,Transmitters,Receivers,E_incident_at_Rx)
     
     USE Initialization
     USE common_variables
@@ -173,6 +173,7 @@ SUBROUTINE Incident_Field_at_Rx(nom_methode,Transmitters,Receivers)
     character(8), INTENT(IN):: nom_methode
     type (Dipole), Dimension(NTr), INTENT(IN) :: Transmitters
     type (Dipole), Dimension(NRx_tot), INTENT(IN) :: Receivers
+    COMPLEX(real64), Dimension(NRx_tot,6*NTr), INTENT(OUT) :: E_incident_at_Rx
     
 
     ! local
@@ -181,7 +182,7 @@ SUBROUTINE Incident_Field_at_Rx(nom_methode,Transmitters,Receivers)
     real(kind=8) :: theta_capteur, phi_capteur, Rx, Ry, Rz
     Complex :: K11x, K11y, K11z, Ex_v, Ey_v, Ez_v, Ex_h, Ey_h, Ez_h
     Complex :: Vv, Vh, Hv, Hh
-    COMPLEX(real64), Dimension(NRx_tot,6*NTr) :: E_incident_at_Rx
+    
     
     ! to write Einc 
     Integer ::  ii,jj,dd,cc,kkt,kkr, Nths,Nphs,a

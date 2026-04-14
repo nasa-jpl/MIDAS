@@ -23,7 +23,7 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
     Real(kind=8) :: step_theta_CBFM,step_phi_CBFM,theta_dipole,phi_dipole
     Real(kind=8) :: cosdth_init,margin_th,margin_ph,a,x_l,y_l,z_l
     Real(kind=8) :: th_init,th_end,ph_init,ph_end
-    COMPLEX(real64), Dimension(:,:),allocatable :: E_total,S_total
+    COMPLEX(real64), Dimension(:,:),allocatable :: E_total,S_total,Es_total,E_incident_at_Rx
     COMPLEX(real64), Dimension(:),allocatable :: C_ext,C_abs
         
     ! Time performances
@@ -113,8 +113,10 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
         
         ! compute and write only scattered fields (if Scattered fields == 1)
         if (FFA .eq. 0) then ! No far field approximation, we compute and write the scattered and incident fields at observation points
-            call Compute_Scattered_Fields('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers)
-            call Incident_Field_at_Rx('CBFM-E  ',Transmitters,Receivers)        
+            Allocate(Es_total(NRx_tot,4*NTr),E_incident_at_Rx(NRx_tot,6*NTr))
+            call Compute_Scattered_Fields('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,Es_total)
+            call Incident_Field_at_Rx('CBFM-E  ',Transmitters,Receivers,E_incident_at_Rx)  
+            deallocate(Es_total,E_incident_at_Rx)
         else  
             ! Scattering matrices (if scattered fields == 0)
             Allocate(S_total(NRx_tot,4*NTr),C_ext(NTr),C_abs((NTr)));

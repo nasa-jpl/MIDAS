@@ -1105,5 +1105,7 @@ Program Main_Scattering
     endif
 
 30  Call MPI_FINALIZE (code);
-!pause;
+if (Env_type .eq. 'WIND') then 
+    pause;
+endif
 End PROGRAM Main_Scattering
