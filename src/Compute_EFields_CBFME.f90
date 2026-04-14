@@ -274,13 +274,13 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         ! Threshold for the generation of the CBFs, decided as function of max(|m|)
         vals = abs(Cells(1:Nbc)%m_n) 
         m_max_relative = ceiling(maxval(vals)) - 2.0 ! we will add this difference to the power of the threshold
-        Threshold_CBFM = max(10.0**(-3.0-m_max_relative),1e-8)
+        Threshold_CBFM = max(10.0**(-3.0-m_max_relative),1e-10)
         if (rank .eq. 0) then 
             write(*,'(a,ES7.1E1)') ' -- > Threshold_CBFM = ',Threshold_CBFM
         endif
         
         ! for distr_ipws = 1, try [91,190,231,325,496,703,861]; for distr_ipws=3 try among 289,366,482,579,723,842,926; for distr_ipws=4 try among [110,194,230,350,434,590,770,974,1202]
-        distr_ipws = 3; Nipws = 842 ! fix it here for now until debugging 4/9/2024 
+        distr_ipws = 3; Nipws = 289 ! fix it here for now until debugging 4/9/2024 
         call getTransmitters_CBFM(Transmitters_CBFM);
         if (rank == 0) then 
             if (distr_ipws .eq. 1) then 
