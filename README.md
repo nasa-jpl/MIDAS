@@ -5,8 +5,6 @@ The code is written in FORTRAN and is MPI (Message Passing Interface) paralleliz
 Several tools, written in MATLAB, are also provided to prepare and write the FORTRAN code inputs (shape, dielectric composition, simulation data files, etc.), or read and
 display its outputs (scattered fields, scattering matrices and efficiency factors, etc.).
 
----
-
 ## Repository layout
 
 ```
@@ -16,8 +14,6 @@ midas/
 +- scripts/                # Matlab and Python scripts to pre/post process data
 +- README.md
 ```
-
----
 
 ## Docs
 Use the links below to navigate the documentation:
@@ -31,16 +27,15 @@ Use the links below to navigate the documentation:
 
 
 ## Contact
-Ines Fenni
-Jet Propulsion Laboratory, California Institute of Technology
+Ines Fenni,
+Jet Propulsion Laboratory, California Institute of Technology,
 ines.fenni@jpl.nasa.gov
 
-Hélène Roussel
-Sorbonne Université
+Hélène Roussel,
+Sorbonne Université,
 helene.roussel@sorbonne-universite.fr
 
 ## License information
-----------------------
 
 See the file ``LICENSE.txt`` for terms & conditions for usage, and a DISCLAIMER OF ALL WARRANTIES.
 
