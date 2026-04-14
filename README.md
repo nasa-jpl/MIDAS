@@ -23,14 +23,22 @@ midas/
 - [Documentation Home](./docs/)
 - [Getting Started](./docs/getting_started.md)
 
+
+## Contact
+Ines Fenni
+Jet Propulsion Laboratory, California Institute of Technology
+ines.fenni@jpl.nasa.gov
+
+Hélène Roussel
+Sorbonne Université
+helene.roussel@sorbonne-universite.fr
+
 ## License information
 ----------------------
 
-See the file ``LICENSE.txt`` for terms & conditions for usage, and a DISCLAIMER OF ALL
-WARRANTIES.
+See the file ``LICENSE.txt`` for terms & conditions for usage, and a DISCLAIMER OF ALL WARRANTIES.
 
-DISCLAIMER: This version of MIDAS is under peer review. Please use this software with caution, ask for assistance if needed, and let us know any feedback you may have.
+DISCLAIMER: MIDAS is under active development. Features may change, and unexpected issues may occur. Please use with caution, and don’t hesitate to reach out for assistance or to share feedback.
 
-Copyright (c) 2026 Ines Fenni, Helene Roussel.
 
 
