@@ -1202,74 +1202,65 @@ subroutine system_mem_usage(valueRSS)
     return
 end subroutine system_mem_usage
     
-subroutine print_allocate(Nchar,allocate_str,type_str,size)
+
+subroutine print_allocate(Nchar, allocate_str, type_str, size)
 
     USE Initialization
     USE common_variables
     USE MPI
     
-    IMPLICIT NONE
+    implicit none
 
-    !IN/OUT
-    Integer, INTENT(IN) :: size,Nchar 
-    character(Nchar), INTENT(IN) :: allocate_str
-    character(5), INTENT(IN) ::type_str ! D for Double and S for Single REAL, COMP or INTG
-        
+    ! IN
+    integer, intent(in) :: size, Nchar
+    character(Nchar), intent(in) :: allocate_str
+    character(5), intent(in) :: type_str
+
     ! local
-    Real(kind=8) :: size_MB
-    character(300) :: analysis_fold_name,file_name
+    real(kind=8) :: size_MB
     character(19) :: time_allocate
-    character(:), allocatable :: rank_str 
     character(8)  :: date
     character(10) :: time
     character(5)  :: zone
-    integer,dimension(8) :: values
-    
-    if ((debug_mode .eq. 1) .and. (track_memory == 1) .and. (rank .lt. Njob_max)) then 
-        call date_and_time(date,time,zone,values);
-        time_allocate = date(5:6)//'-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//':'//time(3:4)//':'//time(5:6);
-    
-        analysis_fold_name = trim(SimOutfld_name)//Env_sep//'Analysis';
-    
-        if (rank .lt. 10) then 
-            allocate(character(1) ::rank_str);
-            Write(rank_str,'(i1)') rank;
-        elseif (rank .lt. 100) then 
-            allocate(character(2) ::rank_str);
-            Write(rank_str,'(i2)') rank;
-        elseif (rank .lt. 1000) then 
-            allocate(character(3) ::rank_str);
-            Write(rank_str,'(i3)') rank;
-        elseif (rank .lt. 10000) then 
-            allocate(character(4) ::rank_str);
-            Write(rank_str,'(i14)') rank;
-        endif
-    
-    
-        file_name = trim(analysis_fold_name)//Env_sep//'TrackAllocate_j'//rank_str//'.dat'; 
-    
-        if (trim(allocate_str) .eq. 'Reference(t=0)') then ! reference print allocate
-            Open(30+rank,File = trim(file_name)); 
-        else        
-            Open(30+rank,File = trim(file_name), status = 'old', position = 'append'); 
-        endif
-    
-        if (type_str .eq. 'DCOMP') then 
-            size_MB = 64.*2.*size/1e6;
-        elseif (type_str .eq. 'DREal') then 
-            size_MB = 64.*size/1e6;
-        else
-            size_MB = 32.*size/1e6       
-        endif
-    
-    
-        Write(30+rank,'(a,i16,a10,f12.3,a,a)') time_allocate, size,type_str,size_MB,'    ',allocate_str;   
-        Close(30+rank);
-    endif
-    
-    
+    integer :: values(8)
 
-End Subroutine print_allocate
+    ! persistent (saved) variables
+    integer, save :: unit = -1
+    logical, save :: is_open = .false.
+    character(300), save :: file_name
+
+    if ((debug_mode .ne. 1) .or. (track_memory .ne. 1) .or. (rank .ge. Njob_max)) return
+
+    ! --- initialize once ---
+    if (.not. is_open) then
+        write(file_name,'(a,a,a,i0,a)') trim(SimOutfld_name), Env_sep, &
+             'Analysis/TrackAllocate_j', rank, '.dat'
+
+        unit = 30 + rank
+        open(unit, file=trim(file_name), status='unknown', position='append')
+        is_open = .true.
+    end if
+
+    ! --- timestamp (keep if useful) ---
+    call date_and_time(date, time, zone, values)
+    write(time_allocate,'(a2,"-",a2,"-",a4,"_",a2,":",a2,":",a2)') &
+         date(5:6), date(7:8), date(1:4), time(1:2), time(3:4), time(5:6)
+
+    ! --- size estimate (same logic, slightly cleaner) ---
+    select case (type_str)
+    case ('DCOMP')
+        size_MB = 16.d0 * size / 1.d6   ! 2*8 bytes
+    case ('DREAL')
+        size_MB = 8.d0 * size / 1.d6
+    case default
+        size_MB = 4.d0 * size / 1.d6
+    end select
+
+    ! --- write (no reopen/close) ---
+    write(unit,'(a,1x,i12,1x,a5,1x,f10.3,2x,a)') &
+         time_allocate, size, type_str, size_MB, trim(allocate_str)
+
+end subroutine print_allocate
     
     
     

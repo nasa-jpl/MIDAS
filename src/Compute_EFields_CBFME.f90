@@ -298,10 +298,10 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         endif
 
         Allocate(C_job_patchs(3*Nbc_proc,2*NTr_CBFM));
-        call print_allocate(35,'C_job_patchs(3*Nbc_proc,2*NTr_CBFM)','DCOMP',3*Nbc_proc*2*NTr_CBFM); !(Nchar,allocate_str,type_str,size)
+        call print_allocate(35,'C_job_patchs(3*Nbc_proc,2*NTr_CBFM)','DCOMP',3*Nbc_proc*2*NTr_CBFM)
         C_job_patchs = 0D0;
 
-        call MPI_BARRIER(MPI_COMM_WORLD,code);
+        call MPI_BARRIER(MPI_COMM_WORLD,code)
         ! Here generation of the CBFS *************************************************************************************************
         if (rank == 0 ) Then
             if (debug_mode .eq. 1) then 
