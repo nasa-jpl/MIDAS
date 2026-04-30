@@ -86,10 +86,6 @@ MODULE common_variables
     Integer :: Mlocal, Nlocal, NRHSlocal, Myrow, Mycol, NPROW, NPCOL
     SAVE rank,nber_procs,INFO,code,Nbc_proc,Nblk_proc_max 
     SAVE Mlocal, Nlocal, NRHSlocal, Myrow, Mycol, NPROW, NPCOL
-    
-    ! track memory performance
-    Integer :: track_memory, Njob_max
-    SAVE track_memory, Njob_max
        
     
 END MODULE common_variables

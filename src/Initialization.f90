@@ -68,5 +68,7 @@ MODULE Initialization
     
     ! Parameters for code debug/development
     Integer, parameter :: debug_mode = 0
+    Integer, parameter :: track_memory = 0
+    Integer, parameter :: Njob_max = 100
     
 End MODULE Initialization

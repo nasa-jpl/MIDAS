@@ -233,10 +233,6 @@ Program Main_Scattering
     !! for now for the MPI code I will not use the spherical shape option 'define & use Copies', I will see if interesting later
     define_use_Copies = 0;
 
-    ! track memory use
-    track_memory = 1;
-    Njob_max = 100;
-
     !! HERE ALL THE PROCS WILL READ THE SAME SIMULATION INPUT FILES :
     !! Reading the data file *****************************************************************************************************
     !! ***************************************************************************************************************************
