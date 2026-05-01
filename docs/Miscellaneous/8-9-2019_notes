@@ -1,3 +1,0 @@
-In comparison to the current OpenMP code, this MPI code has the updated version of incident wave (incident wave propagating in X)
-BUT it hasn't all the work done on numerical integration configuration : different Nid/NI_type for the incident/scattered angles & 
-New Spherical T-design schemes (Efficient Spherical Designs with Good Geometric Properties of Rob Womersley)

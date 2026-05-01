@@ -251,14 +251,13 @@
                                 Open(unit=21+rank,File = file_name_s, Access='Append', Status='old');
                             else
                                 Open(unit=21+rank,File = file_name_s);
-                                Write(21+rank, '(a,f10.4,a,f10.4,a,f10.4)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi,'; BETA =', Beta
-                                Write(21+rank,'(a,a)') '      theta       phi      Re(Svv)        Im(Svv)         Re(Svh)       Im(Svh) ',&
-                                            '        Re(Shv)       Im(Shv)        Re(Shh)        Im(Shh) '
+                                 Write(21+rank, '(a,f10.4,a,f10.4,a,f10.4)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi,'; BETA =', Beta
+                                Write(21+rank,'(a,a)') '    theta       phi    Re(Svv)      Im(Svv)     Re(Svh)     Im(Svh) ',&
+                                            '    Re(Shv)     Im(Shv)    Re(Shh)      Im(Shh) '
                             endif
                                 
-                            Write(21+rank,'(f10.4,a,f10.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4)') &
-                            theta_capteur,';  ',phi_capteur,';  ',Real(Vv_pol),';  ',Imag(Vv_pol),';  ',Real(Vh_pol),&
-                              ';  ',Imag(Vh_pol),';  ', Real(Hv_pol),';  ',Imag(Hv_pol),';  ',Real(Hh_pol),';  ',Imag(Hh_pol)
+                            Write(21+rank,'(f10.4,f10.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4)') &
+                            theta_capteur,phi_capteur,Real(Vv_pol),Imag(Vv_pol),Real(Vh_pol),Imag(Vh_pol), Real(Hv_pol),Imag(Hv_pol),Real(Hh_pol),Imag(Hh_pol)
                             
                             Close(21+rank);
                       Endif

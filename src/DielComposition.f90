@@ -29,7 +29,8 @@ SUBROUTINE DielComposition(m_lambdas,Cells)
     endif
     
     !! Since Cell.m_cell and Cell.Eps_cell can vary with the frequency this subroutine should be called inside the loop on lambda!
-    if ((trim(dielcomp_option) == 'fromshapefile') .OR. (trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'fromonlymfile')) then
+    if ((trim(dielcomp_option) == 'fromshapefile') .OR. (trim(dielcomp_option) == 'fromdielcompositionfile') &
+        .OR. (trim(dielcomp_option) == 'fromdieltable') .OR. (trim(dielcomp_option) == 'fromonlymfile')) then
         Do ii= 1,Nbc
             ii_diel = Cells(ii)%n_diel;
             Cells(ii)%m_n = m_lambdas(ii_diel,num_freq);
@@ -56,6 +57,7 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
     USE common_variables
     USE iso_fortran_env
     USE strings
+    USE DiverseUtil
     
     Implicit NONE
     
@@ -69,14 +71,17 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
                                                                   ! we will read all the available m values and compare later with Nbc.  
         
     ! local 
-    Integer :: ii,jj,dd,nvals, nitems,n,nargs,Nfreq_dielfile
-    Real(kind=8) :: lmbd, mrp, mip
+    Integer :: ii,jj,nn,dd,nvals, nitems,n,nargs,Nfreq_dielfile, n_columns
+    Real(kind=8) :: lmbd, mrp, mip,eps_r, eps_i, abs_eps
     character(250) :: fname;
     Complex, Dimension(:), allocatable :: ms_mfile
     Real(kind=8), Dimension(:), allocatable :: lamb_ii
     Character(200) cc,frmt
     character(100),dimension(3) :: args1
     character(100),dimension(2) :: args2
+    character(len=256) :: line
+    character :: type_diel
+    character(len=32), dimension(:), allocatable :: diel_freqs
         
     if (trim(dielcomp_option) == 'fromdielcompositionfile') then
         !Allocate(m_lambdas(Ndiel,Nfreq));
@@ -84,7 +89,7 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
                         ! before having all the discretization info from the shape file. so we simply allocate 1x Nfreq and initialize it to 1 just to be 
                         ! consistent with regard to the other options
         
-        Open(11,File = trim('inputs/dielcomposition.dat'));
+        Open(11,File = trim('inputs/dielcomposition.dat'))
         read(11,'(a)'),cc; read(11,'(a)'),cc;
         call parse(cc,'=',args1,nargs);
         read(args1(3),'(i)'), Nfreq_dielfile
@@ -106,15 +111,64 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
                 do jj = 1,Nfreq
                     m_lambdas(ii,jj) = lamb_ii(2*jj-1)+J*lamb_ii(2*jj);                    
                 EndDo                
-            EndDo   
+            EndDo 
+            close(11)  
         elseif (Nfreq_dielfile .eq. 1) then ! we use this single value for all calculated frequencies 
             Do ii= 1,Ndiel
                 read(11,'(i8,f9.4,f9.4)') jj,mrp,mip
                 m_lambdas(ii,:) = mrp+J*mip;                                   
             EndDo
+            close(11)
         else ! too complicated to decide here -> error 
             stop 1;
             Write(*,'(a,a)') 'Nfreq_dielfile < Nfreq and .ne. to 1 ! Please use another dielcompositionfile !! '            
+        endif
+
+    elseif (trim(dielcomp_option) == 'fromdieltable') then 
+        !! the dielectric table has Ndiel rows, and Nfreqs columns, to read and store into m_lambdas
+        Allocate(m_lambdas(Ndiel,Nfreq))
+        fname = m_file_name(1);
+        Open(11,File = trim(fname)) 
+        read(11,*),line
+        if (SCAN(line, "eps") .gt. 0) then 
+            type_diel = 'e'
+        else
+            type_diel = 'm'
+        endif
+        ! read separately the first dielectric to make sure we have the correct number of frequencies 
+        read(11,'(a)') line
+        call split_line(line, diel_freqs, n_columns)
+        if (n_columns .lt. 2*Nfreq+1) then ! update with .lt. instead of .eq. to be flexible and alllow for extra columns for vf_i vf_l vf_a
+            stop 1
+            Write(*,'(a,a,a)') 'Error while reading m values from ',fname,': the number of columns does not correspond to the number of frequencies!'
+        endif 
+        Do nn = 1,Nfreq
+            read (diel_freqs(2*nn),'(f9.6)'),mrp
+            read (diel_freqs(2*nn+1),'(f9.6)'),mip
+            m_lambdas(1,nn) = mrp + J* mip
+        enddo
+        Do ii= 2,Ndiel
+            read(11,'(a)') line
+            call split_line(line, diel_freqs, n_columns)
+            Do nn = 1,Nfreq
+                read (diel_freqs(2*nn),'(f9.6)'),mrp
+                read (diel_freqs(2*nn+1),'(f9.6)'),mip
+                m_lambdas(ii,nn) = mrp + J* mip 
+            enddo
+        EndDo   
+        
+        ! convert eps to m if needed 
+        if (type_diel == 'e') then 
+            Do ii= 1,Ndiel
+                Do nn = 1,Nfreq
+                    eps_r = real(m_lambdas(ii,nn))
+                    eps_i = imag(m_lambdas(ii,nn))
+                    abs_eps = sqrt(eps_r**2+eps_i**2)
+                    mrp = sqrt((abs_eps+eps_r)/2.)
+                    mip = sqrt((abs_eps-eps_r)/2.)
+                    m_lambdas(ii,nn) = mrp + J* mip 
+                enddo
+            EndDo   
         endif
         
     else 
@@ -149,7 +203,7 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
         endDo
         deallocate(ms_mfile);               
     endif       
-    ENDSUBROUTINE get_diel_values_lambdas
+ENDSUBROUTINE get_diel_values_lambdas
     
 integer function nitems(line)
     

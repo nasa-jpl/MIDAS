@@ -446,11 +446,15 @@ select case(delim1)
       iend=1
       inc=-1
    case default
+      if (rank .eq. 0) then 
       write(*,*) delim1,' is not a valid delimiter'
+      endif
       return
 end select
 if(istart < 1 .or. istart > lenstr) then
-   write(*,*) delim1,' has no matching delimiter'
+    if (rank .eq. 0) then 
+        write(*,*) delim1,' has no matching delimiter'
+    endif
    return
 end if
 delim2=achar(idelim2) ! matching delimiter
@@ -464,7 +468,9 @@ do i=istart,iend,inc
    if(isum == 0) exit
 end do
 if(isum /= 0) then
-   write(*,*) delim1,' has no matching delimiter'
+    if (rank .eq. 0) then 
+        write(*,*) delim1,' has no matching delimiter'
+    endif
    return
 end if   
 imatch=i

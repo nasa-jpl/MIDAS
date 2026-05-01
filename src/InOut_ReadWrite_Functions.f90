@@ -248,8 +248,11 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
             diel_comp_perc(ii) = p; 
         Enddo
     elseif (trim(dielcomp_option) == 'fromdielcompositionfile') then
-        Allocate(m_file_name(1),diel_comp_perc(1)); ! Since each of the Nbc cell has a different refractive index here, diel_comp_perc is not releavant here 
-        m_file_name(1) = 'inputs/dielcomposition.dat'; ! this file contains the refractive index per cell        
+        Allocate(m_file_name(1)) 
+        m_file_name(1) = 'inputs/dielcomposition.dat'; ! this file contains the refractive index per cell    
+    elseif (trim(adjustl(dielcomp_option)) == 'fromdieltable') then ! This option is useful for a number of dielectric larger than 3 and/or are dependent on frequency  
+        Allocate(m_file_name(1)) 
+        m_file_name(1) = 'inputs'//Env_sep//'dielectric_table.txt'; 
     else
         if (rank == 0) then 
             Write(*,'(a,a,a)')'Error : ', dielcomp_option, ' is an unknown dielectric decomposition option !!'
@@ -258,7 +261,7 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
         go to 40
     endif    
         
-    if (((trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'fromshapefile')) &
+    if (((trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'fromshapefile') .OR. (trim(dielcomp_option) == 'fromdieltable')) &
         .AND. (SimScatterer%type_s .ne. 2)) then
         if (rank == 0) then
             Write(*,'(a,a)') 'Error : The requested dielectric decomposition option can only be used with type_scatterer = 2';
@@ -291,8 +294,7 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     !!!! Parameters of the Applied methods
     read(11,*)
     read(11,*);read(11,*), Nber_methods
-    read(11,*);read(11,*), leng_meth
-    Allocate(character(leng_meth) :: methods_names(Nber_methods))
+    leng_meth=8;Allocate(character(leng_meth) :: methods_names(Nber_methods))
     read(11,*)
     CBFM=0; MLCBFM=0; MoM=0; RGE=0;
     DO ii=1,Nber_methods
@@ -350,28 +352,14 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     read(11,*)
     read(11,*);read(11,*), div_type
     read(11,*);read(11,*), Navg_cells
-    read(11,*);read(11,*), set_Nipws   !! if set_Nipws we will use setNipws in getParameters_CBFM.f90
-    read(11,*);read(11,*), distr_ipws !! type of distribution for the N incident plane waves used 
-                                      !! to generate the CBFs (see getTransmitters_CBFM for details)
-    read(11,*);read(11,*), Nc_extended
-    read(11,*);read(11,*), DR
-    read(11,*);read(11,*), SR
-    read(11,*), res_SR
-    read(11,*);read(11,*), SR_Zc
-    read(11,*) SR_Zc_type_ch
-    read(11,*), Eps_SR_Zc
     read(11,*)        
-         
-    !ACA !! 
-    ! As we are not using the ACA for the MPI version yet, I deleted these lines 
-    ! and simply initialized the ACA params to 0
-    !read(11,*);
-    !read(11,*);read(11,*), Use_ACA
-    !read(11,*);read(11,*), Nb_it_max                                                                                                                                                                                     
-    !read(11,*);read(11,*), Epsilon_ACA                                                                                                                                                                                           
-    !read(11,*);read(11,*), Vrb_ACA
-    !read(11,*)
+    
+    ! CBFM parameters
+    set_Nipws = 0; distr_ipws =3; Nc_extended =1; 
+    DR=0; SR=1; res_SR=1e-2; SR_Zc = 0;
     Use_ACA = 0; Nb_it_max= 50; Epsilon_ACA = 1E-4; Vrb_ACA = 0; 
+    SR_Zc_type_ch = 'threshold' ! takes 3 values 'threshold' or 'edistance' or 'spalgo_dz'
+    Eps_SR_Zc = 1e3;
     
     ! decide SR_Zc_type from SR_Zc_type_ch
     If (trim(SR_Zc_type_ch) =='threshold') Then
@@ -393,6 +381,8 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     ! get Far fiel approximation params
     ! in practice, FFA = 1 for precipitation particles & FFA = 0 for asteroid simulation 
     read(11,*);
+    read(11,*);read(11,*),CextIntFields !default 0; If CextIntFields == 1, we will keep and display the Extenction cross section
+                                        ! calculated from the Internal Field
     read(11,*);read(11,*), FFA
     read(11,*);read(11,*), Rso
     read(11,*);
@@ -570,8 +560,8 @@ SUBROUTINE Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,o
             !    ';',Cells(ii)%Zc,';',Cells(ii)%Sc,';',Cells(ii)%num_block,';',Cells(ii)%num_diel,';',&
             !    real(Cells(ii)%m_cell),' + j*',imag(Cells(ii)%m_cell),';', real(Cells(ii)%Eps_cell),' + j*',imag(Cells(ii)%Eps_cell);
         
-            Write(14,'(f12.6,a,f12.6,a,f12.6,a,f12.6,a,i8,a,i6)') Cells(ii)%Xc,';',Cells(ii)%Yc, &
-                ';',Cells(ii)%Zc,';',Cells(ii)%Sc,';',Cells(ii)%n_diel,';',Cells(ii)%n_block
+            Write(14,'(f12.6,f12.6,f12.6,f12.6,i8,i6)') Cells(ii)%Xc,Cells(ii)%Yc, &
+                Cells(ii)%Zc,Cells(ii)%Sc,Cells(ii)%n_diel,Cells(ii)%n_block
         EndDo
         Close(14);
     endif
@@ -1156,6 +1146,9 @@ END SUBROUTINE Write_jobs_sim_info
 subroutine system_mem_usage(valueRSS)
 
     use ifport !if on intel compiler
+    USE Initialization
+    USE common_variables
+    USE MPI
 
     ! You should know that : RSS is Resident Set Size (physically resident memory - 
     ! this is currently occupying space in the machine's physical memory),
@@ -1189,8 +1182,10 @@ subroutine system_mem_usage(valueRSS)
 
     inquire (file=filename,exist=ifxst)
     if (.not.ifxst) then
-      write (*,*) 'system file does not exist'
-      return
+        if (rank == 0) then 
+            write (*,*) 'system file does not exist'
+        endif
+        return
     endif
 
     open(unit=100, file=filename, action='read')
@@ -1207,74 +1202,65 @@ subroutine system_mem_usage(valueRSS)
     return
 end subroutine system_mem_usage
     
-subroutine print_allocate(Nchar,allocate_str,type_str,size)
+
+subroutine print_allocate(Nchar, allocate_str, type_str, size)
 
     USE Initialization
     USE common_variables
     USE MPI
     
-    IMPLICIT NONE
+    implicit none
 
-    !IN/OUT
-    Integer, INTENT(IN) :: size,Nchar 
-    character(Nchar), INTENT(IN) :: allocate_str
-    character(5), INTENT(IN) ::type_str ! D for Double and S for Single REAL, COMP or INTG
-        
+    ! IN
+    integer, intent(in) :: size, Nchar
+    character(Nchar), intent(in) :: allocate_str
+    character(5), intent(in) :: type_str
+
     ! local
-    Real(kind=8) :: size_MB
-    character(300) :: analysis_fold_name,file_name
+    real(kind=8) :: size_MB
     character(19) :: time_allocate
-    character(:), allocatable :: rank_str 
     character(8)  :: date
     character(10) :: time
     character(5)  :: zone
-    integer,dimension(8) :: values
-    
-    if ((track_memory == 1) .and. (rank .lt. Njob_max)) then 
-        call date_and_time(date,time,zone,values);
-        time_allocate = date(5:6)//'-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//':'//time(3:4)//':'//time(5:6);
-    
-        analysis_fold_name = trim(SimOutfld_name)//Env_sep//'Analysis';
-    
-        if (rank .lt. 10) then 
-            allocate(character(1) ::rank_str);
-            Write(rank_str,'(i1)') rank;
-        elseif (rank .lt. 100) then 
-            allocate(character(2) ::rank_str);
-            Write(rank_str,'(i2)') rank;
-        elseif (rank .lt. 1000) then 
-            allocate(character(3) ::rank_str);
-            Write(rank_str,'(i3)') rank;
-        elseif (rank .lt. 10000) then 
-            allocate(character(4) ::rank_str);
-            Write(rank_str,'(i14)') rank;
-        endif
-    
-    
-        file_name = trim(analysis_fold_name)//Env_sep//'TrackAllocate_j'//rank_str//'.dat'; 
-    
-        if (trim(allocate_str) .eq. 'Reference(t=0)') then ! reference print allocate
-            Open(30+rank,File = trim(file_name)); 
-        else        
-            Open(30+rank,File = trim(file_name), status = 'old', position = 'append'); 
-        endif
-    
-        if (type_str .eq. 'DCOMP') then 
-            size_MB = 64.*2.*size/1e6;
-        elseif (type_str .eq. 'DREal') then 
-            size_MB = 64.*size/1e6;
-        else
-            size_MB = 32.*size/1e6       
-        endif
-    
-    
-        Write(30+rank,'(a,i16,a10,f12.3,a,a)') time_allocate, size,type_str,size_MB,'    ',allocate_str;   
-        Close(30+rank);
-    endif
-    
-    
+    integer :: values(8)
 
-End Subroutine print_allocate
+    ! persistent (saved) variables
+    integer, save :: unit = -1
+    logical, save :: is_open = .false.
+    character(300), save :: file_name
+
+    if ((debug_mode .ne. 1) .or. (track_memory .ne. 1) .or. (rank .ge. Njob_max)) return
+
+    ! --- initialize once ---
+    if (.not. is_open) then
+        write(file_name,'(a,a,a,i0,a)') trim(SimOutfld_name), Env_sep, &
+             'Analysis/TrackAllocate_j', rank, '.dat'
+
+        unit = 30 + rank
+        open(unit, file=trim(file_name), status='unknown', position='append')
+        is_open = .true.
+    end if
+
+    ! --- timestamp (keep if useful) ---
+    call date_and_time(date, time, zone, values)
+    write(time_allocate,'(a2,"-",a2,"-",a4,"_",a2,":",a2,":",a2)') &
+         date(5:6), date(7:8), date(1:4), time(1:2), time(3:4), time(5:6)
+
+    ! --- size estimate (same logic, slightly cleaner) ---
+    select case (type_str)
+    case ('DCOMP')
+        size_MB = 16.d0 * size / 1.d6   ! 2*8 bytes
+    case ('DREAL')
+        size_MB = 8.d0 * size / 1.d6
+    case default
+        size_MB = 4.d0 * size / 1.d6
+    end select
+
+    ! --- write (no reopen/close) ---
+    write(unit,'(a,1x,i12,1x,a5,1x,f10.3,2x,a)') &
+         time_allocate, size, type_str, size_MB, trim(allocate_str)
+
+end subroutine print_allocate
     
     
     

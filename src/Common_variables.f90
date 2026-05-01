@@ -2,10 +2,10 @@ MODULE common_variables
         
     ! EM wave
     Real(kind=8) :: Freq_w,Omega_w,lambda_w,k_0
-    Integer :: Nfreq,num_freq,freq_mag,lamb_mag
+    Integer :: Nfreq,num_freq,num_sim,freq_mag,lamb_mag
     Character(3) :: freq_unit
     Character(2) :: lamb_unit
-    SAVE Nfreq, num_freq, Freq_w, freq_unit, freq_mag 
+    SAVE Nfreq, num_freq, num_sim, Freq_w, freq_unit, freq_mag 
     SAVE Omega_w, lambda_w, lamb_unit, lamb_mag, k_0
     
     ! Transmitters/Receivers
@@ -63,8 +63,8 @@ MODULE common_variables
     SAVE NumIntType_t, NumIntType_r
     
     ! Scattering Quantitites from Internal field
-    Integer :: QextIFDisp
-    SAVE QextIFDisp
+    Integer :: CextIntFields
+    SAVE CextIntFields
     
     ! In/Output files
     Integer :: wr_Sij,wr_Qij,EqSph,shape_list
@@ -86,13 +86,6 @@ MODULE common_variables
     Integer :: Mlocal, Nlocal, NRHSlocal, Myrow, Mycol, NPROW, NPCOL
     SAVE rank,nber_procs,INFO,code,Nbc_proc,Nblk_proc_max 
     SAVE Mlocal, Nlocal, NRHSlocal, Myrow, Mycol, NPROW, NPCOL
-    
-    ! debug and perfromance 
-    Integer :: debug_mode
-    SAVE debug_mode
-    ! track memory performance
-    Integer :: track_memory, Njob_max
-    SAVE track_memory, Njob_max
        
     
 END MODULE common_variables

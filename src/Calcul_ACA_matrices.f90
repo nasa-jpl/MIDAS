@@ -212,7 +212,7 @@ SUBROUTINE Calcul_MatrixZij_ACA(Cells,I_Z,J_Z,curs_lig_Iz,curs_col_Jz,NbreLigMat
     Deallocate (Appro_R); Deallocate(NormeF_Zk)
     Deallocate(ProdUlVl_row, ProdUlVl_col)
     
-    If (vrb_ACA == 1) Then
+    If ((vrb_ACA .eq. 1) .and. (rank .eq. 0)) Then
         Write(*,'(a,i4,a,i4,a,f12.6,a,i3,a)') 'I = ',I_Z,'; J = ',J_Z,' : Res = ',Res, ' after ', k, ' iterations.'
     EndIf
 
@@ -417,7 +417,7 @@ SUBROUTINE Calcul_GenMatrix_ACA(m,n,Zin,nmax,nout,Matrix_U,Matrix_V)
     Deallocate (Appro_Z, Appro_R); Deallocate(NormeF_Zk)
     Deallocate(ProdUlVl_row, ProdUlVl_col)
     
-    If (vrb_ACA == 1) Then
+    If (vrb_ACA == 1 .and. rank == 0) Then
         Write(*,'(a,f12.6,a,i3,a)') 'Res = ',Res, ' after ', k, ' iterations.'
     EndIf
 
@@ -637,7 +637,7 @@ SUBROUTINE Calcul_Matrix_ACA_SMW(nCells1,nCells2,CellsB1,CellsB2,Nb_it_max_smwf,
     Deallocate (Appro_Z, Appro_R); Deallocate(NormeF_Zk)
     Deallocate(ProdUlVl_row, ProdUlVl_col)
     
-    If (vrb_ACA == 1) Then
+    If (vrb_ACA == 1 .and. rank == 0) Then
         Write(*,'(a,f12.6,a,i3,a)') 'Res = ',Res, ' after ', k, ' iterations.'
     EndIf
 

@@ -29,7 +29,7 @@ Program Main_Scattering
     ! Database code
     Integer :: eastat,numlines,NbSimulations,SimShape
     Real(kind=8) :: MaxDim, dim_ref, h_LargePart
-    CHARACTER(60) ::  shapefile_path
+    CHARACTER(60) ::  shapefile_path,suffix_str
     CHARACTER(300) ,allocatable::ShapesDirNamesParams(:)
     CHARACTER(2)  :: type_str
     character(240) :: inputline
@@ -41,8 +41,8 @@ Program Main_Scattering
     Integer, Dimension(:), allocatable :: all_NBlocks
 
     ! others
-    Integer :: a,ii,jj,rr,Ind,I,K,m,ios,N_vals_m,Sim,old_Nbc,error_read,error_div
-    Integer :: tdistr_sca,Nval_eps_r,Nval_eps_i
+    Integer :: a,ii,jj,rr,Ind,I,K,m,ios,N_vals_m,old_Nbc,error_read,error_div
+    Integer :: tdistr_sca,Nval_eps_r,Nval_eps_i,ii1,ii2
     Integer :: N,NBlks_exp,m_read_opt,err,Type_Par,pr_d,d,selected,num_bin,Nbins
     Real(kind=8) :: Volume,q, rp, ip,mrp , mip, p, Sc,Dp,h,ap,theta_dipole, phi_dipole
     Real(kind=8) :: x_l, y_l, z_l, xmax,xeq,xmax_m,xeq_m
@@ -232,13 +232,6 @@ Program Main_Scattering
 
     !! for now for the MPI code I will not use the spherical shape option 'define & use Copies', I will see if interesting later
     define_use_Copies = 0;
-    ! If IFDisp == 1, we will keep and display the Extenction cross section
-    ! calculated from the Internal Field
-    QextIFDisp = 0;
-
-    ! track memory use
-    track_memory = 1;
-    Njob_max = 100;
 
     !! HERE ALL THE PROCS WILL READ THE SAME SIMULATION INPUT FILES :
     !! Reading the data file *****************************************************************************************************
@@ -260,7 +253,7 @@ Program Main_Scattering
 
     !! Initialization ************************************************************************************************************
     !! ***************************************************************************************************************************
-    If (shape_list .eq. 1) then
+    If (shape_list .ge. 1) then
         ! First all the jobs will wait until job 0 check the existence and create if needed the SimShape.dat file
         if (rank == 0) then
             inquire(file='inputs/SimShapes.dat', exist=fileExists)
@@ -314,9 +307,9 @@ Program Main_Scattering
     endif
 
     ! HERE START SCATTERER
-    Do Sim=1, NbSimulations
-        If (shape_list .eq. 1) then
-            ShapeFilePathParam = ShapesDirNamesParams(Sim)
+    Do num_sim=1, NbSimulations
+        If (shape_list .ge. 1) then
+            ShapeFilePathParam = ShapesDirNamesParams(num_sim)
             ii = index(ShapeFilePathParam,':')
             if (ii == 0) then
                 if (rank == 0) then
@@ -359,7 +352,7 @@ Program Main_Scattering
             if (rank == 0) Then
                 Write(*,'(a)')' '
                 Write(*,'(a)')  '+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++';
-                Write(*,'(a,i5,a,i5,a)') '++ SIM ',Sim,' OUT OF ',NbSimulations,' ++++++++++++++++++++++++++++++++';
+                Write(*,'(a,i5,a,i5,a)') '++ SIM ',num_sim,' OUT OF ',NbSimulations,' ++++++++++++++++++++++++++++++++';
                 Write(*,'(a)') '+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++';
                 Write(*,'(a)')' '
             endif
@@ -371,13 +364,21 @@ Program Main_Scattering
             endif
         Endif
         ! Scatterer Output Folder
-        If (shape_list .eq. 1) then
+        If (shape_list .ge. 1) then
+            If (shape_list .eq. 2) then
+                ! if shape_list == 2, the sim folder name will include whatever suffix the shapefile has in its pathname
+                ii1 = index(ShapeFilePath,'shape', BACK=.TRUE.) 
+                ii2 = index(ShapeFilePath,'.dat') 
+                suffix_str = ShapeFilePath(ii1+5:ii2-1)
+            else
+                suffix_str =''
+            endif            
             if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then
-                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ap='//trim(ap_str)//lamb_unit;
+                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//trim(suffix_str)//'-ap='//trim(ap_str)//lamb_unit;
             elseif (SimScatterer%type_s == 3) then
-                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//'-ac='//trim(ac_str)//lamb_unit//'-lc='//trim(lc_str)//lamb_unit;
+                SimOutfld_name = trim(Outfld_name)//Env_sep//trim(SimScatterer%info_s)//trim(suffix_str)//'-ac='//trim(ac_str)//lamb_unit//'-lc='//trim(lc_str)//lamb_unit;
             elseif (SimScatterer%type_s == 1) then
-                SimOutfld_name = trim(Outfld_name)//Env_sep//'Sphere-ap='//trim(ap_str)//lamb_unit;
+                SimOutfld_name = trim(Outfld_name)//Env_sep//'Sphere'//trim(suffix_str)//'-ap='//trim(ap_str)//lamb_unit;
             endif
         else
             if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then
@@ -402,23 +403,25 @@ Program Main_Scattering
         endif
         Call MPI_Barrier(MPI_COMM_WORLD,code);  ! here all the jobs wait for the creation of the simulation folders
 
-        ! create analysis folder & store first moment (time reference)
-        analysis_fold_name = trim(SimOutfld_name)//Env_sep//'Analysis';
-        if (rank .eq. 0) then
-            CALL SYSTEM('mkdir "'//trim(analysis_fold_name)//'"');
-        endif
+        if (debug_mode .eq. 1) then 
+            ! create analysis folder & store first moment (time reference)
+            analysis_fold_name = trim(SimOutfld_name)//Env_sep//'Analysis';
+            if (rank .eq. 0) then
+                CALL SYSTEM('mkdir "'//trim(analysis_fold_name)//'"');
+            endif
 
-        Do ii = 1,4
-          Call MPI_Barrier(MPI_COMM_WORLD,code);
-          if (rank == ii) then
-              ! create the S_files folder if needed
-              inquire(directory=trim(analysis_fold_name),exist=dirExists);
-              if (.not. dirExists)  Then
-                  CALL SYSTEM('mkdir "'//trim(analysis_fold_name)//'"');
-              EndIf
-          endif
-        EndDo
-        call print_allocate(14,'Reference(t=0)','NONE ',0);
+            Do ii = 1,4
+              Call MPI_Barrier(MPI_COMM_WORLD,code);
+              if (rank == ii) then
+                  ! create the S_files folder if needed
+                  inquire(directory=trim(analysis_fold_name),exist=dirExists);
+                  if (.not. dirExists)  Then
+                      CALL SYSTEM('mkdir "'//trim(analysis_fold_name)//'"');
+                  EndIf
+              endif
+            EndDo
+            call print_allocate(14,'Reference(t=0)','NONE ',0);
+        endif
 
         !! ICI GENERATION SCENE DE SIMULATION ET DISCRETISATION -------> Resultat : Nbc et tableau cellules
         !! PREPARING THE SIMULATION SCENE (the same for all the frequencies)
@@ -467,8 +470,7 @@ Program Main_Scattering
                 endif
             EndDo
         EndDo
-        if ((trim(dielcomp_option) == 'fromonlymfile') .OR. &
-            ((trim(dielcomp_option) == 'fromshapefile') .AND. (Ndiel .eq.1))) then
+        if ((trim(dielcomp_option) == 'fromonlymfile') .OR. (Ndiel .eq.1)) then
             homogs = 1;
         else
             homogs = 0;
@@ -477,41 +479,57 @@ Program Main_Scattering
         !*****************************************************************************************************
         If (NbSimulations .eq. 1) then
             if (rank == 0) then
-                Write (*,'(a)') '**************************************************************************************'
-                Write (*,'(a)') '************* Computing of the Scattering by Complex-Shaped Scatterer *****************'
-                Write (*,'(a)') '************************** CODE VIEM_MoM-CBFM_VoxelMesh ******************************'
-                Write (*,'(a)') '*************************************************************************************'
+                Write(*,'(a)') '**************************************************************************************'
+                Write(*,'(a)') '************* Computing of the Scattering by Complex-Shaped Scatterer *****************'
+                Write(*,'(a)') '************************** CODE VIEM_MoM-CBFM_VoxelMesh ******************************'
+                Write(*,'(a)') '*************************************************************************************'
             endif
         EndIf
 
         ! Simulation file
         if (rank == 0) then
-    10      call date_and_time(date,time,zone,values);
-            if (EqSph==0) then
-            	if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then
-                	file_name = trim(SimOutfld_name)//Env_sep//'Simulation_'//trim(SimScatterer%info_s)//'_'//date(5:6)//&
-                    '-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//'h'//time(3:4)//'.dat';
-            	elseif (SimScatterer%type_s == 1) then
-                	file_name = trim(SimOutfld_name)//Env_sep//'Simulation_Sphere_'//date(5:6)//&
-                	'-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//'h'//time(3:4)//'.dat';
-            	else
-                	write(ch_tmp,'(i1)') SimScatterer%type_s;
-                	file_name = trim(SimOutfld_name)//Env_sep//'Simulation_ty'//trim(ch_tmp)//'_'//date(5:6)//&
-                	'-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//'h'//time(3:4)//'.dat';
-            	endif
-            EndIf
-            Open(10,File = trim(file_name));
+10          call date_and_time(date,time,zone,values);
+            if (debug_mode == 1) then
+                if (EqSph==0) then
+            	    if ((SimScatterer%type_s == 2) .OR. (SimScatterer%type_s == 6)) then
+                	    file_name = trim(SimOutfld_name)//Env_sep//'Simulation_'//trim(SimScatterer%info_s)//'_'//date(5:6)//&
+                        '-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//'h'//time(3:4)//'.dat';
+            	    elseif (SimScatterer%type_s == 1) then
+                	    file_name = trim(SimOutfld_name)//Env_sep//'Simulation_Sphere_'//date(5:6)//&
+                	    '-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//'h'//time(3:4)//'.dat';
+            	    else
+                	    write(ch_tmp,'(i1)') SimScatterer%type_s;
+                	    file_name = trim(SimOutfld_name)//Env_sep//'Simulation_ty'//trim(ch_tmp)//'_'//date(5:6)//&
+                	    '-'//date(7:8)//'-'//date(1:4)//'_'//time(1:2)//'h'//time(3:4)//'.dat';
+            	    endif
+                EndIf
+                Open(10,File = trim(file_name));
 
-            Write (10,'(a)') '**************************************************************************************'
-            Write (10,'(a)') '************* Computing of the Scattering by Complex-Shaped Scatterer *****************'
-            Write (10,'(a)') '************************** CODE VIEM_MoM-CBFM_VoxelMesh ******************************'
-            Write (10,'(a)') '*************************************************************************************'
+                Write (10,'(a)') '**************************************************************************************'
+                Write (10,'(a)') '************* Computing of the Scattering by Complex-Shaped Scatterer *****************'
+                Write (10,'(a)') '************************** CODE VIEM_MoM-CBFM_VoxelMesh ******************************'
+                Write (10,'(a)') '*************************************************************************************'
 
-
-            !! Once generated, all these informations should be written in the output file and Simulation_data_out
-            Write(10,*) ''
-            write (10,'(a,i3,a)',advance='no') 'The number of frequencies = ', Nfreq,' : ['
-            Do ii=1, Nfreq-1
+                !! Once generated, all these informations should be written in the output file and Simulation_data_out
+                Write(10,*) ''
+                write (10,'(a,i3,a)',advance='no') 'The number of frequencies = ', Nfreq,' : ['
+                Do ii=1, Nfreq-1
+                    Freq_w = C0/(Wavesle(ii)/(10**lamb_mag));
+                    a = nint(Freq_w/(10**freq_mag));
+                    if (a < 10) Then
+                        Allocate(character(4) ::stFreq)
+                        ty = '(f4.2)';
+                    ElseIf (a < 100) Then
+                        Allocate(character(5) ::stFreq)
+                        ty = '(f5.2)';
+                    Else
+                        Allocate(character(6) ::stFreq)
+                        ty = '(f6.2)';
+                    EndIf
+                    Write(stFreq,ty) Freq_w/(10**freq_mag)
+                    write (10,'(a,a)',advance='no') stFreq,'; '
+                    Deallocate(stFreq);
+                EndDo
                 Freq_w = C0/(Wavesle(ii)/(10**lamb_mag));
                 a = nint(Freq_w/(10**freq_mag));
                 if (a < 10) Then
@@ -525,30 +543,14 @@ Program Main_Scattering
                     ty = '(f6.2)';
                 EndIf
                 Write(stFreq,ty) Freq_w/(10**freq_mag)
-                write (10,'(a,a)',advance='no') stFreq,'; '
+                write (10,'(a,a,a)') stFreq,'] ',trim(freq_unit);
                 Deallocate(stFreq);
-            EndDo
-            Freq_w = C0/(Wavesle(ii)/(10**lamb_mag));
-            a = nint(Freq_w/(10**freq_mag));
-            if (a < 10) Then
-                Allocate(character(4) ::stFreq)
-                ty = '(f4.2)';
-            ElseIf (a < 100) Then
-                Allocate(character(5) ::stFreq)
-                ty = '(f5.2)';
-            Else
-                Allocate(character(6) ::stFreq)
-                ty = '(f6.2)';
-            EndIf
-            Write(stFreq,ty) Freq_w/(10**freq_mag)
-            write (10,'(a,a,a)') stFreq,'] ',trim(freq_unit);
-            Deallocate(stFreq);
-
+            endif
             if (EqSph==1) then
-                Write (*,'(a)') ' '
-                Write (*,'(a)') '******************** VOLUME EQUIVALENT SPHERE SIMULATIONS **********************';
-                Write (*,'(a)') '********************************************************************************';
-                Write (*,'(a)') ' ';
+                Write(*,'(a)') ' '
+                Write(*,'(a)') '******************** VOLUME EQUIVALENT SPHERE SIMULATIONS **********************';
+                Write(*,'(a)') '********************************************************************************';
+                Write(*,'(a)') ' ';
                 Deallocate(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MLCBFM_BlDistr);
             endif
         endif
@@ -656,52 +658,85 @@ Program Main_Scattering
         !! END DISCRETIZATION & DIVISION INTO BLOCKS***********************************************************************
 
         if (rank == 0) Then
-            Write(10,'(a)') ''
-            Write(10,'(a)') 'Parameters of the scatterer : '
-            Write(10,'(a,a)') 'P :    Type    a(mm)    dX(mm)   dY(mm)   dZ(mm)     X(m)      Y(m)      Z(m)         ',&
-            '  m           lam(mm)   Sc(mm)'
+            if (debug_mode ==1) then 
+                Write(10,'(a)') ''
+                Write(10,'(a)') 'Parameters of the scatterer : '
+                Write(10,'(a,a)') 'P :    Type    a(mm)    dX(mm)   dY(mm)   dZ(mm)     X(m)      Y(m)      Z(m)         ',&
+                '  m           lam(mm)   Sc(mm)'
+            endif
             p = SimScatterer%a*10**lamb_mag
             xp = SimScatterer%dx*10**lamb_mag
             yp = SimScatterer%dy*10**lamb_mag
             zp = SimScatterer%dz*10**lamb_mag
-            ! type and effective radius
-            Write(10,'(a,i1,a6,f10.4,f9.4,f9.4,f9.4)',advance='no') 'P : ',SimScatterer%type_s,trim(SimScatterer%info_s),p,xp,yp,zp
-            ! Position
-            Write(10,'(e10.2)',advance='no') SimScatterer%xmin
-            Write(10,'(e10.2)',advance='no') SimScatterer%ymin
-            Write(10,'(e10.2)',advance='no') SimScatterer%zmin
-            !Refractive index
-            Write(10,'(a,f7.4,a,f7.4,a)',advance='no') '  (',real(SimScatterer%m_max),',',&
-                imag(SimScatterer%m_max),')  '
+            if (debug_mode ==1) then 
+                ! type and effective radius
+                Write(10,'(a,i1,a6,f10.4,f9.4,f9.4,f9.4)',advance='no') 'P : ',SimScatterer%type_s,trim(SimScatterer%info_s),p,xp,yp,zp
+                ! Position
+                Write(10,'(e10.2)',advance='no') SimScatterer%xmin
+                Write(10,'(e10.2)',advance='no') SimScatterer%ymin
+                Write(10,'(e10.2)',advance='no') SimScatterer%zmin
+                !Refractive index
+                Write(10,'(a,f7.4,a,f7.4,a)',advance='no') '  (',real(SimScatterer%m_max),',',&
+                    imag(SimScatterer%m_max),')  '
+            endif
             !Wavelength inside scatterer
             p = SimScatterer%lambda_min*10**lamb_mag
-            Write(10,'(f8.3)',advance='no') p
+            
             !Size of cell per scatterer (m/mm/um)
             Sc = SimScatterer%Sc*10**lamb_mag
-            Write(10,'(f8.3)',advance='no') Sc
+            
+            if (debug_mode ==1) then 
+                Write(10,'(f8.3)',advance='no') p
+                Write(10,'(f8.3)',advance='no') Sc
+                Write(10,*) ''
+                Write(10,*) ''
+                Write(10,'(a,i7)') 'The Total Number of Cells =', Nbc
+                Write(10,*) ''
+                Write(10,*) ''
+                Write(10,'(a,i2)') 'Nber_Methods = ',Nber_Methods
+                Write(10,'(a)',advance='no') 'The applied methods are : '
+                Do I=1,Nber_Methods-1
+                    Write(10,'(a,a)',advance='no') methods_names(I),'; '
+                Enddo
+                Write(10,'(a)') methods_names(Nber_Methods)
+                !*****************************************************************************************************
+                ! Write in the output file the transmitters/receivers
+                Write(10,*) '';
+                Write(10,'(a,a,a,a)') 'Config of Tx/Rx = ', NumIntType_t,'/',NumIntType_r
+                if (NumIntType_t .eq. 'aq') then
+                    st_th_Tx=':  1.00';st_ph_Tx =':  1.00';st_th_Rx=':  1.00';st_ph_Rx =':  1.00';
+                    if (NTrTheta .gt. 1) then
+                        write(st_th_Tx,'(a,f6.2)') ':', (theta_final_trans_comp-theta_init_trans_comp)/(NTrTheta-1);
+                    endif
+                    if (NTrPhi .gt. 1) then
+                        write(st_ph_Tx,'(a,f6.2)') ':', (phi_final_trans_comp-phi_init_trans_comp)/(NTrPhi-1);
+                    endif
+                    if (NRxTheta .gt. 1) then
+                        write(st_th_Rx,'(a,f6.2)') ':', (theta_final_Recei-theta_init_Recei)/(NRxTheta-1);
+                    endif
+                    if (NRxPhi .gt. 1) then
+                        write(st_ph_Rx,'(a,f6.2)') ':', (phi_final_Recei-phi_init_Recei)/(NRxPhi-1);
+                    endif
+                else
+                    st_th_Tx = ''; st_th_Rx=''; st_ph_Tx = ''; st_ph_Rx='';
 
-            Write(10,*) ''
-            Write(10,*) ''
-            write (*,'(a)',advance='no') 'The dimensions of the scatterer = '
-            write (*,'(f9.4,a)',advance='no') xp,'; '
-            write (*,'(f9.4,a)',advance='no') yp,'; '
-            write (*,'(f9.4,a,a)') zp, ' ',lamb_unit
-            write (*,'(a)',advance='no') 'The effective radius of the scatterer = '
-            Write (*,'(f12.6,a,a)') SimScatterer%a*10**lamb_mag, ' ',lamb_unit
-            Write(10,'(a,i7)') 'The Total Number of Cells =', Nbc
+                endif
+                Write(10,'(a,i5,a,f5.2,a,a,f6.2,a,f6.2,a,a,f6.2)') 'Nber_Transmitters =',NTr,'; Theta = ',theta_init_trans_comp,trim(st_th_Tx),':',&
+                    theta_final_trans_comp,'; Phi =',phi_init_trans_comp,trim(st_ph_Tx),':',phi_final_trans_comp
+                Write(10,'(a,i5,a,f5.2,a,a,f6.2,a,f6.2,a,a,f6.2)') 'Nber_Receivers =',NRx,'; Theta = ',theta_init_Recei,trim(st_th_Rx),&
+                    ':',theta_final_Recei,'; Phi =',phi_init_Recei,trim(st_ph_Rx),':',phi_final_Recei
+            endif
+        endif
+        if (rank == 0) then
+            Write(*,'(a)',advance='no') 'The dimensions of the scatterer = '
+            Write(*,'(f9.4,a)',advance='no') xp,'; '
+            Write(*,'(f9.4,a)',advance='no') yp,'; '
+            Write(*,'(f9.4,a,a)') zp, ' ',lamb_unit
+            Write(*,'(a)',advance='no') 'The effective radius of the scatterer = '
+            Write(*,'(f12.6,a,a)') SimScatterer%a*10**lamb_mag, ' ',lamb_unit
             Write(*,'(a,i7)') 'Total Number of Cells =', Nbc
-
-            Write(10,*) ''
-            Write(10,*) ''
-            Write(10,'(a,i2)') 'Nber_Methods = ',Nber_Methods
-            Write(10,'(a)',advance='no') 'The applied methods are : '
-            Do I=1,Nber_Methods-1
-                Write(10,'(a,a)',advance='no') methods_names(I),'; '
-            Enddo
-            Write(10,'(a)') methods_names(Nber_Methods)
-
             Write(*,*) '';Write(*,*) ''
-            write (*,'(a)') '--------Numerical Methods-------- '
+            Write(*,'(a)') '--------Numerical Methods-------- '
             Write(*,'(a,i2)') 'Nber_Methods = ',Nber_Methods
             Write(*,'(a)',advance='no') 'The applied methods are : '
             Do I=1,Nber_Methods-1
@@ -734,37 +769,10 @@ Program Main_Scattering
                 Write(*,'(a,i3,a,i3)') 'Ntheta = ',NRxTheta,'; Nphi = ',NRxPhi
             endif
 
-            !*****************************************************************************************************
-            ! Write in the output file the transmitters/receivers
-            Write(10,*) '';
-            Write(10,'(a,a,a,a)') 'Config of Tx/Rx = ', NumIntType_t,'/',NumIntType_r
-            if (NumIntType_t .eq. 'aq') then
-                st_th_Tx=':  1.00';st_ph_Tx =':  1.00';st_th_Rx=':  1.00';st_ph_Rx =':  1.00';
-                if (NTrTheta .gt. 1) then
-                    write(st_th_Tx,'(a,f6.2)') ':', (theta_final_trans_comp-theta_init_trans_comp)/(NTrTheta-1);
-                endif
-                if (NTrPhi .gt. 1) then
-                    write(st_ph_Tx,'(a,f6.2)') ':', (phi_final_trans_comp-phi_init_trans_comp)/(NTrPhi-1);
-                endif
-                if (NRxTheta .gt. 1) then
-                    write(st_th_Rx,'(a,f6.2)') ':', (theta_final_Recei-theta_init_Recei)/(NRxTheta-1);
-                endif
-                if (NRxPhi .gt. 1) then
-                    write(st_ph_Rx,'(a,f6.2)') ':', (phi_final_Recei-phi_init_Recei)/(NRxPhi-1);
-                endif
-            else
-                st_th_Tx = ''; st_th_Rx=''; st_ph_Tx = ''; st_ph_Rx='';
-
-            endif
-            Write(10,'(a,i5,a,f5.2,a,a,f6.2,a,f6.2,a,a,f6.2)') 'Nber_Transmitters =',NTr,'; Theta = ',theta_init_trans_comp,trim(st_th_Tx),':',&
-                theta_final_trans_comp,'; Phi =',phi_init_trans_comp,trim(st_ph_Tx),':',phi_final_trans_comp
-            Write(10,'(a,i5,a,f5.2,a,a,f6.2,a,f6.2,a,a,f6.2)') 'Nber_Receivers =',NRx,'; Theta = ',theta_init_Recei,trim(st_th_Rx),&
-                ':',theta_final_Recei,'; Phi =',phi_init_Recei,trim(st_ph_Rx),':',phi_final_Recei
-
             ! Create and edit IncScattDirs file
             Open(unit=41,File = trim(SimOutfld_name)//Env_sep//'IncScattDirs.dat');
             Write(41,'(a)') 'INCIDENT DIRECTIONS : '
-            Write(41,'(a,i5)') 'Ninc = ', NTr
+            Write(41,'(a,i5)') 'Ninc', NTr
             if (NumIntType_t .ne. 'sd') then
                 Write(41,'(a,a)') 'Dist Type = ', NumIntType_t
             else
@@ -785,7 +793,7 @@ Program Main_Scattering
             EndDo
             Write(41,'(a)') ''
             Write(41,'(a)') 'SCATTERING DIRECTIONS : '
-            Write(41,'(a,i5)') 'Nscat = ', NRx
+            Write(41,'(a,i5)') 'Nscat', NRx
             if (NumIntType_r .ne. 'sd') then
                 Write(41,'(a,a)') 'Dist Type = ', NumIntType_r
             else
@@ -848,9 +856,9 @@ Program Main_Scattering
             ! Create the Solution files (Eint, Zc, CBFs, Zcinv) if required
             If (((save_Eint .eq. 1) .and. (Nbc .le. save_Eint_Nmax)) .OR. (save_Zc .eq. 1)) then
                 if (rank .eq. 0) then
-                write(*,*) 'save_Eint =', save_Eint
-                write(*,*) 'Nbc =', Nbc
-                write(*,*) 'save_Eint_Nmax =', save_Eint_Nmax
+                write(11,*) 'save_Eint =', save_Eint
+                write(11,*) 'Nbc =', Nbc
+                write(11,*) 'save_Eint_Nmax =', save_Eint_Nmax
                 endif
                 Solfold_name = trim(SimOutfld_name)//Env_sep//'Sol_files';
                 inquire(directory=trim(Solfold_name),exist=dirExists);
@@ -861,19 +869,22 @@ Program Main_Scattering
             Endif
 
             if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then
-                Write(10,*) ''; Write(10,*) ''
-                Write(10,'(a)') 'Division into blocks to apply the CBFM : '
-                Write(10,'(a,i6)') 'Total number of blocks = ',Nblocks
-                Write(10,'(a)') 'Number of cells per Block  = '
-                Do I=1,Nblocks-1
-	                Write(10,'(i7,a)',advance='no') CBFM_Blocks(I)%Nbc_b,';'
-                Enddo
-                Write(10,'(i7)') CBFM_Blocks(Nblocks)%Nbc_b
-                Write(10,'(a)') 'Number of cells per Block after extension = '
-                Do I=1,Nblocks-1
-	                Write(10,'(i7,a)',advance='no') (CBFM_Blocks(I)%Nbc_b+CBFM_Blocks(I)%Nbc_ext),';'
-                Enddo
-                Write(10,'(i7)') (CBFM_Blocks(Nblocks)%Nbc_b+CBFM_Blocks(Nblocks)%Nbc_ext)
+                if (debug_mode == 1) then
+                    Write(10,*) ''; Write(10,*) ''
+                    Write(10,'(a)') 'Division into blocks to apply the CBFM : '
+                    Write(10,'(a,i6)') 'Total number of blocks = ',Nblocks
+                    Write(10,'(a)') 'Number of cells per Block  = '
+                    Do I=1,Nblocks-1
+	                    Write(10,'(i7,a)',advance='no') CBFM_Blocks(I)%Nbc_b,';'
+                    Enddo
+                    Write(10,'(i7)') CBFM_Blocks(Nblocks)%Nbc_b
+                    Write(10,'(a)') 'Number of cells per Block after extension = '
+                    Do I=1,Nblocks-1
+	                    Write(10,'(i7,a)',advance='no') (CBFM_Blocks(I)%Nbc_b+CBFM_Blocks(I)%Nbc_ext),';'
+                    Enddo
+                    Write(10,'(i7)') (CBFM_Blocks(Nblocks)%Nbc_b+CBFM_Blocks(Nblocks)%Nbc_ext)
+                endif
+            
 
                 Write(*,*) ''; Write(*,*) ''
                 Write(*,'(a,a,a)')  '-------Division into blocks (',div_type,')------'
@@ -887,14 +898,14 @@ Program Main_Scattering
                 endif
 
                 Write(*,*) '';
-                Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to discretize : ',Comp_time_disc(1),'j',Comp_time_disc(2)&
+                Write(*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to discretize : ',Comp_time_disc(1),'j',Comp_time_disc(2)&
                 ,'h',Comp_time_disc(3),'min', Comp_time_disc(4),'sec'
-                Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to divide into blocks: ',Comp_time_div(1),'j',Comp_time_div(2)&
+                Write(*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to divide into blocks: ',Comp_time_div(1),'j',Comp_time_div(2)&
                 ,'h',Comp_time_div(3),'min', Comp_time_div(4),'sec'
-                Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to extend blocks: ',Comp_time_ext(1),'j',Comp_time_ext(2)&
+                Write(*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to extend blocks: ',Comp_time_ext(1),'j',Comp_time_ext(2)&
                 ,'h',Comp_time_ext(3),'min', Comp_time_ext(4),'sec'
 		        if (Nbc .lt. 100000) then
-                    Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to write geometry/blocks files : ',Comp_time_write(1),'j',Comp_time_write(2)&
+                    Write(*,'(a,i2,a,i2,a,i2,a,i2,a)') '--> to write geometry/blocks files : ',Comp_time_write(1),'j',Comp_time_write(2)&
                 ,'h',Comp_time_write(3),'min', Comp_time_write(4),'sec'
 		        endif
             EndIf
@@ -948,7 +959,9 @@ Program Main_Scattering
         !! START THE COMPUTING OF THE ELECTRIC FIELDS DEPENDING ON THE FREQUENCY
         Do ii=1,Nfreq
             if (rank == 0) then
-                Write(10,*) ''; Write(10,*) ''
+                if (debug_mode ==1) then 
+                    Write(10,*) ''; Write(10,*) ''
+                endif
                 Write(*,*) '';  Write(*,*) '';
             endif
             !! here we define the wavelength of the current experience
@@ -989,63 +1002,65 @@ Program Main_Scattering
                     Allocate(character(7) ::stFreq); ty = '(f7.3)';
                 EndIf
                 Write(stFreq,ty) Freq_w/10.**freq_mag
-                write (*,'(a,a,a,a)') 'The frequency of simulation = ',stFreq,' ',freq_unit
-                !write (*,'(a,F9.6,a,a)') ' -- > Wavelength = ',Lambda_w*10**lamb_mag,' ',lamb_unit
-                write (*,*) ' -- > Wavelength = ',Lambda_w*10**lamb_mag,' ',lamb_unit
+                Write(*,'(a,a,a,a)') 'The frequency of simulation = ',stFreq,' ',freq_unit
+                !Write(*,'(a,F9.6,a,a)') ' -- > Wavelength = ',Lambda_w*10**lamb_mag,' ',lamb_unit
+                Write(*,*) ' -- > Wavelength = ',Lambda_w*10**lamb_mag,' ',lamb_unit
                 if (homogs .eq. 1) then
                     !write (*,'(a,F9.6,a,a)') ' -- > Wavelength inside scatterer = ',SimScatterer%lambda_min*10**lamb_mag,' ',lamb_unit
-                    write (*,*) ' -- > Wavelength inside scatterer = ',SimScatterer%lambda_min*10**lamb_mag,' ',lamb_unit
-                    write (*,'(a,F7.4,a,ES10.3)') ' -- > m = ',mrp,' + j*',mip
-                    write (*,'(a,F7.4,a,ES10.3)') ' -- > Eps = ',rp,' + j*',ip
+                    Write(*,*) ' -- > Wavelength inside scatterer = ',SimScatterer%lambda_min*10**lamb_mag,' ',lamb_unit
+                    Write(*,'(a,F7.4,a,ES10.3)') ' -- > m = ',mrp,' + j*',mip
+                    Write(*,'(a,F7.4,a,ES10.3)') ' -- > Eps = ',rp,' + j*',ip
                     deallocate(stFreq);
                     Write(*,'(a,i4)') ' -- > Dlambda = ', SimScatterer%Dlamb
-                    write (*,'(a,f6.4)') ' -- > d/aeff = ', SimScatterer%Sc/SimScatterer%a
-                    write (*,'(a,f6.4)') ' -- > kd = ', k_0*SimScatterer%Sc
-                    write (*,'(a,f6.4)') ' -- > |m|kd = ', abs(SimScatterer%m_min)*k_0*SimScatterer%Sc
+                    Write(*,'(a,f6.4)') ' -- > d/aeff = ', SimScatterer%Sc/SimScatterer%a
+                    Write(*,'(a,f6.4)') ' -- > kd = ', k_0*SimScatterer%Sc
+                    Write(*,'(a,f6.4)') ' -- > |m|kd = ', abs(SimScatterer%m_min)*k_0*SimScatterer%Sc
 
                     xeq_m = 2*Pi*SimScatterer%a/SimScatterer%lambda_min;
                     xmax_m = Pi*max(SimScatterer%dx,SimScatterer%dy,SimScatterer%dz)/SimScatterer%lambda_min;
-                    write (*,'(a,f6.2)') ' -- > xeq =', xeq
-                    write (*,'(a,f6.2)') ' -- > xmax =', xmax
-                    write (*,'(a,f6.2)') ' -- > xeq_m =', xeq_m
-                    write (*,'(a,f6.2)') ' -- > xmax_m =', xmax_m
+                    Write(*,'(a,f6.2)') ' -- > xeq =', xeq
+                    Write(*,'(a,f6.2)') ' -- > xmax =', xmax
+                    Write(*,'(a,f6.2)') ' -- > xeq_m =', xeq_m
+                    Write(*,'(a,f6.2)') ' -- > xmax_m =', xmax_m
                 else
                     Allocate(vals(Nbc)); vals = Cells(1:Nbc)%lambda_n;
                     r_min = minval(vals); r_max = maxval(vals);
-                    write (*,'(a,F9.6,a,F9.6,a,a)') ' -- > Wavelength inside scatterer = [',r_min*10**lamb_mag,' - ',r_max*10**lamb_mag,'] ',lamb_unit;
+                    Write(*,'(a,F9.6,a,F9.6,a,a)') ' -- > Wavelength inside scatterer = [',r_min*10**lamb_mag,' - ',r_max*10**lamb_mag,'] ',lamb_unit;
                     vals = real(Cells(1:Nbc)%m_n); r_min = minval(vals); r_max = maxval(vals);
                     vals = imag(Cells(1:Nbc)%m_n); i_min = minval(vals); i_max = maxval(vals);
-                    write (*,'(a,F7.4,a,ES10.3,a,F7.4,a,ES10.3,a)') ' -- > m = [',r_min,' + j*',i_min,' - ',r_max,' + j*',i_max,']';
+                    Write(*,'(a,F7.4,a,ES10.3,a,F7.4,a,ES10.3,a)') ' -- > m = [',r_min,' + j*',i_min,' - ',r_max,' + j*',i_max,']';
                     vals = real(Cells(1:Nbc)%Eps_n); r_min = minval(vals); r_max = maxval(vals);
                     vals = imag(Cells(1:Nbc)%Eps_n); i_min = minval(vals); i_max = maxval(vals);
-                    write (*,'(a,F7.4,a,ES10.3,a,F7.4,a,ES10.3,a)') ' -- > Eps = [',r_min,' + j*',i_min,' - ',r_max,' + j*',i_max,']'
+                    Write(*,'(a,F7.4,a,ES10.3,a,F7.4,a,ES10.3,a)') ' -- > Eps = [',r_min,' + j*',i_min,' - ',r_max,' + j*',i_max,']'
                     deallocate(stFreq);
                     vals = Cells(1:Nbc)%Dlamb_n; r_min = minval(vals); r_max = maxval(vals);
                     Write(*,'(a,f7.2,a,f7.2,a)') ' -- > Dlambda = [', r_min,' - ', r_max,']';
-                    write (*,'(a,f6.4)') ' -- > d/aeff = ', SimScatterer%Sc/SimScatterer%a
-                    write (*,'(a,f6.4)') ' -- > kd = ', k_0*SimScatterer%Sc
+                    Write(*,'(a,f6.4)') ' -- > d/aeff = ', SimScatterer%Sc/SimScatterer%a
+                    Write(*,'(a,f6.4)') ' -- > kd = ', k_0*SimScatterer%Sc
                     vals = abs(Cells(1:Nbc)%m_n); r_min = minval(vals)*k_0*SimScatterer%Sc; r_max = maxval(vals)*k_0*SimScatterer%Sc
-                    write (*,'(a,f6.4,a,f6.4,a)') ' -- > |m|kd = [', r_min,' - ', r_max,']'
-                    write (*,'(a,f6.2)') ' -- > xeq =', xeq
-                    write (*,'(a,f6.2)') ' -- > xmax =', xmax
+                    Write(*,'(a,f6.4,a,f6.4,a)') ' -- > |m|kd = [', r_min,' - ', r_max,']'
+                    Write(*,'(a,f6.2)') ' -- > xeq =', xeq
+                    Write(*,'(a,f6.2)') ' -- > xmax =', xmax
                     vals = Cells(1:Nbc)%lambda_n;
                     r_max = 2*Pi*SimScatterer%a/minval(vals);
                     r_min = 2*Pi*SimScatterer%a/maxval(vals);
-                    write (*,'(a,f6.2,a,f6.2,a)') ' -- > xeq_m = [',r_min,' - ',r_max,']';
+                    Write(*,'(a,f6.2,a,f6.2,a)') ' -- > xeq_m = [',r_min,' - ',r_max,']';
                     r_max = Pi*max(SimScatterer%dx,SimScatterer%dy,SimScatterer%dz)/minval(vals);
                     r_min = Pi*max(SimScatterer%dx,SimScatterer%dy,SimScatterer%dz)/maxval(vals);;
-                    write (*,'(a,f6.2,a,f6.2,a)') ' -- > xmax_m = [',r_min,' - ',r_max,']';
+                    Write(*,'(a,f6.2,a,f6.2,a)') ' -- > xmax_m = [',r_min,' - ',r_max,']';
                     deallocate(vals);
                 endif
 
                 !*****************************************************************************************************
                 !! Once generated, all these informations should be written in the output file
-                Write(10,*) ''
-                Write(10,*) ''
-                Write(10,'(a,i3,a,i3,a)') 'Simulation ',ii,'/',Nfreq, ' : ****************************************'
-                Write(10,*) ''
-                Write(10,'(a,es12.2)') 'The frequency of simulation = ',Freq_w
-                Write(10,'(a,F10.6,a,a)') 'The wavelength of simulation = ',Lambda_w*10**lamb_mag,' ',lamb_unit
+                if (debug_mode .eq. 1) then 
+                    Write(10,*) ''
+                    Write(10,*) ''
+                    Write(10,'(a,i3,a,i3,a)') 'Simulation ',ii,'/',Nfreq, ' : ****************************************'
+                    Write(10,*) ''
+                    Write(10,'(a,es12.2)') 'The frequency of simulation = ',Freq_w
+                    Write(10,'(a,F10.6,a,a)') 'The wavelength of simulation = ',Lambda_w*10**lamb_mag,' ',lamb_unit
+                endif
             endif
 
             ! check if Nprocs >= Nblocks
@@ -1071,18 +1086,22 @@ Program Main_Scattering
     EndDo ! Loop on scatterer (if Nsims >1)
 
     if (rank == 0) then
-        Write (*,'(a)') '*******************************************************************************'
-        Write (*,'(a)') '************************* END OF SIMULATION, THANKS ***************************'
-        Write (*,'(a)') '*******************************************************************************'
-
-        Write(10,'(a)') ''
-        Write(10,'(a)') ''
-        Write(10,'(a)') 'End of the simulation'; Write(10,'(a)') ''
-        Write (10,'(a)') '*******************************************************************************'
-        Write (10,'(a)') '*******************************************************************************'
-        Close(10)
+        Write(*,'(a)') '*******************************************************************************'
+        Write(*,'(a)') '************************* END OF SIMULATION, THANKS ***************************'
+        Write(*,'(a)') '*******************************************************************************'
+        Close(11)
+        if (debug_mode .eq. 1) then
+            Write(10,'(a)') ''
+            Write(10,'(a)') ''
+            Write(10,'(a)') 'End of the simulation'; Write(10,'(a)') ''
+            Write (10,'(a)') '*******************************************************************************'
+            Write (10,'(a)') '*******************************************************************************'
+            Close(10)
+        endif
     endif
 
 30  Call MPI_FINALIZE (code);
-!pause;
+if (Env_type .eq. 'WIND') then 
+    pause;
+endif
 End PROGRAM Main_Scattering

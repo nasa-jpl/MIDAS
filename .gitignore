@@ -14,9 +14,14 @@ midas
 /src/*.o
 /src/*.mod
 /src/midas
+<<<<<<< HEAD
+/src/Makefile_LS6
+/src/Makefile_discover
+/src/Makefile_Gattaca
 /src/Makefile_LS6
 /src/Makefile_discover
 
+>>>>>>> origin/main
 # Simulations outputs & performance analysis #
 *-ap=*m/
 Sim_MPI_MIDAS_*
@@ -33,6 +38,7 @@ MIDAS.vfproj
 MIDAS.vfproj.ifenni.user
 /x64
 /outputs
+fort.*
 
 # merge tool files
 *.swp

@@ -114,9 +114,6 @@ SUBROUTINE Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCB
           hBlock = min(20*SimScatterer%Sc,dmax/2)
           N = 2*Navg_cells ! initialize to go through the first while check 
           do while ((error_div .eq. 0) .and. (N .gt. 1.5*Navg_cells))  ! Navg_cells read from user input
-              !if (rank == 0) then 
-              !    write(*,*) 'N = ',N,'; h = ',hBlock
-              !endif
               call Division_blocks_sph_v1(SimScatterer,Cells,Cells_after_div,CBFM_Blocks,MLCBFM_BlDistr,error_div)
               N = sum(CBFM_Blocks(1:Nblocks)%Nbc_b)/Nblocks;
               hBlock = hBlock*3/4
@@ -1071,20 +1068,6 @@ SUBROUTINE Division_blocks_sph_v1(SimScatterer,Cells,Cells_after_div,CBFM_Blocks
     Nblk = Nx*Ny*Nz; Nbc_blk_max = nint(2.0*(ceiling(hBlock/Sc)**3)) ! the 2 factor is just for security 
     Allocate(cells_in_blocks(Nblk,Nbc+1)); cells_in_blocks=0
     
- !   if (rank == 0) then
- !       write(*,*) 'Dx =', Dx
- !       write(*,*) 'Dy =', Dy
- !       write(*,*) 'Dz =', Dz
- !       Write(*,*) 'hx =', hx
- !       Write(*,*) 'hy =', hy
- !       Write(*,*) 'hz =', hz
- !       write(*,*) 'hBlock =',hBlock
- !       write(*,*) 'Sc =',Sc
- !       write(*,*) 'Nbc =',Nbc
- !       write(*,*) 'Nblk = ',Nblk 
- !       write(*,*) 'Nbc_blk_max =',Nbc_blk_max
- !   endif 
-        
     Do ii=1,Nbc
         ! get iBx, iBy and iBz for each cell to determine its corresponding block B
         xc = Cells(ii)%Xc + Dx/2. 
@@ -1130,11 +1113,6 @@ SUBROUTINE Division_blocks_sph_v1(SimScatterer,Cells,Cells_after_div,CBFM_Blocks
         cc = 1+ cells_in_blocks(numB_ii,1) ; ! first column number of cells for the block numB_cel
         cells_in_blocks(numB_ii,cc) = Cells(ii)%n_cell; ! or ii  
     enddo
-    
-    !if (rank == 0) then 
-    !    Write(*,*) 'Here 1 Nblocks =',Nblk
-    !    Write(*,*) cells_in_blocks(1:Nblk,1)
-    !endif
     
     ! First eliminate empty blocks 
     index_B = 2;
@@ -1184,9 +1162,6 @@ SUBROUTINE Division_blocks_sph_v1(SimScatterer,Cells,Cells_after_div,CBFM_Blocks
     !    endif
     !    ii = ii + 1        
     !enddo
-    
-    !Write(*,*) 'rank ',rank,' : after summing small blocs, Nblocks =',Nblocks
-    !Write(*,*) cells_in_blocks(1:Nblocks,1)
     
     
     
@@ -1512,13 +1487,6 @@ SUBROUTINE HierarchicalOctree_subdivision(Nc,fr_x,fr_y,fr_z,Cells_before,Cells_a
         if (zc .le. hz) then; iBz = 1; else; iBz = 2; endif     
         numB_ii = (Nx*Ny)*(iBz-1) + Nx*(iBy-1) + iBx;  
         
-        !if ((rank .eq. 0) .and. (Nc .eq. 5446)) then 
-        !    write(*,*),'xc = ',xc,'; yc = ',yc,'; zc = ',zc
-        !    write(*,*),'numB_ii = ',numB_ii
-        !    if (ii .eq. Nc) then 
-        !    stop 0;
-        !    endif
-        !endif       
         ! add this information to the table cells_in_blocks
         cells_in_blocks(numB_ii,1) = cells_in_blocks(numB_ii,1) + 1
         cc = 1+ cells_in_blocks(numB_ii,1) ; ! first column number of cells for the block numB_cel

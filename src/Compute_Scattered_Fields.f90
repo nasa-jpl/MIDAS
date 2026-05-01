@@ -1,4 +1,4 @@
-SUBROUTINE Compute_Scattered_Fields(nom_methode,Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers)
+SUBROUTINE Compute_Scattered_Fields(nom_methode,Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,Es_total)
     
     USE Initialization
     USE common_variables
@@ -16,6 +16,7 @@ SUBROUTINE Compute_Scattered_Fields(nom_methode,Cells,E_total,CBFM_Blocks,MPI_CB
     Integer, Dimension(nber_procs,Nblk_proc_max+1), INTENT(IN):: MPI_CBFM_Blocks
     type (Dipole), Dimension(NTr), INTENT(IN) :: Transmitters
     type (Dipole), Dimension(NRx_tot), INTENT(IN) :: Receivers
+    COMPLEX(real64), Dimension(NRx_tot,4*NTr), INTENT(OUT) :: Es_total
     
     
     ! Local 
@@ -31,7 +32,6 @@ SUBROUTINE Compute_Scattered_Fields(nom_methode,Cells,E_total,CBFM_Blocks,MPI_CB
     Real(kind=8) :: theta_capteur, phi_capteur, Beta,step_beta
     type(Cell), Dimension(:), allocatable :: Cells_proc
     COMPLEX(real64), Dimension(:,:), allocatable :: Green_s_dt_mat
-    COMPLEX(real64), Dimension(NRx_tot,4*NTr) :: Es_total
     
     ! to write Es total 
     Integer ::  jj,dd,cc,kkt,kkr,NTr_wr_proc,a,Nths,Nphs

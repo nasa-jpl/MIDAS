@@ -30,7 +30,7 @@ SUBROUTINE MPI_distribution_blocks(CBFM_Blocks,MPI_CBFM_Blocks)
         MPI_CBFM_Blocks(1,1) = Nblocks;
         MPI_CBFM_Blocks(1,2:2+Nblocks-1) = (/(ii, ii=1,Nblocks)/);
          
-    ElseIf (Nblocks .gt. nber_procs) Then 
+    ElseIf (Nblocks .ge. nber_procs) Then 
       Allocate(MPI_CBFM_Blocks(nber_procs,Nblocks/2)); ! TMP
       MPI_CBFM_Blocks = 0;
     
@@ -98,8 +98,8 @@ SUBROUTINE MPI_distribution_blocks(CBFM_Blocks,MPI_CBFM_Blocks)
           EndDo
       !endif
     Else
-      Allocate(MPI_CBFM_Blocks(Nblocks,1));
-      MPI_CBFM_Blocks(1:Nblocks,1) = 1; ! just to exit the subroutine. This option is inefficient the code will exit after the subroutine
+      Allocate(MPI_CBFM_Blocks(nber_procs,2));
+      MPI_CBFM_Blocks(1:nber_procs,1:2) = 1; ! just to exit the subroutine. This option is inefficient the code will exit after the subroutine
     EndIf 
     
     ! Nblk_proc_max needed to know the size of MPI_CBFM_Blocks

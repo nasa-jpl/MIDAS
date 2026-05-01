@@ -23,7 +23,7 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
     Real(kind=8) :: step_theta_CBFM,step_phi_CBFM,theta_dipole,phi_dipole
     Real(kind=8) :: cosdth_init,margin_th,margin_ph,a,x_l,y_l,z_l
     Real(kind=8) :: th_init,th_end,ph_init,ph_end
-    COMPLEX(real64), Dimension(:,:),allocatable :: E_total,S_total
+    COMPLEX(real64), Dimension(:,:),allocatable :: E_total,S_total,Es_total,E_incident_at_Rx
     COMPLEX(real64), Dimension(:),allocatable :: C_ext,C_abs
         
     ! Time performances
@@ -101,9 +101,11 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
             Write (*, '(a)') 'The total time to compute the internal electric field with 1L CBFM-E';
             Write (*, '(a,i2,a,i2,a,i2,a,i2,a)')'is ', Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),&
                 'min', Comp_time(4),'sec'
-            Write (10, '(a,i2,a,i2,a,i2,a,i2,a)') 'The total time to compute the internal electric field &
+            if (debug_mode .eq. 1) then
+                Write (10, '(a,i2,a,i2,a,i2,a,i2,a)') 'The total time to compute the internal electric field &
                 &with 1L CBFM-E is ',&
                 Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),'min', Comp_time(4),'sec'
+            endif
         endif
                        
         ! Compute scattered fields ************************************************** 
@@ -111,20 +113,24 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
         
         ! compute and write only scattered fields (if Scattered fields == 1)
         if (FFA .eq. 0) then ! No far field approximation, we compute and write the scattered and incident fields at observation points
-            call Compute_Scattered_Fields('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers)
-            call Incident_Field_at_Rx('CBFM-E  ',Transmitters,Receivers)        
+            Allocate(Es_total(NRx_tot,4*NTr),E_incident_at_Rx(NRx_tot,6*NTr))
+            call Compute_Scattered_Fields('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,Es_total)
+            call Incident_Field_at_Rx('CBFM-E  ',Transmitters,Receivers,E_incident_at_Rx)  
+            deallocate(Es_total,E_incident_at_Rx)
         else  
             ! Scattering matrices (if scattered fields == 0)
             Allocate(S_total(NRx_tot,4*NTr),C_ext(NTr),C_abs((NTr)));
-            !Call Compute_Scattering_Matrices('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total); 
-            !Call Write_txt_Sfiles('CBFM-E  ',Transmitters,Receivers,S_total);
-	        !Call Compute_Scattering_Matrices_InWork('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
-            Call Compute_Scattering_Matrices_Check('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
+            Call Compute_Scattering_Matrices('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
+            ! test options *******************************************************************************************************
+            !Call Compute_Scattering_Matrices_init('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total); 
             ! uncomment here if Writing Sfiles in PHDF5 successful
+            !Call Write_txt_Sfiles('CBFM-E  ',Transmitters,Receivers,S_total);
+            !Call Compute_Scattering_Matrices_Check('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
             ! here S files refer to Smatrices or scattering fields depending on what was used above (Compute_Scattering_Matrices or Compute_Scattered_Fields)
             If (wr_Sij .eq. 1) Then
                 !Call Write_Sfiles('CBFM-E  ',Transmitters,Receivers,S_total)
             EndIf       
+            ! test options *******************************************************************************************************
             
             ! Scattering cross sections and efficiency factors 
             Call Compute_ExtAbsCsec_fromIntField('CBFM-E  ',Cells,E_total,Transmitters,C_ext,C_abs);
@@ -142,10 +148,12 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
             Write (*, '(a,i2,a,i2,a,i2,a,i2,a)') 'The calculation time for the scattered field is ',&
             Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),'min', Comp_time(4),'sec'
             Write (*,*) ''; 
-            Write (10, '(a,i2,a,i2,a,i2,a,i2,a)') 'The calculation time for the scattered field is ',&
-            Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),'min', Comp_time(4),'sec'
-            Write (10,*) ''
-            Write (10,*) ''  
+            if (debug_mode .eq. 1) then
+                Write (10, '(a,i2,a,i2,a,i2,a,i2,a)') 'The calculation time for the scattered field is ',&
+                Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),'min', Comp_time(4),'sec'
+                Write (10,*) ''
+                Write (10,*) ''  
+            endif
         endif  
     Endif
     
@@ -163,7 +171,7 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
         Call Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs);  ! MPI MoM
         !Call Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs) ! MPI single-task MoM (equivalent to OpenMP MoM)
         Call Write_txt_Sfiles('MoM     ',Transmitters,Receivers,S_total);
-        !Call Compute_EFields_ST_MoM_InWork('MoM     ',Cells,Transmitters,Receivers,S_total,C_ext,C_abs) ! here we added the beta rotation for debug
+        !Call Compute_EFields_ST_MoM('MoM     ',Cells,Transmitters,Receivers,S_total,C_ext,C_abs) ! here we added the beta rotation for debug
         
 
         call date_and_time(date_final,time_final,zone_final,values_final)
@@ -174,9 +182,11 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
             Write (*, '(a)') 'The total time to compute the internal & Scattered fields with MoM';
             Write (*, '(a,i2,a,i2,a,i2,a,i2,a)')'is ', Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),&
                 'min', Comp_time(4),'sec'
-            Write (10, '(a,i2,a,i2,a,i2,a,i2,a)') 'The total time to compute the internal & Scattered fields &
-                &with MoM is ',&
-                Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),'min', Comp_time(4),'sec'
+            if (debug_mode .eq. 1) then
+                Write (10, '(a,i2,a,i2,a,i2,a,i2,a)') 'The total time to compute the internal & Scattered fields &
+                    &with MoM is ',&
+                    Comp_time(1),'j',Comp_time(2),'h',Comp_time(3),'min', Comp_time(4),'sec'
+            endif
         endif
                        
         if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'tr') .OR. (NumIntType_t .eq. 'sm')) Then

@@ -63,7 +63,12 @@ MODULE Initialization
     
     ! Parameters used for the MPI parallelization 
     Integer, parameter :: tag = 1000
-    Integer, Parameter :: M_B = 32; 
-    Integer, Parameter :: N_B = 32;
+    Integer, Parameter :: M_B = 32
+    Integer, Parameter :: N_B = 32
+    
+    ! Parameters for code debug/development
+    Integer, parameter :: debug_mode = 0
+    Integer, parameter :: track_memory = 0
+    Integer, parameter :: Njob_max = 100
     
 End MODULE Initialization
