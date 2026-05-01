@@ -19,6 +19,7 @@ midas
 /src/Makefile_discover
 /src/Makefile_Gattaca
 /src/Makefile_LS6
+/src/Makefile_discover
 
 >>>>>>> origin/main
 # Simulations outputs & performance analysis #
@@ -38,6 +39,13 @@ MIDAS.vfproj.ifenni.user
 /x64
 /outputs
 fort.*
+
+# merge tool files
+*.swp
+*.orig
+*.swn
+*.swo
+*.gitignore
 
 # Some common .gitignore configurations (keep even if na & uncomment if needed) #
 # Compiled source #
