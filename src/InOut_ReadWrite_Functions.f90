@@ -34,6 +34,7 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     character(200) :: file_name
     character(9) :: wave_descr,SR_Zc_type_ch 
     character(6) :: tdata
+    character(2) :: NipwsType
     character(11) :: freq_unit_tmp
     character(10) :: lamb_unit_tmp
     
@@ -355,7 +356,18 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     read(11,*)        
     
     ! CBFM parameters
-    set_Nipws = 0; distr_ipws =3; Nc_extended =1; 
+    read(11,'(a2)'), NipwsType
+    read(11,*), Nipws
+    read(11,*)
+    if (trim(NipwsType) =='un') then
+        distr_ipws = 1
+    elseif (trim(NipwsType) =='sd') then
+        distr_ipws = 2
+    elseif (trim(NipwsType) =='lb') then
+        distr_ipws = 3
+    endif
+    
+    set_Nipws = 0; Nc_extended =1 
     DR=0; SR=1; res_SR=1e-2; SR_Zc = 0;
     Use_ACA = 0; Nb_it_max= 50; Epsilon_ACA = 1E-4; Vrb_ACA = 0; 
     SR_Zc_type_ch = 'threshold' ! takes 3 values 'threshold' or 'edistance' or 'spalgo_dz'

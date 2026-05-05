@@ -73,25 +73,8 @@
                 Ind = Ind + 1;
             Enddo
         Enddo
-    elseif (distr_ipws == 2) Then ! random uniform in cos(theta) and phi
-        call DATE_AND_TIME;
-        call RANDOM_NUMBER(harvest=a);
-
-        cosdth_init = cos(th_init*Pi/180.); ! cos(0)
-        margin_th = cos(th_end*Pi/180.)-cos(th_init*Pi/180.); !(cos(180)-cos(0))
-        margin_ph = ph_end-ph_init;
-
-        Allocate(Transmitters_CBFM(NTr_CBFM));
-        DO Ind=1, NTr_CBFM
-          call RANDOM_NUMBER(harvest=a);
-          theta_dipole = acos(margin_th*a+cosdth_init)*180./Pi;
-          call RANDOM_NUMBER(harvest=a);
-          phi_dipole = ph_init+a*margin_ph;
-
-          Transmitters_CBFM(Ind) = Dipole(theta_dipole,phi_dipole)
-        Enddo
-    elseif ((distr_ipws == 3) .OR. (distr_ipws == 4)) Then ! spherical T-design (x) or Lebedev quad points
-        if (distr_ipws == 3) then
+    elseif ((distr_ipws == 2) .OR. (distr_ipws == 3)) Then ! spherical T-design (x) or Lebedev quad points
+        if (distr_ipws == 2) then
             !call design_closer_order (NTr_CBFM,order,Npts); ! update 2/23/2024
             call ESD_design_closer_order (NTr_CBFM,order,Npts);
             NTr_CBFM = Npts;
@@ -165,25 +148,7 @@
         pr_res = res ;
         fct_SR_blk = fSR_tests(jj);
 
-        !spr_perc = 100; ! let's say that we keep spr_perc % of the initial matrix Zii
-                           ! Remember also that you're keeping only the upper part of the matrix
-        !spr_size = nint((spr_perc*9.*size**2.)/100.)
-        !nnz = 0;  ! to tell the code that I don't know nnz yet, and I need to know it here to avoid reallocationg later when calculating the CBFs
-        !Allocate(Zpatch_e_spr(spr_size),row_sprZ(3*size+1),col_sprZ(spr_size));
-        !Call SR_Green_s_tr_partial(size,Cells_Block,fct_SR_blk,spr_size,nnz,Zpatch_e_spr,row_sprZ,col_sprZ);
-
         Call SR_Green_s_tr_partial_FN(size,Cells_Block,fct_SR_blk,nnz,norm_Zspr);
-
-        !!! FN Zspr
-        !val_2 = 0.
-        !Do cc =1,nnz
-        !        val_2 = val_2 + (abs(Zpatch_e_spr(cc)))**2.
-        !EndDo
-        !!if (homogs == 1) then
-        !!    val_2 = 2*val_2; ! don't worry the FN of the full Zii for homo = 1 was calculated the same way !
-        !!endif
-        !norm_Zspr = sqrt(val_2)
-        !Deallocate(Zpatch_e_spr,col_sprZ,row_sprZ)
 
         res = abs(norm_Z-norm_Zspr)/norm_Z*100.
         perc_spr = (100.*nnz)/(9.*size**2.);
@@ -264,10 +229,10 @@
     Nipws=0;
     NiterNpw = 10; !8
     ! I prefer this approach (%2*Nipws from Chen & al URSI 2017) because Nipws increases more slowly
-    if (distr_ipws == 3) then ! ici cas particulier de sphere_design_rule
+    if (distr_ipws == 2) then ! ici cas particulier de sphere_design_rule
         allocate(Nipws_tests(NiterNpw));
         Nipws_tests = [84,94,108,120,144,156,180,204,216,240];! commencons ainsi avant d'avoir les valeurs superieurs de N
-    elseif (distr_ipws == 4) then
+    elseif (distr_ipws == 3) then
         allocate(Nipws_tests(59));
         Nipws_tests = [86,110,146,170,194,230,266,302,350,386,434,482,530,590, &
          650,  698,  770,  830,  890,  974, 1046, 1118, 1202, 1274, &
@@ -344,14 +309,14 @@
         if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then
             If (set_Nipws==0) then
             r_lambda = (hBlock/2.)/SimScatterer%lambda_min
-            If (distr_ipws .eq. 3) then   ! spherical design
+            If (distr_ipws .eq. 2) then   ! spherical design
                 Do rr=1,8
                 If (r_lambda .le. rr) Then
                     Nipws = SphDes_Nipws_f_rlamb(rr);
                     Exit;
                 EndIf
                 EndDo
-            ElseIf (distr_ipws .eq. 4) then   ! Lebedev quadrature
+            ElseIf (distr_ipws .eq. 3) then   ! Lebedev quadrature
                 Do rr=1,8
                 If (r_lambda .le. rr) Then
                     Nipws = LebQuad_Nipws_f_rlamb(rr);

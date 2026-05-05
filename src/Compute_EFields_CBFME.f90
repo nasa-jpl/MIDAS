@@ -279,15 +279,16 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
             write(*,'(a,ES7.1E1)') ' -- > Threshold_CBFM = ',Threshold_CBFM
         endif
         
-        ! for distr_ipws = 1, try [91,190,231,325,496,703,861]; for distr_ipws=3 try among 289,366,482,579,723,842,926; for distr_ipws=4 try among [110,194,230,350,434,590,770,974,1202]
-        distr_ipws = 3; Nipws = 289 ! fix it here for now until debugging 4/9/2024 
+        ! for distr_ipws = 1, try [91,190,231,325,496,703,861]; 
+        ! for distr_ipws= 2 try among 289,366,482,579,723,842,926; 
+        ! for distr_ipws= 3 try among [110,194,230,350,434,590,770,974,1202]
         call getTransmitters_CBFM(Transmitters_CBFM);
         if (rank == 0) then 
             if (distr_ipws .eq. 1) then 
                 Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (uniform in cos(theta) and phi)'
-            elseif (distr_ipws .eq. 3) then 
+            elseif (distr_ipws .eq. 2) then 
                 Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (sd)'
-            elseif (distr_ipws .eq. 4) then
+            elseif (distr_ipws .eq. 3) then
                 Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (lb)'
             endif
             call date_and_time(date_final_N1,time_final_N1,zone_final_N1,values_final_N1)
