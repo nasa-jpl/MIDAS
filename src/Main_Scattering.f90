@@ -703,7 +703,7 @@ Program Main_Scattering
                 ! Write in the output file the transmitters/receivers
                 Write(10,*) '';
                 Write(10,'(a,a,a,a)') 'Config of Tx/Rx = ', NumIntType_t,'/',NumIntType_r
-                if (NumIntType_t .eq. 'aq') then
+                if (NumIntType_t .eq. 'un') then
                     st_th_Tx=':  1.00';st_ph_Tx =':  1.00';st_th_Rx=':  1.00';st_ph_Rx =':  1.00';
                     if (NTrTheta .gt. 1) then
                         write(st_th_Tx,'(a,f6.2)') ':', (theta_final_trans_comp-theta_init_trans_comp)/(NTrTheta-1);
@@ -747,7 +747,11 @@ Program Main_Scattering
 
             Write(*,*) ''; Write(*,*) ''
             Write(*,'(a)')  '------Transmitters/Receivers-----'
-            Write(*,'(a,a,a,a)') 'Config of Tx/Rx = ', NumIntType_t,'/',NumIntType_r
+            if (NumIntType_t .eq. 'un') then
+                 Write(*,'(a,a,a,a,a)') 'Config of Tx/Rx = ', NumIntType_t,'/',NumIntType_r, ' (Uniform Step in Theta and Phi)'
+            else
+                Write(*,'(a,a,a,a)') 'Config of Tx/Rx = ', NumIntType_t,'/',NumIntType_r
+            endif
             if ((NumIntType_t .eq. 'sd') .OR. (NumIntType_r .eq. 'sd')) then
                 if (sd_type .eq. 1) Then
                     Write(*,'(a)') '-Type : FSU H&S St-d'
@@ -758,14 +762,14 @@ Program Main_Scattering
                 EndIf
             endif
             Write(*,'(a,i5)') 'Nber of Tx = ', NTr
-            if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'rf')) then
+            if ((NumIntType_t .eq. 'un') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'rf')) then
                 Write(*,'(a,i3,a,i3)') 'Ntheta = ',NTrTheta,'; Nphi = ',NTrPhi
             endif
             Write(*,'(a,i6)') 'Nber of Rx = ', NRx
             if (NRx_tot .ne. NRx) Then
                 Write(*,'(a,i6)') '** Note that total Nber of Rx = ', NRx_tot
             EndIf
-            if ((NumIntType_r .eq. 'aq') .OR. (NumIntType_r .eq. 'gl') .OR. (NumIntType_r .eq. 'rf')) then
+            if ((NumIntType_r .eq. 'un') .OR. (NumIntType_r .eq. 'gl') .OR. (NumIntType_r .eq. 'rf')) then
                 Write(*,'(a,i3,a,i3)') 'Ntheta = ',NRxTheta,'; Nphi = ',NRxPhi
             endif
 
@@ -774,7 +778,11 @@ Program Main_Scattering
             Write(41,'(a)') 'INCIDENT DIRECTIONS : '
             Write(41,'(a,i5)') 'Ninc', NTr
             if (NumIntType_t .ne. 'sd') then
-                Write(41,'(a,a)') 'Dist Type = ', NumIntType_t
+                if (NumIntType_t .eq. 'un') then
+                    Write(41,'(a,a,a)') 'Dist Type = ', NumIntType_t, ' - Uniform Step in Theta and Phi '
+                else
+                    Write(41,'(a,a)') 'Dist Type = ', NumIntType_t
+                endif
             else
                 if (sd_type .eq. 1) Then
                     Write(41,'(a)') 'Dist Type = sd (FSU H&S St-d)'
@@ -784,7 +792,7 @@ Program Main_Scattering
                     Write(41,'(a)') 'Dist Type = sd (W. Symm St-d)'
                 EndIf
             endif
-            if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'rf')) Then
+            if ((NumIntType_t .eq. 'un') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'rf')) Then
                 Write(41,'(a,i3,a,i3)') 'Ntheta = ',NTrTheta,'; Nphi = ',NTrPhi
             EndIf
             Write(41,'(a)') '    theta      phi ';
@@ -795,7 +803,11 @@ Program Main_Scattering
             Write(41,'(a)') 'SCATTERING DIRECTIONS : '
             Write(41,'(a,i5)') 'Nscat', NRx
             if (NumIntType_r .ne. 'sd') then
-                Write(41,'(a,a)') 'Dist Type = ', NumIntType_r
+                if (NumIntType_r .eq. 'un') then
+                    Write(41,'(a,a,a)') 'Dist Type = ', NumIntType_r, ' - Uniform Step in Theta and Phi '
+                else
+                    Write(41,'(a,a)') 'Dist Type = ', NumIntType_r
+                endif
             else
                 if (sd_type .eq. 1) Then
                     Write(41,'(a)') 'Dist Type = sd (FSU H&S St-d)'
@@ -805,7 +817,7 @@ Program Main_Scattering
                     Write(41,'(a)') 'Dist Type = sd (W. Symm St-d)'
                 EndIf
             endif
-            if ((NumIntType_r .eq. 'aq') .OR. (NumIntType_r .eq. 'gl') .OR. (NumIntType_t .eq. 'rf')) Then
+            if ((NumIntType_r .eq. 'un') .OR. (NumIntType_r .eq. 'gl') .OR. (NumIntType_t .eq. 'rf')) Then
                 Write(41,'(a,i3,a,i3)') 'Ntheta = ',NRxTheta,'; Nphi = ',NRxPhi
             EndIf
             Write(41,'(a)') '    theta      phi ';

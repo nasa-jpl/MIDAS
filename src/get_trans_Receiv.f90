@@ -78,7 +78,7 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,Transmitters_Comp,Receivers);
     if ((NumIntType_t .eq. 'sm') .and. &
         ((mod(NTrTheta,2) .ne. 1) .OR. (mod(NTrPhi,2) .ne. 1) .OR. &
         (mod(NRxTheta,2) .ne. 1) .OR. (mod(NRxPhi,2) .ne.1))) then
-        NumIntType_t = 'aq'; ! switch automatically to adaptive quadrature
+        NumIntType_t = 'un'; ! switch automatically to unifrom step in theta and phi 
         EndIf
 
 
@@ -505,7 +505,7 @@ SUBROUTINE get_trans_Receiv(Ninc_in,Nscat_in,Transmitters_Comp,Receivers);
         Receivers(1:NRx_tot) = Receivers_tmp(1:NRx_tot);
         deallocate(Receivers_tmp);
 
-    ! aq : Adaptive Quadrature OR tr : cubature trapezoid rule OR sm : Simpson Rule
+    ! uniform step in theta and phi to use aq : Adaptive Quadrature OR tr : cubature trapezoid rule OR sm : Simpson Rule for averaging
     Elseif (Step_in_cosTh .eq. 0) then ! here aq .or. tr .or. sm with step in Th
         NRx = NRxTheta*NRxPhi
         margin_rec_theta =  (thfRecei - thiRecei);

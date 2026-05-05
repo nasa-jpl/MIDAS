@@ -48,7 +48,10 @@
         
         if (rank .eq. 0) then 
             Write (*,*) ''
-            Write (*,*) '-------------------- Scattered Quantities (',NumIntType_t,'/',NumIntType_r,') --------------------' 
+            Write (*,*) '-------------------- Averaged Scattered Quantities (',NumIntType_t,'/',NumIntType_r,') --------------------' 
+            if (NumIntType_t .eq. 'un') then
+                    Write (*,*) '---------- Averaging using Adaptive Quadrature over a Uniform Grid ------------'
+            endif
             Write (*,*) ''
         EndIf
         ap = SimScatterer%dm/2.;
@@ -315,7 +318,7 @@
                         g(cc,dd) = 1./(2*k_0**2.*c_sca)*q_int;   
                         Deallocate(xth,wth,xph,wph);  
                     
-                    elseif (NumIntType_r == 'aq') Then ! Adaptive Quadrature
+                    elseif (NumIntType_r == 'un') Then ! for uniform step, use Adaptive Quadrature
                         q_int = 0;
                     
                         !Q_scat
@@ -472,7 +475,7 @@
                     EndDo
                 EndDo 
                 
-            elseif (NumIntType_t == 'aq') Then 
+            elseif (NumIntType_t == 'un') Then 
                 ! Adaptive quadrature to compute the averaged scattering quantities                
                 allocate(fy_ext(NTrPhi,1),fy_sca(NTrPhi,1));
                 allocate(fy_bks(NTrPhi,1),fy_g(NTrPhi,1));
@@ -542,11 +545,19 @@
     
             If (num_freq == 1) Then
                 Write(41, '(a,i8)') 'Number of Cells = ',Nbc 
-                Write(41, '(a,i5,a,a,a)') 'Results averaged over ',NTr,' incident directions (',NumIntType_t,') :'
+                if (NumIntType_t .eq. 'un') then
+                    Write(41, '(a,i5,a,a,a)') 'Results averaged over ',NTr,' incident directions (',NumIntType_t,' - with Adaptive Quadrature over a Uniform Grid) : '
+                else
+                    Write(41, '(a,i5,a,a,a)') 'Results averaged over ',NTr,' incident directions (',NumIntType_t,') :'                    
+                endif
                 Write(41, '(a,f6.2,a,f6.2,a,i4)') 'Theta_i_min = ',TrTh_min/pi*180.,'; Theta_i_max = ',TrTh_max/pi*180. ,'; NTheta_i = ',NTrTheta
                 Write(41, '(a,f6.2,a,f6.2,a,i4)') 'Phi_i_min   = ',TrPh_min/pi*180.,'; Phi_i_max   = ', TrPh_max/pi*180.,'; NPhi_i   = ',NTrPhi
-                Write(41, '(a,i5,a,a,a)') 'Results calculated with ',NRx,' scattering directions (',NumIntType_r,') :'
-                if ((NumIntType_r == 'aq') .OR. (NumIntType_r == 'gl') .OR. (NumIntType_r == 'tr')) then 
+                if (NumIntType_t .eq. 'un') then
+                    Write(41, '(a,i5,a,a,a)') 'Results averaged over ',NRx,' scattering directions (',NumIntType_r,' - with Adaptive Quadrature over a Uniform Grid) : '
+                else
+                    Write(41, '(a,i5,a,a,a)') 'Results averaged over ',NRx,' scattering directions (',NumIntType_r,') :'                    
+                endif
+                if ((NumIntType_r == 'un') .OR. (NumIntType_r == 'gl') .OR. (NumIntType_r == 'tr')) then 
                     Write(41, '(a,f6.2,a,f6.2,a,i4)') 'Theta_s_min = ',RecTh_min/pi*180.,'; Theta_s_max = ',RecTh_max/pi*180.,'; NTheta_s = ',NRxTheta
                     Write(41, '(a,f6.2,a,f6.2,a,i4)') 'Phi_s_min   = ',RecPh_min/pi*180.,'; Phi_s_max   = ',RecPh_max/pi*180.,'; NPhi_s   = ',NRxPhi 
                 endif
@@ -617,9 +628,12 @@
         Real(kind=8), Dimension(:), allocatable :: Q_ext,Q_sca,Q_abs,Q_bks,g,Q_ext_intf,Q_abs_intf  
         
         if (rank .eq. 0) then 
-        Write (*,*) ''
-        Write (*,*) '-------------------- Scattered Quantities (',NumIntType_t,'/',NumIntType_r,') --------------------' 
-        Write (*,*) ''
+            Write (*,*) ''
+            Write (*,*) '-------------------- Averaged Scattered Quantities (',NumIntType_t,'/',NumIntType_r,') --------------------' 
+            if (NumIntType_t .eq. 'un') then
+                    Write (*,*) '--------- Averaging using Adaptive Quadrature over a Uniform Grid ------------'
+            endif
+            Write (*,*) ''
         endif
         
         ap = SimScatterer%dm/2.;
@@ -954,9 +968,17 @@
     
             If (num_freq == 1) Then
                 Write(41, '(a,i8)') 'Number of Cells = ',Nbc 
-                Write(41, '(a,i5,a,a,a)') 'Results averaged over ',NTr,' incident directions (',NumIntType_t,') :'
-                Write(41, '(a,i5,a,a,a)') 'Results calculated with ',NRx,' scattering directions (',NumIntType_r,') :'
-                if ((NumIntType_r == 'aq') .OR. (NumIntType_r == 'gl') .OR. (NumIntType_r == 'tr')) then 
+                if (NumIntType_t .eq. 'un') then
+                    Write(41, '(a,i5,a,a,a)') 'Results averaged over ',NTr,' incident directions (',NumIntType_t,' - with Adaptive Quadrature over a Uniform Grid) : '
+                else
+                    Write(41, '(a,i5,a,a,a)') 'Results averaged over ',NTr,' incident directions (',NumIntType_t,') :' 
+                endif
+                if (NumIntType_r .eq. 'un') then
+                    Write(41, '(a,i5,a,a,a)') 'Results averaged over ',NRx,' scattering directions (',NumIntType_r,' - with Adaptive Quadrature over a Uniform Grid) : '
+                else
+                    Write(41, '(a,i5,a,a,a)') 'Results averaged over ',NRx,' scattering directions (',NumIntType_r,') :' 
+                endif
+                if ((NumIntType_r == 'un') .OR. (NumIntType_r == 'gl') .OR. (NumIntType_r == 'tr')) then 
                     Write(41, '(a,f6.2,a,f6.2,a,i4)') 'Theta_s_min = ',RecTh_min/pi*180.,'; Theta_s_max = ',RecTh_max/pi*180.,'; NTheta_s = ',NRxTheta
                     Write(41, '(a,f6.2,a,f6.2,a,i4)') 'Phi_s_min   = ',RecPh_min/pi*180.,'; Phi_s_max   = ',RecPh_max/pi*180.,'; NPhi_s   = ',NRxPhi 
                 endif

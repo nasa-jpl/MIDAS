@@ -121,20 +121,10 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
             ! Scattering matrices (if scattered fields == 0)
             Allocate(S_total(NRx_tot,4*NTr),C_ext(NTr),C_abs((NTr)));
             Call Compute_Scattering_Matrices('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
-            ! test options *******************************************************************************************************
-            !Call Compute_Scattering_Matrices_init('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total); 
-            ! uncomment here if Writing Sfiles in PHDF5 successful
-            !Call Write_txt_Sfiles('CBFM-E  ',Transmitters,Receivers,S_total);
-            !Call Compute_Scattering_Matrices_Check('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,S_total);
-            ! here S files refer to Smatrices or scattering fields depending on what was used above (Compute_Scattering_Matrices or Compute_Scattered_Fields)
-            If (wr_Sij .eq. 1) Then
-                !Call Write_Sfiles('CBFM-E  ',Transmitters,Receivers,S_total)
-            EndIf       
-            ! test options *******************************************************************************************************
             
             ! Scattering cross sections and efficiency factors 
             Call Compute_ExtAbsCsec_fromIntField('CBFM-E  ',Cells,E_total,Transmitters,C_ext,C_abs);
-            if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'tr') .OR. (NumIntType_t .eq. 'sm')) Then
+            if ((NumIntType_t .eq. 'un') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'tr') .OR. (NumIntType_t .eq. 'sm')) Then
               call Compute_Scattering_Quantities_1('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
             else
               call Compute_Scattering_Quantities_2('CBFM-E  ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
@@ -171,9 +161,6 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
         Call Compute_EFields_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs);  ! MPI MoM
         !Call Compute_EFields_ST_MoM(Cells,Transmitters,Receivers,S_total,C_ext,C_abs) ! MPI single-task MoM (equivalent to OpenMP MoM)
         Call Write_txt_Sfiles('MoM     ',Transmitters,Receivers,S_total);
-        !Call Compute_EFields_ST_MoM('MoM     ',Cells,Transmitters,Receivers,S_total,C_ext,C_abs) ! here we added the beta rotation for debug
-        
-
         call date_and_time(date_final,time_final,zone_final,values_final)
         call Calcul_time_spent(values_init,values_final,Comp_time)
         
