@@ -5,7 +5,7 @@
 ../MIDAS_debug/
 
 # job files in the root folder 
-job_MIDAS_*
+/job_MIDAS_*
 
 # the excutable in the root folder #
 midas
