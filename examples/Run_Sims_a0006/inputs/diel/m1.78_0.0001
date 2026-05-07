@@ -1,0 +1,4 @@
+m = 1.7861+0.0001i 
+  1 2 3 0 0 = Use Re(n) and Im(n)
+  Wavelength(um)   Re(n)     Im(n)     eps1  eps2
+    2.000E+006    1.7861  1.000E-004     0     0

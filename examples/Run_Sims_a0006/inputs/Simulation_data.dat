@@ -1,0 +1,80 @@
+------------------------------------------------------------ SIMULATION DATAS :-----------------------------------------
+                                                                                                                        
+** General parameters of the simulation ********************************************************************************
+NFreq  =            ! NFreq or NWavel
+1  
+list                ! minmax or list                                                                                                        
+Freqs (GHz) =       ! Freqs (MHz/GHz/THz) or Wavel (m/mm/um)                                                                                                      
+094.000
+                                                                                                                        
+** Parameters of the particles *****************************************************************************************
+shape_list & InOut Folders =
+0
+.                                                                                                                 
+Type_p =
+2a-0006                                                                                                             
+ap/L (m/mm/um)=
+1.614011963
+m_diffs =
+fromonlymfile 1
+'inputs/diel/m1.78_0.00133'                                                                                       
+                                                                                                                        
+** Parameters of the discretization ************************************************************************************
+Sc (um/m) =                                                                                                               
+50                                                                                                                       
+                                                                                                                        
+** Parameters of the applied methods  **********************************************************************************
+Nber_Methods =                                                                                                          
+1                                                                                                                     
+methods_names =
+CBFM-E
+
+** Parameters of transmitters/receivers ********************************************************************************
+quad_type = 
+sd/sd
+Ninc (sd/lb) = 
+482
+Nscat (sd/lb) =
+482
+tr_config (un/gl) = 
+theta =                                                                                                            
+0   180   19                                                                                                                
+phi =                                                                                                              
+0   360   37
+Rec_config (un/gl) = 
+theta =                                                                                                           
+0   180  181                                                                                                                 
+phi =                                                                                                              
+0   360  25
+Nbeta (0-2pi polar. rotation)= 
+1
+wr_Si = 
+1
+wr_Qi = 
+1                                                                                                                       
+                                                                                                                        
+** Parameters of the CBFM **********************************************************************************************
+div_type = (CSH or SPH)
+CSH
+NBlock (avgNcells) =                                                                                                            
+2000
+IPWs (type & number)
+sd
+432
+                                                                                                                        
+** Scattering Solution Type/Outputs ************************************************************************************                                                                                                                 
+CextIntFields = 
+0
+FarFieldApp =
+1
+R (m) (used if FFA=0) = 
+2000 
+
+** Optional Saved Solution Elts ****************************************************************************************                                                                                                                 
+save_Zc&Ctot =
+0
+save_Eint = 
+0
+10E4  
+save_Einc = 
+0                                                                                                                           

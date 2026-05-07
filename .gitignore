@@ -1,6 +1,6 @@
 # input folder & ant .dat to avoid pushing large fies (the folder inputs_examples is not ignored) #
-inputs/
-Run_Sims/
+/inputs/
+/Run_Sims/
 ../MIDAS_V0_Gattaca/
 ../MIDAS_debug/
 
