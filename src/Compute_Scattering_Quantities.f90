@@ -204,7 +204,9 @@
                 th_s = Transmitters(kkt)%Theta; ph_s = Transmitters(kkt)%phi;
                 call getTxRxIndex(NRx_tot,Receivers,th_s,ph_s,ind_fwd);
                 if (ind_fwd .eq. 0) then 
-                    Write(*,'(a)') 'Error when calculating extenction cross section, fwd scattering direction not found !'
+                    if (rank .eq. 0) then
+                        Write(*,'(a)') 'Error when calculating extenction cross section, fwd scattering direction not found !'
+                    endif
                     stop 1
                 endif                
                 Q_ext(cc,dd) = (2/(X*X))*(abs(imag(S_total(ind_fwd,4*(kkt-1)+4)))+abs(imag(S_total(ind_fwd,4*(kkt-1)+1)))); ! SHH & SVV                  
@@ -376,8 +378,10 @@
                 ! BKW Direction 
                 th_s = (180.-Transmitters(kkt)%Theta); ph_s = mod(Transmitters(kkt)%Phi+180.,360.);
                 call getTxRxIndex(NRx_tot,Receivers,th_s,ph_s,ind_bkw);
-                if (ind_bkw .eq. 0) then 
-                    Write(*,'(a)') 'Error when calculating backscattering cross section, bkw scattering direction not found !'
+                if (ind_bkw .eq. 0) then
+                    if (rank .eq. 0) then
+                        Write(*,'(a)') 'Error when calculating backscattering cross section, bkw scattering direction not found !'
+                    endif
                     stop 1
                 endif 
                 Q_bks(cc,dd) = (1./(2.*Pi*X*X))*(abs(S_total(ind_bkw,4*(kkt-1)+1))**2.+abs(S_total(ind_bkw,4*(kkt-1)+4))**2.& ! SVV & SHH & SVH & SHV

@@ -20520,8 +20520,7 @@ subroutine ESD_design_points ( order, n, x )
  ! N > 3000
   elseif ( order == 80 ) then
     call ESD_080_03282 ( x )
-  else
-    write ( *, '(a)' ) ' '
+  else    
     write ( *, '(a)' ) 'EFFICIENT SPHERICAL T DESIGN_POINTS - Fatal error!'
     write ( *, '(a,i6)' ) '  There is no information for ORDER = ', order
     stop

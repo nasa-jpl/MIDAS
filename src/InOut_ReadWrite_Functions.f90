@@ -321,8 +321,10 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
         NumIntType_r = NumIntType_t;
     endif
     if ((.not. any(NumIntType_t == allowed_distr)) .or. (.not. any(NumIntType_r == allowed_distr))) then
-        write(*,*) 'Error: invalid NumIntType_t = ', trim(NumIntType_t),'. Please choose from ', allowed_distr
-        error stop 1
+        if (rank .eq. 0) then
+            write(*,*) 'Error: invalid NumIntType_t = ', trim(NumIntType_t),'. Please use ', allowed_distr(1), '; ',allowed_distr(2), '; or ',allowed_distr(3)
+        endif
+        stop 1
     end if 
     read(11,*);read(11,*), Ninc_sugg
     read(11,*);read(11,*), Nscat_sugg

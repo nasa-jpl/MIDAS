@@ -551,7 +551,9 @@ SUBROUTINE SR_Green_s_tr_partial(sizeB,CellsB,localfSR,nnz,Green_s_tr,irow,icol)
                          ! it is equal to 0 when the subroutine 
                          ! is called to determine fSR 
       if (curs_nnz .ne. nnz) then 
-          Write(*,'(a)') 'Something went wrong when filling ZGreen_s_tr: curs_nnz .ne. nnz!'
+          if (rank .eq. 0) then
+            Write(*,'(a)') 'Something went wrong when filling ZGreen_s_tr: curs_nnz .ne. nnz!'
+          endif
           stop 1;
       endif
     endif
