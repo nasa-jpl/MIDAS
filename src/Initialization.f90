@@ -57,7 +57,7 @@ MODULE Initialization
     Real(kind=8),Parameter :: hB_test_step = (1./2.); !! this parameter is used when dividing into blocks; the next hB to test is equal to hB_test_step*current hB  
     integer,parameter,dimension(8) :: Nipws_f_rlamb = [91,190,190,231,325,496,703,861]   ! Number of Nipws (with uniform step on theta and Phi) required to ensure the accuracy 
                                                                                             ! of the CBFs depending on the ratio r/lambda_s (Fenni et al 2014) 
-                                                                                            ! here we provide Nipws for 1< r/lambda_s <8
+    character(2),parameter :: allowed_distr(3) = [ 'un', 'sd', 'lb'] ! the code accepts for now, uniform step, spherical design and lebedev distributions                                                                                      ! here we provide Nipws for 1< r/lambda_s <8
     integer,parameter,dimension(8) :: SphDes_Nipws_f_rlamb = [94,108,108,120,144,156,180,204]; ! this is a prelimineray table for the Nipws with spherical design
     integer,parameter,dimension(8) :: LebQuad_Nipws_f_rlamb = [86,110,110,146,170,194,230,266]; ! depending on hB
     

@@ -176,7 +176,7 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
             endif
         endif
                        
-        if ((NumIntType_t .eq. 'aq') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'tr') .OR. (NumIntType_t .eq. 'sm')) Then
+        if ((NumIntType_t .eq. 'un') .OR. (NumIntType_t .eq. 'gl') .OR. (NumIntType_t .eq. 'tr') .OR. (NumIntType_t .eq. 'sm')) Then
           call Compute_Scattering_Quantities_1('MoM     ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)
         else
           call Compute_Scattering_Quantities_2('MoM     ',SimScatterer,Transmitters,Receivers,S_total,C_ext,C_abs)

@@ -1175,7 +1175,7 @@ SUBROUTINE Division_blocks_sph_v1(SimScatterer,Cells,Cells_after_div,CBFM_Blocks
         if (rank == 0) Then 
             Write(*,'(a)') 'Error : all the jobs have not the same division into blocks !';
         endif
-        stop 10           
+        stop 1           
     EndIf
     
     allocate(all_NbcBlocks(Nblocks,nber_procs));
@@ -1192,7 +1192,7 @@ SUBROUTINE Division_blocks_sph_v1(SimScatterer,Cells,Cells_after_div,CBFM_Blocks
             if (rank == 0) Then 
                 Write(*,'(a)') 'Error : all the jobs have not the same division into blocks !';
             endif
-            stop 15          
+            stop 1          
         EndIf 
         deallocate(Nbc_blocks);  
     EndDo

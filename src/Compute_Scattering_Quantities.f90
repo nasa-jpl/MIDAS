@@ -205,7 +205,7 @@
                 call getTxRxIndex(NRx_tot,Receivers,th_s,ph_s,ind_fwd);
                 if (ind_fwd .eq. 0) then 
                     Write(*,'(a)') 'Error when calculating extenction cross section, fwd scattering direction not found !'
-                    stop 0;
+                    stop 1
                 endif                
                 Q_ext(cc,dd) = (2/(X*X))*(abs(imag(S_total(ind_fwd,4*(kkt-1)+4)))+abs(imag(S_total(ind_fwd,4*(kkt-1)+1)))); ! SHH & SVV                  
                 ! HERE Q_ext from internal Fiels
@@ -378,7 +378,7 @@
                 call getTxRxIndex(NRx_tot,Receivers,th_s,ph_s,ind_bkw);
                 if (ind_bkw .eq. 0) then 
                     Write(*,'(a)') 'Error when calculating backscattering cross section, bkw scattering direction not found !'
-                    stop 0;
+                    stop 1
                 endif 
                 Q_bks(cc,dd) = (1./(2.*Pi*X*X))*(abs(S_total(ind_bkw,4*(kkt-1)+1))**2.+abs(S_total(ind_bkw,4*(kkt-1)+4))**2.& ! SVV & SHH & SVH & SHV
                 +abs(S_total(ind_bkw,4*(kkt-1)+2))**2.+abs(S_total(ind_bkw,4*(kkt-1)+3))**2.);   

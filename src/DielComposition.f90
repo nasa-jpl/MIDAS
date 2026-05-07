@@ -47,7 +47,7 @@ SUBROUTINE DielComposition(m_lambdas,Cells)
     else ! I think it will be the same as fromshapefile and fromdielcompositionfile as we will use also Cells(ii)%num_diel and m_lambdas properly generated for
         ! the two random options in get_diel_values_lambdas
         Write(*,*) 'This dielcomp_option is still under development ! Thank you for your patience!';
-        stop 1;
+        stop 0
     EndIf     
 END SUBROUTINE DielComposition
     
@@ -120,8 +120,8 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
             EndDo
             close(11)
         else ! too complicated to decide here -> error 
-            stop 1;
-            Write(*,'(a,a)') 'Nfreq_dielfile < Nfreq and .ne. to 1 ! Please use another dielcompositionfile !! '            
+            Write(*,'(a,a)') 'Nfreq_dielfile < Nfreq and .ne. to 1 ! Please use another dielcompositionfile !! '     
+            stop 1
         endif
 
     elseif (trim(dielcomp_option) == 'fromdieltable') then 
@@ -139,8 +139,8 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
         read(11,'(a)') line
         call split_line(line, diel_freqs, n_columns)
         if (n_columns .lt. 2*Nfreq+1) then ! update with .lt. instead of .eq. to be flexible and alllow for extra columns for vf_i vf_l vf_a
-            stop 1
             Write(*,'(a,a,a)') 'Error while reading m values from ',fname,': the number of columns does not correspond to the number of frequencies!'
+            stop 1
         endif 
         Do nn = 1,Nfreq
             read (diel_freqs(2*nn),'(f9.6)'),mrp
@@ -197,8 +197,8 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
             elseif (nvals .eq. 1) then 
                 m_lambdas(dd,1:Nfreq) = ms_mfile(1);
             else
-                stop 1;
                 Write(*,'(a,a)') 'Error while reading m values from ',fname
+                stop 1
             endif
         endDo
         deallocate(ms_mfile);               
