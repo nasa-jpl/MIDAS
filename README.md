@@ -42,7 +42,7 @@ helene.roussel@sorbonne-universite.fr
 
 See the file ``LICENSE.txt`` for terms & conditions for usage, and a DISCLAIMER OF ALL WARRANTIES.
 
-DISCLAIMER: MIDAS is under active development. Features may change, and unexpected issues may occur. Please use with caution, and don�t hesitate to reach out for assistance or to share feedback. Users are welcome to open issues, but we are not currently accepting external contributions at this stage of development.
+DISCLAIMER: MIDAS is under active development. Features may change, and unexpected issues may occur. Please use with caution, and do not hesitate to reach out for assistance or to share feedback. Users are welcome to open issues to report problems they encounter. We will consider them carefully as time allows.
 
 
 
