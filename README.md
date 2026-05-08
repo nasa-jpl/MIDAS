@@ -9,20 +9,23 @@ display its outputs (scattered fields, scattering matrices and efficiency factor
 
 ```
 midas/
-+- src/                    # source code
-+- examples/               # Examples of scattering calculations
-+- scripts/                # Matlab and Python scripts to pre/post process data
-+- README.md
++ src/                  # source code
++ docs/                 # Markdown-based project documentation
++ userguides/           # End-user materials and presentations
++ examples/             # Examples of scattering calculations
++ tools/                # includes various user tools (make & job files, analysis scripts)
++ README.md
++ license
 ```
 
 ## Docs
 Use the links below to navigate the documentation:
 
-- [Getting Started](./docs/getting_started.md) – Quickstart instructions and setup
-- [Architecture](./docs/architecture.md) – Overview of code structure and workflow
-- [Usage](./docs/usage.md) – How to run simulations and process outputs
-- [FAQ](./docs/faq.md) – Frequently asked questions
-- [References](./docs/references.md) – External resources and related literature
+- [Getting Started](./docs/getting_started.md) ï¿½ Quickstart instructions and setup
+- [Architecture](./docs/architecture.md) ï¿½ Overview of code structure and workflow
+- [Usage](./docs/usage.md) ï¿½ How to run simulations and process outputs
+- [FAQ](./docs/faq.md) ï¿½ Frequently asked questions
+- [References](./docs/references.md) ï¿½ External resources and related literature
 
 
 
@@ -31,15 +34,15 @@ Ines Fenni,
 Jet Propulsion Laboratory, California Institute of Technology,
 ines.fenni@jpl.nasa.gov
 
-Hélène Roussel,
-Sorbonne Université,
+Hï¿½lï¿½ne Roussel,
+Sorbonne Universitï¿½,
 helene.roussel@sorbonne-universite.fr
 
 ## License information
 
 See the file ``LICENSE.txt`` for terms & conditions for usage, and a DISCLAIMER OF ALL WARRANTIES.
 
-DISCLAIMER: MIDAS is under active development. Features may change, and unexpected issues may occur. Please use with caution, and don’t hesitate to reach out for assistance or to share feedback. Users are welcome to open issues, but we are not currently accepting external contributions at this stage of development.
+DISCLAIMER: MIDAS is under active development. Features may change, and unexpected issues may occur. Please use with caution, and donï¿½t hesitate to reach out for assistance or to share feedback. Users are welcome to open issues, but we are not currently accepting external contributions at this stage of development.
 
 
 
