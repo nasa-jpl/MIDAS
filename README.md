@@ -41,8 +41,8 @@ Use the links below to navigate the documentation:
 ---
 
 ## Contact
-Ines Fenni,
-Jet Propulsion Laboratory, California Institute of Technology,
+**Ines Fenni**
+Jet Propulsion Laboratory, California Institute of Technology
 ines.fenni@jpl.nasa.gov
 
 **Hélène Roussel**  
