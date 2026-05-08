@@ -1,48 +1,62 @@
 # MIDAS
 
-MIDAS (for **M**oM **I**ntegral-equation **D**omain-decomposition for **A**rbitrarily-shaped **S**catterers) is an implementation of a numerically efficient 3D full-wave model for electromagnetic (EM) scattering from complex-shaped scatterers.
-The code is written in FORTRAN and is MPI (Message Passing Interface) parallelized. 
-Several tools, written in MATLAB, are also provided to prepare and write the FORTRAN code inputs (shape, dielectric composition, simulation data files, etc.), or read and
-display its outputs (scattered fields, scattering matrices and efficiency factors, etc.).
+**MIDAS** (**M**oM **I**ntegral-equation **D**omain-decomposition for **A**rbitrarily-shaped **S**catterers) is a numerically efficient 3D full-wave electromagnetic (EM) scattering solver for complex-shaped scatterers.
 
-## Repository layout
+The codebase is written in **FORTRAN** and parallelized using **MPI** (Message Passing Interface).
 
-```
+Several companion tools written in **MATLAB** are also provided to:
+
+- Prepare simulation inputs  
+  (geometry, dielectric composition, simulation data files, etc.)
+- Read and visualize outputs  
+  (scattered fields, scattering matrices, efficiency factors, etc.)
+
+---
+
+## Repository Layout
+
+```text
 midas/
-+ src/                  # source code
-+ docs/                 # Markdown-based project documentation
-+ userguides/           # End-user materials and presentations
-+ examples/             # Examples of scattering calculations
-+ tools/                # includes various user tools (make & job files, analysis scripts)
-+ README.md
-+ license
+├── src/          # Source code
+├── docs/         # Markdown-based project documentation
+├── userguides/   # End-user materials and presentations
+├── examples/     # Example scattering calculations
+├── tools/        # Utility scripts, make/job files, analysis tools
+├── README.md
+└── LICENSE.txt
 ```
 
-## Docs
+---
+
+## Documentation
+
 Use the links below to navigate the documentation:
 
-- [Getting Started](./docs/getting_started.md) � Quickstart instructions and setup
-- [Architecture](./docs/architecture.md) � Overview of code structure and workflow
-- [Usage](./docs/usage.md) � How to run simulations and process outputs
-- [FAQ](./docs/faq.md) � Frequently asked questions
-- [References](./docs/references.md) � External resources and related literature
+- [Getting Started](./docs/getting_started.md) — Quickstart instructions and setup
+- [Architecture](./docs/architecture.md) — Overview of code structure and workflow
+- [Usage](./docs/usage.md) — Running simulations and processing outputs
+- [FAQ](./docs/faq.md) — Frequently asked questions
+- [References](./docs/references.md) — External resources and related literature
 
-
+---
 
 ## Contact
 Ines Fenni,
 Jet Propulsion Laboratory, California Institute of Technology,
 ines.fenni@jpl.nasa.gov
 
-H�l�ne Roussel,
-Sorbonne Universit�,
+**Hélène Roussel**  
+Sorbonne Université  
 helene.roussel@sorbonne-universite.fr
 
-## License information
+---
 
-See the file ``LICENSE.txt`` for terms & conditions for usage, and a DISCLAIMER OF ALL WARRANTIES.
+## License Information
 
-DISCLAIMER: MIDAS is under active development. Features may change, and unexpected issues may occur. Please use with caution, and do not hesitate to reach out for assistance or to share feedback. Users are welcome to open issues to report problems they encounter. We will consider them carefully as time allows.
+See the `LICENSE.txt` file for terms and conditions of use, including the disclaimer of warranties.
 
+### Disclaimer
 
+MIDAS is under active development. Features and interfaces may evolve over time, and unexpected issues may occur.
 
+Please use the software with care and feel free to reach out with questions or feedback. Users are encouraged to open issues to report bugs or problems encountered during use. Contributions and feedback are appreciated and will be reviewed as time permits.
