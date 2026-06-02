@@ -421,6 +421,7 @@ SUBROUTINE Read_ShapeFile(info_p,pr_NBcels,pr_lattice)
 
     USE Initialization
     USE common_variables
+    USE DiverseUtil
     
     Implicit NONE
 
@@ -430,41 +431,45 @@ SUBROUTINE Read_ShapeFile(info_p,pr_NBcels,pr_lattice)
     Integer, Dimension(:,:), allocatable, INTENT(OUT):: pr_lattice
     
     !! LOCAL
-    Integer :: ii,jj
+    Integer :: ii,jj,nHeader, nCols
     Real(kind=8), Dimension(3) :: a1,a2
     Character ll
     Character(47) cc
         
+    call Inspect_ShapeFile(trim(ShapeFilePath), nHeader, nCols)
     ! Read the shape file 
     Open(11,File = trim(ShapeFilePath))
-    ! Inter-Dipole Distance
-    !if ((info_p == 'a') .or. (info_p == 's')) Then
-    !    read(11,'(a38,e12.8e3,a)') cc,Int_Dist,ll
-    !ElseIf (info_p == 'p') Then
-    !    read(11,'(a47,e12.8e3,a)') cc,Int_Dist,ll
-    !EndIf    
-    !Int_Dist = Int_Dist * 1e-6;
     read(11,*),cc
     
     ! NB_cells 
     read(11,*) pr_NBcels,ll
     
-    ! a1 and a2
-    read(11,'(f9.4,f9.4,f9.4,a)') a1(1),a1(2),a1(3),ll
-    read(11,'(f9.4,f9.4,f9.4,a)') a2(1),a2(2),a2(3),ll
-    
-    ! For the moment we neglect the folowing 3 lines 
-    read(11,*),cc;read(11,*),cc;read(11,*),cc;
+    ! discard next headers lines 
+    DO ii = 1, nHeader - 2
+        read(11,*),cc
+    ENDDO
     
     ! Read the positions in the lattice of the pr_NBcels cells (previously dipoles)
-    Allocate(pr_lattice(pr_NBcels,6));
-    Do ii= 1,pr_NBcels
-        read(11,'(i7,i5,i5,i5,i5,i5,i5)') jj,pr_lattice(ii,1),pr_lattice(ii,2),pr_lattice(ii,3),&
-            pr_lattice(ii,4),pr_lattice(ii,5),pr_lattice(ii,6) 
-        ! To use only if you need to read a shape file copied from a 'target.out'file
-        !read(11,'(i7,i5,i4,i4,i2,i2,i2)') jj,pr_lattice(ii,1),pr_lattice(ii,2),pr_lattice(ii,3),&
-        !    pr_lattice(ii,4),pr_lattice(ii,5),pr_lattice(ii,6) 
-    EndDo   
+    ! Read as function of the number of columns (7 if num, i,k,j, mi,mk,mj ; 5 if num, i,k,j, mi ; 4 if i,k,j, mi)
+    if (nCols .eq. 7) then
+        Allocate(pr_lattice(pr_NBcels,6))
+        Do ii= 1,pr_NBcels
+            read(11,'(i7,i5,i5,i5,i5,i5,i5)') jj,pr_lattice(ii,1),pr_lattice(ii,2),pr_lattice(ii,3),&
+                pr_lattice(ii,4),pr_lattice(ii,5),pr_lattice(ii,6) 
+        EndDo   
+    elseif (nCols .eq. 5) then
+        Allocate(pr_lattice(pr_NBcels,4))
+        Do ii= 1,pr_NBcels
+            read(11,'(i7,i5,i5,i5,i5)') jj,pr_lattice(ii,1),pr_lattice(ii,2),pr_lattice(ii,3),&
+                pr_lattice(ii,4)
+        EndDo  
+    elseif (nCols .eq. 4) then
+        Allocate(pr_lattice(pr_NBcels,4))
+        Do ii= 1,pr_NBcels
+            read(11,'(i5,i5,i5,i5)') pr_lattice(ii,1),pr_lattice(ii,2),pr_lattice(ii,3),&
+                pr_lattice(ii,4)
+        EndDo
+    endif
 
 END SUBROUTINE Read_ShapeFile
 
@@ -623,30 +628,7 @@ SUBROUTINE Write_geometry_files(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext,o
                 Part_in_lat(ii,3) = nint((Cells(ii)%Zc - z0)/Sc)             
             EndDo
             Part_in_lat(1:Nbc,4:6) = 1;
-            !if (rank == 0) then    
-            !    if (EqSph ==0) then 
-            !        file_name = trim(SimOutfld_name)//Env_sep//'shape.dat';
-            !    else
-            !        file_name = trim(SimOutfld_name)//Env_sep//'shapeES.dat';
-            !    endif        
-            !    Open(14,File = trim(file_name))
-            !    Open(12,File = 'inputs/Shape_head.dat')
-            !    read(12,'(a)'), fline
-            !    Write(14,'(a)') fline
-            !    Write(14,'(i7,a)') Nbc,' # Number of Dipoles'
-            !
-            !    Do ii=1, 5
-            !        read(12,'(a)'), fline;
-            !        Write(14,'(a)') fline;            
-            !    EndDo
-            !    Close(12)        
-            !    Do ii=1, Nbc
-            !        Write(14,'(i7,i5,i5,i5,i5,i5,i5)') ii,Part_in_lat(ii,1), &
-            !        Part_in_lat(ii,2),Part_in_lat(ii,3),Part_in_lat(ii,4), &
-            !        Part_in_lat(ii,5),Part_in_lat(ii,6)
-            !    EndDo
-            !    Close(14);  
-            !EndIf
+            
         EndIf 
     endif
     

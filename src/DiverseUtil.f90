@@ -268,7 +268,94 @@ CONTAINS
       allocate(temp(count))
       temp = tokens(1:count)
       call move_alloc(temp, tokens)
-    end subroutine split_line
+end subroutine split_line
+
+SUBROUTINE Inspect_ShapeFile(filename, nHeader, nCols)
+
+    IMPLICIT NONE
+
+    CHARACTER(*), INTENT(IN)  :: filename
+    INTEGER,      INTENT(OUT) :: nHeader
+    INTEGER,      INTENT(OUT) :: nCols
+
+    CHARACTER(512) :: line
+    INTEGER :: ios
+
+    nHeader = 0
+    nCols   = 0
+
+    OPEN(11, FILE=TRIM(filename), STATUS='OLD')
+
+    DO
+        READ(11,'(A)',IOSTAT=ios) line
+        IF (ios /= 0) EXIT
+
+        IF (IsHeader(line)) THEN
+            nHeader = nHeader + 1
+        ELSE
+            nCols = CountColumns(line)
+            EXIT            
+        END IF
+    END DO
+
+    CLOSE(11)
+
+END SUBROUTINE Inspect_ShapeFile
+
+INTEGER FUNCTION CountColumns(line)
+
+    IMPLICIT NONE
+
+    CHARACTER(*), INTENT(IN) :: line
+
+    INTEGER :: i
+    LOGICAL :: inField
+
+    CountColumns = 0
+    inField = .FALSE.
+
+    DO i = 1, LEN_TRIM(line)
+
+        IF (line(i:i) /= ' ' .AND. .NOT. inField) THEN
+            CountColumns = CountColumns + 1
+            inField = .TRUE.
+        ELSE IF (line(i:i) == ' ') THEN
+            inField = .FALSE.
+        END IF
+
+    END DO
+
+END FUNCTION CountColumns
+
+LOGICAL FUNCTION IsHeader(line)
+
+    IMPLICIT NONE
+
+    CHARACTER(*), INTENT(IN) :: line
+    INTEGER :: i, ich
+
+    ! Empty line => header
+    IF (LEN_TRIM(line) == 0) THEN
+        IsHeader = .TRUE.
+        RETURN
+    END IF
+
+    ! If any letter appears, it's a header
+    DO i = 1, LEN_TRIM(line)
+
+        ich = IACHAR(line(i:i))
+
+        IF ((ich >= IACHAR('A') .AND. ich <= IACHAR('Z')) .OR. &
+            (ich >= IACHAR('a') .AND. ich <= IACHAR('z'))) THEN
+            IsHeader = .TRUE.
+            RETURN
+        END IF
+
+    END DO
+
+    IsHeader = .FALSE.
+
+END FUNCTION IsHeader
 
 
 END MODULE DiverseUtil
