@@ -178,7 +178,8 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         if (num_freq .gt. 1 .OR. num_sim .gt. 1) then 
           deallocate(K_patchs);
         endif
-        if (num_freq .gt. 1 .or. (num_sim .gt. 1 .and. num_freq .eq. 1)) then
+        !if (num_freq .gt. 1 .or. (num_sim .gt. 1 .and. num_freq .eq. 1)) then % : This doesnt work if shapelist and Nfreq = 1
+        if (num_freq .gt. 1) then
             deallocate(C_job_patchs)
         endif
         Allocate(K_patchs(MyNBlocks))
