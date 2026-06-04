@@ -68,13 +68,13 @@ MODULE common_variables
     
     ! In/Output files
     Integer :: wr_Sij,wr_Qij,EqSph,shape_list
-    Integer :: save_Zc,save_Eint,save_Eint_Nmax,save_Einc
+    Integer :: save_Zc,save_Eint,save_Eint_Nmax,save_Einc,verbose
     CHARACTER(100) :: Outfld_name
     CHARACTER(100) :: SimOutfld_name
     CHARACTER(240) :: ShapeFilePath
     SAVE Outfld_name, SimOutfld_name,EqSph,shape_list,ShapeFilePath
     SAVE wr_Sij,wr_Qij
-    SAVE save_Zc,save_Eint,save_Eint_Nmax,save_Einc
+    SAVE save_Zc,save_Eint,save_Eint_Nmax,save_Einc,verbose
     
     ! Environmemt
     CHARACTER(4) :: Env_type

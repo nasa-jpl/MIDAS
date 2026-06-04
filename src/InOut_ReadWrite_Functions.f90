@@ -407,10 +407,11 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     
     ! Save Sol Elements
     read(11,*);
+    read(11,*);read(11,*), verbose
     read(11,*);read(11,*), save_Zc
     read(11,*);read(11,*), save_Eint
     read(11,*), save_Eint_Nmax  ! used only if save_Eint=1
-    read(11,*);read(11,*), save_Einc ! incident field (useful for inversion algorithms)        
+    read(11,*);read(11,*), save_Einc ! incident field (useful for inversion algorithms)  
     
     !! close the dat file
 40  Close(11)

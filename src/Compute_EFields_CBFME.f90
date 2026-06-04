@@ -373,7 +373,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
                 call print_allocate(13,'col_sprZ(nnz)','SINTG',nnz);
 
                 Call SR_Green_s_tr_partial(size,Cells_Block,fct_SR_blk,nnz,Zpatch_e_spr,row_sprZ,col_sprZ)
-                if (NBlocks < 500) then
+                if (verbose .eq. 1) then
     	            Write(*,'(a,i4,a,i6,a,i6,a,f5.2,a)',advance='no') 'j',rank,': Solving blk ',kk,' of size',size,': nnz = ',spr_perc,' % of Zii'
                 endif
                 iparm3 = 0; ! here iparm3 is not used
@@ -393,7 +393,10 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
             Deallocate(Cells_Block);
     	    call date_and_time(date_final_ii,time_final_ii,zone_final_ii,values_final_ii)
             call Calcul_time_spent(values_init_ii,values_final_ii, time_calcul_ii)
-            Write(*,'(a,i6,a)') ' : ',time_calcul_ii(1)*86400+time_calcul_ii(2)*3600+time_calcul_ii(3)*60+time_calcul_ii(4),' sec'
+            if (verbose .eq. 1) then
+                Write(*,'(a,i6,a)') ' : ',time_calcul_ii(1)*86400+time_calcul_ii(2)*3600+time_calcul_ii(3)*60+time_calcul_ii(4),' sec'
+            endif
+            
 
             !! Decomposition en valeurs singulieres
             M = 3*size; N = 2*NTr_CBFM
@@ -683,7 +686,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
       Write(*,'(a)') 'InterJob Interactions :'
     EndIf
     Do kk = 1, nber_procs-1
-      if (nber_procs < 500 .and. rank == 0) Then
+      if ((verbose .eq. 1) .and. (rank == 0)) Then
         Write(*,'(a,i4)') 'CBFs Transition kk = ',kk
       endif
 
