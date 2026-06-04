@@ -251,7 +251,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
             do ii =1,MyNBlocks !4
                 !! lb1 ***************************************
                 !nb = testedBlks(ii)
-                nb = MPI_CBFM_Blocks(rank+1,1+ii_job);
+                nb = MPI_CBFM_Blocks(rank+1,1+ii);
                 Nbc_b = CBFM_Blocks(nb)%Nbc_b
                 Nbc_b_ext = CBFM_Blocks(nb)%Nbc_ext
                 size = Nbc_b + Nbc_b_ext

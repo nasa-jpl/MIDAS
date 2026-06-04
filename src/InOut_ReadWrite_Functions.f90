@@ -373,7 +373,7 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
         distr_ipws = 3
     endif
     
-    set_Nipws = 1; Nc_extended =1 
+    set_Nipws = 0; Nc_extended =1 
     DR=0; SR=1; res_SR=1e-2; SR_Zc = 0;
     Use_ACA = 0; Nb_it_max= 50; Epsilon_ACA = 1E-4; Vrb_ACA = 0; 
     SR_Zc_type_ch = 'threshold' ! takes 3 values 'threshold' or 'edistance' or 'spalgo_dz'

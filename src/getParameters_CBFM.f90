@@ -302,9 +302,10 @@
         type (Scatterer), INTENT(INOUT) :: SimScatterer
 
         ! local
-        integer :: rr
+        integer :: rr, Nipws_input
         real(kind=8) :: r_lambda
 
+        Nipws_input = Nipws
         ! here decide Nipws for the generation of CBFs depending on hmax/lambda_s
         if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then
             If (set_Nipws==0) then
@@ -343,4 +344,5 @@
             Nipws = 2; ! Initialization
             EndIf
         EndIf
+        Nipws = max(Nipws_input,Nipws)
     END SUBROUTINE initializeNipws
