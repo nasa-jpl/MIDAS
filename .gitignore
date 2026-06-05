@@ -14,10 +14,8 @@ midas
 /src/*.o
 /src/*.mod
 /src/midas
-<<<<<<< HEAD
 /src/Makefile_*
 
->>>>>>> origin/main
 # Simulations outputs & performance analysis #
 *-ap=*m/
 Sim_MPI_MIDAS_*
@@ -35,6 +33,9 @@ MIDAS.vfproj.ifenni.user
 /x64
 /outputs
 fort.*
+
+# Private notes (not for open source)
+docs/code_issues.md
 
 # merge tool files
 *.swp
