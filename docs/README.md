@@ -7,8 +7,8 @@ MIDAS is a numerically efficient 3D full-wave model for electromagnetic (EM) sca
 
 Use the links below to navigate the documentation:
 
-- [Getting Started](getting_started.md) – Quickstart instructions and setup
-- [Architecture](architecture.md) – Overview of code structure and workflow
-- [Usage](usage.md) – How to run simulations and process outputs
-- [FAQ](faq.md) – Frequently asked questions
-- [References](references.md) – External resources and related literature
+- [Getting Started](getting_started.md) â€” Quickstart instructions and setup
+- [Architecture](architecture.md) â€” Overview of code structure and workflow
+- [Usage](usage.md) â€” How to run simulations and process outputs
+- [FAQ](faq.md) â€” Frequently asked questions
+- [References](references.md) â€” External resources and related literature
