@@ -7,7 +7,7 @@ SUBROUTINE DielComposition(m_lambdas,Cells)
     Implicit NONE
     
     ! IN/OUT 
-    Complex, Dimension(Ndiel,Nfreq), INTENT(IN) :: m_lambdas
+    COMPLEX(kind=8), Dimension(Ndiel,Nfreq), INTENT(IN) :: m_lambdas
     type (Cell), Dimension(Nbc), INTENT(INOUT):: Cells
     
     ! local 
@@ -65,7 +65,7 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
     
     ! IN/OUT 
     character(250), dimension(Ndiel), INTENT(IN) :: m_file_name
-    Complex, Dimension(:,:), allocatable, INTENT(OUT) :: m_lambdas
+    COMPLEX(kind=8), Dimension(:,:), allocatable, INTENT(OUT) :: m_lambdas
     
     ! out : m_lambdas - Ndiel x Nfreq  ==> Ndiel is the number of mfiles for 'fromshapefile' OR 'fromonlymfile' OR 'random2'
     !                                      Ndiel is 2 (min & max values) for 'random1'

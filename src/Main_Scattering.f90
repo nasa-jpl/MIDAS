@@ -1,4 +1,4 @@
-Program Main_Scattering
+﻿Program Main_Scattering
 
     USE Initialization
     USE common_variables
@@ -22,7 +22,7 @@ Program Main_Scattering
     ! specific code Multi-frequency
     logical :: dirExists
     Real(kind=8), Dimension(:), allocatable :: Wavesle
-    Complex, Dimension(:,:), allocatable :: m_lambdas
+    COMPLEX(kind=8), Dimension(:,:), allocatable :: m_lambdas
     Integer, Dimension(:), allocatable :: K_patchs
     COMPLEX(real64), Dimension(:,:), allocatable :: C_job_patchs
 
@@ -44,6 +44,7 @@ Program Main_Scattering
     Integer :: a,ii,jj,rr,Ind,I,K,m,ios,N_vals_m,old_Nbc,error_read,error_div
     Integer :: tdistr_sca,Nval_eps_r,Nval_eps_i,ii1,ii2
     Integer :: N,NBlks_exp,m_read_opt,err,Type_Par,pr_d,d,selected,num_bin,Nbins
+    Integer :: alloc_stat, sys_stat
     Real(kind=8) :: Volume,q, rp, ip,mrp , mip, p, Sc,Dp,h,ap,theta_dipole, phi_dipole
     Real(kind=8) :: x_l, y_l, z_l, xmax,xeq,xmax_m,xeq_m
     Real(kind=8) :: r_min,r_max,i_min,i_max, rp_min,rp_max
@@ -121,7 +122,7 @@ Program Main_Scattering
 
             ! IN/OUT
             character(250), dimension(Ndiel), INTENT(IN) :: m_file_name
-            Complex, Dimension(:,:), allocatable, INTENT(OUT) :: m_lambdas
+            COMPLEX(kind=8), Dimension(:,:), allocatable, INTENT(OUT) :: m_lambdas
             END SUBROUTINE get_diel_values_lambdas
 
         SUBROUTINE DielComposition(m_lambdas,Cells)
@@ -132,7 +133,7 @@ Program Main_Scattering
             Implicit NONE
 
             ! IN/OUT
-            Complex, Dimension(Ndiel,Nfreq), INTENT(IN) :: m_lambdas
+            COMPLEX(kind=8), Dimension(Ndiel,Nfreq), INTENT(IN) :: m_lambdas
             type (Cell), Dimension(Nbc), INTENT(INOUT):: Cells
         END SUBROUTINE DielComposition
 
@@ -222,7 +223,12 @@ Program Main_Scattering
     !! ---------------------------------------------------------------------------------------------------------------------------!!
 
     ! MPI INITIALIZATION
-    Call MPI_INIT(code);
+    Call MPI_INIT(code)
+    if (code /= MPI_SUCCESS) then
+        Write(*,'(a,i0)') 'ERROR: MPI_INIT failed, code=', code
+        Stop
+    endif
+    Call MPI_COMM_SET_ERRHANDLER(MPI_COMM_WORLD, MPI_ERRORS_ARE_FATAL, code)
     Call MPI_COMM_SIZE (MPI_COMM_WORLD,nber_procs,code)
     Call MPI_COMM_RANK (MPI_COMM_WORLD,rank,code)
 
@@ -248,7 +254,7 @@ Program Main_Scattering
     !! HERE READ Input data file (call subroutine change 11/22/2021)
     Call Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmitters_Comp,Receivers,error_read);
     if (error_read .ne. 0) then
-        go to 30;
+        go to 29
     endif
 
     !! Initialization ************************************************************************************************************
@@ -262,7 +268,7 @@ Program Main_Scattering
                 If (rank == 0) Then
                     Write(*,'(a)') 'ERROR : Enable to find SimShapes.dat file !!! Exit !!'
                 endif
-                go to 30;
+                go to 29
             EndIf
         EndIf
         Call MPI_Barrier(MPI_COMM_WORLD,code);
@@ -284,7 +290,11 @@ Program Main_Scattering
             Write(*,'(a,i6)') 'The total number of Shape Simulations : ', NbSimulations
         endif
 
-        Allocate(ShapesDirNamesParams(NbSimulations));
+        Allocate(ShapesDirNamesParams(NbSimulations), stat=alloc_stat)
+        if (alloc_stat /= 0) then
+            if (rank==0) Write(*,'(a)') 'ALLOC ERROR: ShapesDirNamesParams'
+            Call MPI_FINALIZE(code); Stop
+        endif
         Open(12,File = 'inputs/SimShapes.dat')
         eastat = 0;
         ! Recover shape files pathes
@@ -298,7 +308,7 @@ Program Main_Scattering
                 if (rank == 0) then
                     Write(*,'(a)') 'Something went wrong when reading ap from SimShapes.dat. Please check that you respect the format path : name size';
                 endif
-                go to 30;
+                go to 29
             endif
         EndDo
         close (12);
@@ -315,7 +325,7 @@ Program Main_Scattering
                 if (rank == 0) then
                     Write(*,'(a)') 'Something went wrong when reading ap from SimShapes.dat';
                 endif
-                go to 30;
+                go to 29
             Endif
 
             ShapeFilePath = ShapeFilePathParam(1:ii-2)
@@ -392,13 +402,25 @@ Program Main_Scattering
         if (rank == 0) Then
             inquire(directory=trim(SimOutfld_name),exist=dirExists);
             if (dirExists) Then
-                call system('rm -r '//trim(SimOutfld_name))
+                if (Env_type == 'WIND') then
+                    call system('rmdir /s /q '//trim(SimOutfld_name))
+                else
+                    call system('rm -r '//trim(SimOutfld_name))
+                endif
             EndIf
-            call system('mkdir "'//trim(SimOutfld_name)//'"');
+            call system('mkdir "'//trim(SimOutfld_name)//'"', sys_stat)
+            if (sys_stat /= 0) then
+                Write(*,'(a,a)') 'ERROR: failed to create output folder: ', trim(SimOutfld_name)
+                Call MPI_FINALIZE(code); Stop
+            endif
             if (Env_type == 'WIND') then
-                call system('copy inputs\Simulation_data.dat "'//trim(SimOutfld_name)//'\"');
+                call system('copy inputs\Simulation_data.dat "'//trim(SimOutfld_name)//'\"', sys_stat)
             else
-                call system('cp inputs/Simulation_data.dat "'//trim(SimOutfld_name)//'/"');
+                call system('cp inputs/Simulation_data.dat "'//trim(SimOutfld_name)//'/"', sys_stat)
+            endif
+            if (sys_stat /= 0) then
+                Write(*,'(a)') 'ERROR: failed to copy Simulation_data.dat'
+                Call MPI_FINALIZE(code); Stop
             endif
         endif
         Call MPI_Barrier(MPI_COMM_WORLD,code);  ! here all the jobs wait for the creation of the simulation folders
@@ -550,13 +572,8 @@ Program Main_Scattering
                 Write(*,'(a)') ' '
                 Write(*,'(a)') '******************** VOLUME EQUIVALENT SPHERE SIMULATIONS **********************';
                 Write(*,'(a)') '********************************************************************************';
-                Write(*,'(a)') ' ';
-                Deallocate(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MLCBFM_BlDistr);
+                Write(*,'(a)') ' '
             endif
-        endif
-
-        if (EqSph==1) then
-            Deallocate(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MLCBFM_BlDistr);
         endif
 
         !! DISCRETIZATION & DIVISION INTO BLOCKS**************************************************************************
@@ -584,7 +601,7 @@ Program Main_Scattering
             ! Division into blocks depending on the type of scatterer
             call Division_blocks(SimScatterer,Cells,Ncells_SphDomains,CBFM_Blocks,MLCBFM_BlDistr,error_div)
             if (error_div .ne. 0) then
-                go to 30;
+                go to 29
             endif
             call date_and_time(date_final,time_final,zone_final,values_final)
             call Calcul_time_spent(values_init,values_final,Comp_time_div)
@@ -607,17 +624,29 @@ Program Main_Scattering
             ! Check that all the jobs have the same (Division/Extension) Configuration
             allocate(all_NBlocks(nber_procs));
             call MPI_ALLGATHER(Nblocks,1,MPI_INTEGER,all_NBlocks,1,MPI_INTEGER,MPI_COMM_WORLD,code)
+            if (code /= MPI_SUCCESS) then
+                if (rank == 0) Write(*,'(a,i0)') 'ERROR: MPI_ALLGATHER (all_NBlocks) failed, code=', code
+                Call MPI_FINALIZE(code); Stop
+            endif
             call count_unique_vals(nber_procs,all_NBlocks,countU)
             if (countU .ne. 1) Then
                 if (rank == 0) Then
                     Write(*,'(a)') 'Error : all the jobs have not the same division into blocks !';
                 endif
-                go to 30;
+                go to 29
             EndIf
-            allocate(all_NbcBlocks(Nblocks,nber_procs));
+            allocate(all_NbcBlocks(Nblocks,nber_procs), stat=alloc_stat)
+            if (alloc_stat /= 0) then
+                if (rank==0) Write(*,'(a)') 'ALLOC ERROR: all_NbcBlocks'
+                Call MPI_FINALIZE(code); Stop
+            endif
             allocate(Nbc_blocks(Nblocks));
             Nbc_blocks = CBFM_Blocks(1:Nblocks)%Nbc_b;
             call MPI_ALLGATHER(Nbc_blocks,Nblocks,MPI_INTEGER,all_NbcBlocks,Nblocks,MPI_INTEGER,MPI_COMM_WORLD,code)
+            if (code /= MPI_SUCCESS) then
+                if (rank == 0) Write(*,'(a,i0)') 'ERROR: MPI_ALLGATHER (all_NbcBlocks) failed, code=', code
+                Call MPI_FINALIZE(code); Stop
+            endif
             deallocate(Nbc_blocks);
 
             Do ii=1, Nblocks
@@ -628,7 +657,7 @@ Program Main_Scattering
                     if (rank == 0) Then
                         Write(*,'(a)') 'Error : all the jobs have not the same division into blocks !';
                     endif
-                    go to 30;
+                    go to 29
                 EndIf
                 deallocate(Nbc_blocks);
             EndDo
@@ -641,13 +670,13 @@ Program Main_Scattering
               if (rank == 0) then
                 Write(*,'(a,i4,a,i4,a)') 'Performance Error : Nprocs =',nber_procs,' > Nblocks =',Nblocks,' ! Please restart with fewer processors !';
               endif
-              go to 30;
+              go to 29
             endif
         Else
             ! to avoid segmentation fault errors at the input of Compute_Electric_Fields.
-            NBlocks = 1; Allocate(CBFM_Blocks(NBlocks));
-            Nbc_ext =1; Allocate(CBFM_Blocks_Ext(NBlocks,Nbc_ext));
-            Nblk_proc_max =1; Allocate(MPI_CBFM_Blocks(nber_procs,Nblk_proc_max+1));
+            NBlocks = 1; Allocate(CBFM_Blocks(NBlocks))
+            Nbc_ext =1; Allocate(CBFM_Blocks_Ext(NBlocks,Nbc_ext))
+            Nblk_proc_max =1; Allocate(MPI_CBFM_Blocks(nber_procs,Nblk_proc_max+1))
         EndIf
         
         ! write geometry files 
@@ -831,25 +860,49 @@ Program Main_Scattering
                 Efold_name = trim(SimOutfld_name)//Env_sep//'Es_files';
                 inquire(directory=trim(Efold_name),exist=dirExists);
                 if (dirExists) Then
-                    call system('rm -r "'//trim(Efold_name)//'"')
+                    if (Env_type == 'WIND') then
+                        call system('rmdir /s /q "'//trim(Efold_name)//'"')
+                    else
+                        call system('rm -r "'//trim(Efold_name)//'"')
+                    endif
                 EndIf
-                call system('mkdir "'//trim(Efold_name)//'"')
+                call system('mkdir "'//trim(Efold_name)//'"', sys_stat)
+                if (sys_stat /= 0) then
+                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Efold_name)
+                    Call MPI_FINALIZE(code); Stop
+                endif
 
                 Efold_name = trim(SimOutfld_name)//Env_sep//'Ei_files';
                 inquire(directory=trim(Efold_name),exist=dirExists);
                 if (dirExists) Then
-                    call system('rm -r "'//trim(Efold_name)//'"')
+                    if (Env_type == 'WIND') then
+                        call system('rmdir /s /q "'//trim(Efold_name)//'"')
+                    else
+                        call system('rm -r "'//trim(Efold_name)//'"')
+                    endif
                 EndIf
-                call system('mkdir "'//trim(Efold_name)//'"')
+                call system('mkdir "'//trim(Efold_name)//'"', sys_stat)
+                if (sys_stat /= 0) then
+                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Efold_name)
+                    Call MPI_FINALIZE(code); Stop
+                endif
             else
                 ! create the S_files folder if needed
                 Sfold_name = trim(SimOutfld_name)//Env_sep//'S_files';
                 inquire(directory=trim(Sfold_name),exist=dirExists);
                 if (dirExists) Then
-                    call system('rm -r "'//trim(Sfold_name)//'"')
+                    if (Env_type == 'WIND') then
+                        call system('rmdir /s /q "'//trim(Sfold_name)//'"')
+                    else
+                        call system('rm -r "'//trim(Sfold_name)//'"')
+                    endif    
                 EndIf
                 If (wr_Sij .eq. 1) then
-                    call system('mkdir "'//trim(Sfold_name)//'"')
+                    call system('mkdir "'//trim(Sfold_name)//'"', sys_stat)
+                    if (sys_stat /= 0) then
+                        Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Sfold_name)
+                        Call MPI_FINALIZE(code); Stop
+                    endif
                 EndIf
 
                 ! create the Q_files folder if needed
@@ -857,27 +910,43 @@ Program Main_Scattering
                     Qfold_name = trim(SimOutfld_name)//Env_sep//'Q_files';
                     inquire(directory=trim(Qfold_name),exist=dirExists);
                     if (dirExists) Then
-                        call system('rm -r "'//trim(Qfold_name)//'"')
+                        if (Env_type == 'WIND') then
+                            call system('rmdir /s /q "'//trim(Qfold_name)//'"')
+                        else
+                            call system('rm -r "'//trim(Qfold_name)//'"')
+                        endif
                     EndIf
                     If (wr_Qij .eq. 1) then
-                        call system('mkdir "'//trim(Qfold_name)//'"')
+                        call system('mkdir "'//trim(Qfold_name)//'"', sys_stat)
+                        if (sys_stat /= 0) then
+                            Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Qfold_name)
+                            Call MPI_FINALIZE(code); Stop
+                        endif
                     EndIf
                 endif
             endif
 
             ! Create the Solution files (Eint, Zc, CBFs, Zcinv) if required
             If (((save_Eint .eq. 1) .and. (Nbc .le. save_Eint_Nmax)) .OR. (save_Zc .eq. 1)) then
-                if (rank .eq. 0) then
-                write(11,*) 'save_Eint =', save_Eint
-                write(11,*) 'Nbc =', Nbc
-                write(11,*) 'save_Eint_Nmax =', save_Eint_Nmax
+                if ((debug_mode .eq. 1) .and. (rank .eq. 0)) then
+                    write(10,*) 'save_Eint =', save_Eint
+                    write(10,*) 'Nbc =', Nbc
+                    write(10,*) 'save_Eint_Nmax =', save_Eint_Nmax
                 endif
                 Solfold_name = trim(SimOutfld_name)//Env_sep//'Sol_files';
                 inquire(directory=trim(Solfold_name),exist=dirExists);
                 if (dirExists) Then
-                    call system('rm -r "'//trim(Solfold_name)//'"')
+                    if (Env_type == 'WIND') then
+                        call system('rmdir /s /q "'//trim(Solfold_name)//'"')
+                    else
+                        call system('rm -r "'//trim(Solfold_name)//'"')
+                    endif
                 EndIf
-                call system('mkdir "'//trim(Solfold_name)//'"')
+                call system('mkdir "'//trim(Solfold_name)//'"', sys_stat)
+                if (sys_stat /= 0) then
+                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Solfold_name)
+                    Call MPI_FINALIZE(code); Stop
+                endif
             Endif
 
             if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then
@@ -924,7 +993,7 @@ Program Main_Scattering
         EndIf
         ! here rank = 1 will quickly check if the folders are properly created  (I was having a weired problem of rank 0 not creating the folders !!)
         ! we will let all other tasks check if the folders ar created
-        Do I = 1,4
+        Do I = 1, nber_procs-1
           Call MPI_Barrier(MPI_COMM_WORLD,code);
           if (rank == I) then
               if (FFA .eq. 0) then
@@ -932,26 +1001,42 @@ Program Main_Scattering
                   Efold_name = trim(SimOutfld_name)//Env_sep//'Es_files';
                   inquire(directory=trim(Efold_name),exist=dirExists);
                   if (.not. dirExists) Then
-                      call system('mkdir "'//trim(Efold_name)//'"')
+                call system('mkdir "'//trim(Efold_name)//'"', sys_stat)
+                if (sys_stat /= 0) then
+                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Efold_name)
+                    Call MPI_FINALIZE(code); Stop
+                endif
                   EndIf
                   Efold_name = trim(SimOutfld_name)//Env_sep//'Ei_files';
                   inquire(directory=trim(Efold_name),exist=dirExists);
                   if (.not. dirExists) Then
-                      call system('mkdir "'//trim(Efold_name)//'"')
+                call system('mkdir "'//trim(Efold_name)//'"', sys_stat)
+                if (sys_stat /= 0) then
+                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Efold_name)
+                    Call MPI_FINALIZE(code); Stop
+                endif
                   EndIf
               else
                   ! create the S_files folder if needed
                   Sfold_name = trim(SimOutfld_name)//Env_sep//'S_files';
                   inquire(directory=trim(Sfold_name),exist=dirExists);
                   if ((.not. dirExists) .and. (wr_Sij .eq. 1))  Then
-                      call system('mkdir "'//trim(Sfold_name)//'"')
+                    call system('mkdir "'//trim(Sfold_name)//'"', sys_stat)
+                    if (sys_stat /= 0) then
+                        Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Sfold_name)
+                        Call MPI_FINALIZE(code); Stop
+                    endif
                   EndIf
                   ! create the Q_files folder if needed
                   if (EqSph==0) then
                       Qfold_name = trim(SimOutfld_name)//Env_sep//'Q_files';
                       inquire(directory=trim(Qfold_name),exist=dirExists);
                       if ((.not. dirExists) .and. (wr_Qij .eq. 1)) Then
-                          call system('mkdir "'//trim(Qfold_name)//'"')
+                        call system('mkdir "'//trim(Qfold_name)//'"', sys_stat)
+                        if (sys_stat /= 0) then
+                            Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Qfold_name)
+                            Call MPI_FINALIZE(code); Stop
+                        endif
                       EndIf
                   endif
               endif
@@ -960,7 +1045,11 @@ Program Main_Scattering
                   Solfold_name = trim(SimOutfld_name)//Env_sep//'Sol_files';
                   inquire(directory=trim(Solfold_name),exist=dirExists);
                   if (.not. dirExists) Then
-                      call system('mkdir "'//trim(Solfold_name)//'"')
+                call system('mkdir "'//trim(Solfold_name)//'"', sys_stat)
+                if (sys_stat /= 0) then
+                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Solfold_name)
+                    Call MPI_FINALIZE(code); Stop
+                endif
                   EndIf
               Endif
           endif
@@ -1035,7 +1124,12 @@ Program Main_Scattering
                     Write(*,'(a,f6.2)') ' -- > xeq_m =', xeq_m
                     Write(*,'(a,f6.2)') ' -- > xmax_m =', xmax_m
                 else
-                    Allocate(vals(Nbc)); vals = Cells(1:Nbc)%lambda_n;
+                    Allocate(vals(Nbc), stat=alloc_stat)
+                    if (alloc_stat /= 0) then
+                        if (rank==0) Write(*,'(a)') 'ALLOC ERROR: vals(Nbc)'
+                        Call MPI_FINALIZE(code); Stop
+                    endif
+                    vals = Cells(1:Nbc)%lambda_n;
                     r_min = minval(vals); r_max = maxval(vals);
                     Write(*,'(a,F9.6,a,F9.6,a,a)') ' -- > Wavelength inside scatterer = [',r_min*10**lamb_mag,' - ',r_max*10**lamb_mag,'] ',lamb_unit;
                     vals = real(Cells(1:Nbc)%m_n); r_min = minval(vals); r_max = maxval(vals);
@@ -1081,7 +1175,7 @@ Program Main_Scattering
                     if (rank == 0) then
                       Write(*,'(a,i4,a,i4,a)') 'Performance Error : Nprocs =',nber_procs,' > Nblocks =',Nblocks,' ! Please restart with fewer processors !';
                     endif
-                    go to 30;
+                    go to 29
                 else
                     Call initializeNipws(SimScatterer);
                 Endif
@@ -1091,17 +1185,13 @@ Program Main_Scattering
             Call Compute_Electric_Fields(SimScatterer,Cells,Transmitters_Comp,Receivers,methods_names,&
                 CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks,K_patchs,C_job_patchs);
         EndDo ! Loop on frequency
-        Deallocate(Cells,m_lambdas)
-        if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then
-            Deallocate(CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks); !! attention test 8/8/2018 comment/uncomment depending on test or no
-        EndIf
+        Deallocate(Cells,m_lambdas,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Blocks) !! attention test 8/8/2018 comment/uncomment depending on test or no
     EndDo ! Loop on scatterer (if Nsims >1)
 
     if (rank == 0) then
         Write(*,'(a)') '*******************************************************************************'
         Write(*,'(a)') '************************* END OF SIMULATION, THANKS ***************************'
         Write(*,'(a)') '*******************************************************************************'
-        Close(11)
         if (debug_mode .eq. 1) then
             Write(10,'(a)') ''
             Write(10,'(a)') ''
@@ -1112,8 +1202,21 @@ Program Main_Scattering
         endif
     endif
 
-30  Call MPI_FINALIZE (code);
+29  Continue
+    if (allocated(ShapesDirNamesParams)) Deallocate(ShapesDirNamesParams)
+    if (allocated(Wavesle))              Deallocate(Wavesle)
+    if (allocated(m_lambdas))            Deallocate(m_lambdas)
+    if (allocated(all_NBlocks))          Deallocate(all_NBlocks)
+    if (allocated(all_NbcBlocks))        Deallocate(all_NbcBlocks)
+    if (allocated(vals))                 Deallocate(vals)
+    if (allocated(Cells))                Deallocate(Cells)
+    if (allocated(CBFM_Blocks))          Deallocate(CBFM_Blocks)
+    if (allocated(CBFM_Blocks_Ext))      Deallocate(CBFM_Blocks_Ext)
+    if (allocated(MPI_CBFM_Blocks))      Deallocate(MPI_CBFM_Blocks)
+30  Call MPI_FINALIZE(code)
 if (Env_type .eq. 'WIND') then 
-    pause
+    if (rank == 0) then
+        pause
+    endif
 endif
 End PROGRAM Main_Scattering

@@ -35,7 +35,7 @@ MIDAS.vfproj.ifenni.user
 fort.*
 
 # Private notes (not for open source)
-docs/code_issues.md
+/cl_debug
 
 # merge tool files
 *.swp
