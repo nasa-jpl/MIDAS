@@ -167,14 +167,21 @@ Available method names:
 <wr_Qij>    ! 1 = write Q (efficiency) files to Q_files/
 ```
 
-Direction distribution types (`NumIntType`):
+Direction distribution types (`NumIntType_t` for transmitters, `NumIntType_r` for receivers — both use the same codes):
 
-| Code | Type |
-|---|---|
-| `un` | Uniform step in theta and phi |
-| `gl` | Gauss–Legendre quadrature |
-| `sd` | Spherical T-design |
-| `rf` | Custom (read from file) |
+| Code | Type | Angular averaging used |
+|---|---|---|
+| `un` | Uniform step in theta and phi | Adaptive quadrature over the uniform grid |
+| `gl` | Gauss–Legendre quadrature | Gauss–Legendre weights |
+| `tr` | Uniform step in theta and phi | Cubature trapezoid rule |
+| `sm` | Uniform step in theta and phi | Simpson rule (requires **odd** NTheta/NPhi counts) |
+| `sd` | Spherical T-design | Equal-weight sum over design points |
+| `lb` | Lebedev quadrature | Lebedev weights |
+| `rf` | Custom directions read from `inputs/IncScattDirs.dat` | — |
+
+> **`sm` auto-switch:** if `NumIntType_t = sm` but any of `NTrTheta`, `NTrPhi`, `NRxTheta`, `NRxPhi` is even, MIDAS automatically falls back to `un` (Simpson requires odd point counts).
+>
+> When `NumIntType_t` is `gl` or `sm`, the receiver type `NumIntType_r` is forced to match `NumIntType_t`.
 
 > If `NTr = 1`, both `wr_Sij` and `wr_Qij` are automatically set to 1.
 
@@ -183,12 +190,21 @@ Direction distribution types (`NumIntType`):
 #### CBFM Parameters
 
 ```
-<div_type>       ! block division strategy
-<Navg_cells>     ! average number of cells per block
+<div_type>       ! block division strategy: SPH | CSH
+<Navg_cells>     ! target average number of cells per block
 
 <NipwsType>      ! incident PW distribution for CBF generation: un | sd | lb
 <Nipws>          ! number of incident plane waves for CBF generation
 ```
+
+Block division strategies (`div_type`):
+
+| Code | Strategy |
+|---|---|
+| `SPH` | Hierarchical octree subdivision — intended for sphere/Chebyshev-like compact shapes |
+| `CSH` | Geometry-driven adaptive division along the principal axes — intended for complex/arbitrary shapes |
+
+Incident plane-wave distribution for CBF generation (`NipwsType`) maps to the same families as the receiver/transmitter codes: `un` (uniform in cos θ and φ), `sd` (spherical T-design), `lb` (Lebedev). `Nipws` is a *suggested* count; MIDAS selects the closest available design/quadrature order, and (when `set_Nipws ≠ 0`) may auto-tune it from the block size and dielectric contrast.
 
 ---
 
@@ -299,6 +315,23 @@ theta  phi  Re(Svv)  Im(Svv)  Re(Svh)  Im(Svh)  Re(Shv)  Im(Shv)  Re(Shh)  Im(Sh
 ```
 
 For multi-frequency runs, files are prefixed with `Sim<n>_` (e.g., `Sim2_Smtable_...`).
+
+> For equivalent-sphere runs (`EqSph = 1`), the S-matrix and Q files use the `...ES_` name variants (`SmtableES_...`, `QidtableES_...`, `qtableES_...`).
+
+### Near-Field File Naming (`FFA = 0`)
+
+When the near-field path is selected, the scattered and incident fields at the receivers are written per incident direction:
+
+```
+Es_files/Esca_<freq><unit>_kt<kkt>_<method>.dat     ← scattered field
+Ei_files/Einc_<freq><unit>_kt<kkt>_<method>.dat     ← incident field at receivers
+```
+
+Each file has a header row, then one row per scattering direction with the V/H polarization components:
+```
+theta  phi  Re(Evv)  Im(Evv)  Re(Evh)  Im(Evh)  Re(Ehv)  Im(Ehv)  Re(Ehh)  Im(Ehh)
+```
+As with the S-matrix files, multi-frequency runs prefix the name with `Sim<n>_`.
 
 ---
 
