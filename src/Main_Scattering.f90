@@ -44,7 +44,7 @@
     Integer :: a,ii,jj,rr,Ind,I,K,m,ios,N_vals_m,old_Nbc,error_read,error_div
     Integer :: tdistr_sca,Nval_eps_r,Nval_eps_i,ii1,ii2
     Integer :: N,NBlks_exp,m_read_opt,err,Type_Par,pr_d,d,selected,num_bin,Nbins
-    Integer :: alloc_stat, sys_stat
+    Integer :: alloc_stat
     Real(kind=8) :: Volume,q, rp, ip,mrp , mip, p, Sc,Dp,h,ap,theta_dipole, phi_dipole
     Real(kind=8) :: x_l, y_l, z_l, xmax,xeq,xmax_m,xeq_m
     Real(kind=8) :: r_min,r_max,i_min,i_max, rp_min,rp_max
@@ -408,19 +408,12 @@
                     call system('rm -r '//trim(SimOutfld_name))
                 endif
             EndIf
-            call system('mkdir "'//trim(SimOutfld_name)//'"', sys_stat)
-            if (sys_stat /= 0) then
-                Write(*,'(a,a)') 'ERROR: failed to create output folder: ', trim(SimOutfld_name)
-                Call MPI_FINALIZE(code); Stop
-            endif
+            
+            call system('mkdir "'//trim(SimOutfld_name)//'"')
             if (Env_type == 'WIND') then
-                call system('copy inputs\Simulation_data.dat "'//trim(SimOutfld_name)//'\"', sys_stat)
+                call system('copy inputs\Simulation_data.dat "'//trim(SimOutfld_name)//'\"')
             else
-                call system('cp inputs/Simulation_data.dat "'//trim(SimOutfld_name)//'/"', sys_stat)
-            endif
-            if (sys_stat /= 0) then
-                Write(*,'(a)') 'ERROR: failed to copy Simulation_data.dat'
-                Call MPI_FINALIZE(code); Stop
+                call system('cp inputs/Simulation_data.dat "'//trim(SimOutfld_name)//'/"')
             endif
         endif
         Call MPI_Barrier(MPI_COMM_WORLD,code);  ! here all the jobs wait for the creation of the simulation folders
@@ -866,11 +859,7 @@
                         call system('rm -r "'//trim(Efold_name)//'"')
                     endif
                 EndIf
-                call system('mkdir "'//trim(Efold_name)//'"', sys_stat)
-                if (sys_stat /= 0) then
-                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Efold_name)
-                    Call MPI_FINALIZE(code); Stop
-                endif
+                call system('mkdir "'//trim(Efold_name)//'"')
 
                 Efold_name = trim(SimOutfld_name)//Env_sep//'Ei_files';
                 inquire(directory=trim(Efold_name),exist=dirExists);
@@ -881,11 +870,7 @@
                         call system('rm -r "'//trim(Efold_name)//'"')
                     endif
                 EndIf
-                call system('mkdir "'//trim(Efold_name)//'"', sys_stat)
-                if (sys_stat /= 0) then
-                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Efold_name)
-                    Call MPI_FINALIZE(code); Stop
-                endif
+                call system('mkdir "'//trim(Efold_name)//'"')
             else
                 ! create the S_files folder if needed
                 Sfold_name = trim(SimOutfld_name)//Env_sep//'S_files';
@@ -898,11 +883,7 @@
                     endif    
                 EndIf
                 If (wr_Sij .eq. 1) then
-                    call system('mkdir "'//trim(Sfold_name)//'"', sys_stat)
-                    if (sys_stat /= 0) then
-                        Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Sfold_name)
-                        Call MPI_FINALIZE(code); Stop
-                    endif
+                    call system('mkdir "'//trim(Sfold_name)//'"')
                 EndIf
 
                 ! create the Q_files folder if needed
@@ -917,11 +898,7 @@
                         endif
                     EndIf
                     If (wr_Qij .eq. 1) then
-                        call system('mkdir "'//trim(Qfold_name)//'"', sys_stat)
-                        if (sys_stat /= 0) then
-                            Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Qfold_name)
-                            Call MPI_FINALIZE(code); Stop
-                        endif
+                        call system('mkdir "'//trim(Qfold_name)//'"')
                     EndIf
                 endif
             endif
@@ -942,11 +919,7 @@
                         call system('rm -r "'//trim(Solfold_name)//'"')
                     endif
                 EndIf
-                call system('mkdir "'//trim(Solfold_name)//'"', sys_stat)
-                if (sys_stat /= 0) then
-                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Solfold_name)
-                    Call MPI_FINALIZE(code); Stop
-                endif
+                call system('mkdir "'//trim(Solfold_name)//'"')
             Endif
 
             if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then
@@ -1001,42 +974,26 @@
                   Efold_name = trim(SimOutfld_name)//Env_sep//'Es_files';
                   inquire(directory=trim(Efold_name),exist=dirExists);
                   if (.not. dirExists) Then
-                call system('mkdir "'//trim(Efold_name)//'"', sys_stat)
-                if (sys_stat /= 0) then
-                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Efold_name)
-                    Call MPI_FINALIZE(code); Stop
-                endif
+                    call system('mkdir "'//trim(Efold_name)//'"')
                   EndIf
                   Efold_name = trim(SimOutfld_name)//Env_sep//'Ei_files';
                   inquire(directory=trim(Efold_name),exist=dirExists);
                   if (.not. dirExists) Then
-                call system('mkdir "'//trim(Efold_name)//'"', sys_stat)
-                if (sys_stat /= 0) then
-                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Efold_name)
-                    Call MPI_FINALIZE(code); Stop
-                endif
+                    call system('mkdir "'//trim(Efold_name)//'"')
                   EndIf
               else
                   ! create the S_files folder if needed
                   Sfold_name = trim(SimOutfld_name)//Env_sep//'S_files';
                   inquire(directory=trim(Sfold_name),exist=dirExists);
                   if ((.not. dirExists) .and. (wr_Sij .eq. 1))  Then
-                    call system('mkdir "'//trim(Sfold_name)//'"', sys_stat)
-                    if (sys_stat /= 0) then
-                        Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Sfold_name)
-                        Call MPI_FINALIZE(code); Stop
-                    endif
+                    call system('mkdir "'//trim(Sfold_name)//'"')
                   EndIf
                   ! create the Q_files folder if needed
                   if (EqSph==0) then
                       Qfold_name = trim(SimOutfld_name)//Env_sep//'Q_files';
                       inquire(directory=trim(Qfold_name),exist=dirExists);
                       if ((.not. dirExists) .and. (wr_Qij .eq. 1)) Then
-                        call system('mkdir "'//trim(Qfold_name)//'"', sys_stat)
-                        if (sys_stat /= 0) then
-                            Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Qfold_name)
-                            Call MPI_FINALIZE(code); Stop
-                        endif
+                        call system('mkdir "'//trim(Qfold_name)//'"')
                       EndIf
                   endif
               endif
@@ -1045,11 +1002,7 @@
                   Solfold_name = trim(SimOutfld_name)//Env_sep//'Sol_files';
                   inquire(directory=trim(Solfold_name),exist=dirExists);
                   if (.not. dirExists) Then
-                call system('mkdir "'//trim(Solfold_name)//'"', sys_stat)
-                if (sys_stat /= 0) then
-                    Write(*,'(a,a)') 'ERROR: failed to create folder: ', trim(Solfold_name)
-                    Call MPI_FINALIZE(code); Stop
-                endif
+                call system('mkdir "'//trim(Solfold_name)//'"')
                   EndIf
               Endif
           endif
