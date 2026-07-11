@@ -14,23 +14,16 @@ MIDAS uses a **domain-decomposition method** for solving electromagnetic scatter
 |---|---|
 | `Main_Scattering.f90` | Program entry point; orchestrates the full simulation loop over shapes and frequencies |
 | `InOut_ReadWrite_Functions.f90` | All I/O: reads `Simulation_data.dat`, shape/cells files; writes geometry, S-matrix, and solution files |
-| `DielComposition.f90` | Assigns refractive index to each cell per frequency; reads `.m` files, dielectric tables, or composition files |
 | `Initialization.f90` | Data type definitions (`Scatterer`, `Cell`, `Dipole`, `CBFM_Block`) and global variable declarations |
-| `Common_variables.f90` | Shared simulation state (wavelength, frequency, cell count, method flags, etc.) |
 | `Discretization.f90` | Voxelizes the particle geometry into cubic cells |
 | `Division_blocks.f90` | Partitions cells into CBFM blocks for domain decomposition |
-| `Extend_blocks.f90` | Extends each block with neighboring cells to reduce edge effects |
-| `MPI_distribution_blocks.f90` | Distributes CBFM blocks across MPI processes |
-| `Compute_Electric_Fields.f90` | Top-level field-solver dispatcher; runs the CBFM-E (`CBFM≠0`) and/or MoM (`MoM≠0`) solver, then the post-processing (scattered fields, S-matrices, cross-sections) |
-| `Compute_EFields_CBFME.f90` | 1-Level CBFM-E solver: generates the characteristic basis functions per block (local solve + truncated SVD), builds and solves the dense reduced system (ScaLAPACK), and reconstructs the internal fields |
+| `Compute_EFields_CBFME.f90` | 1-Level CBFM-E solver: generates the characteristic basis functions per block, builds and solves the dense compressed system of linear equations (using ScaLAPACK), and reconstructs the internal total fields |
 | `Compute_EFields_MoM.f90` | Full Method-of-Moments solver: assembles the distributed dense impedance matrix and solves it with ScaLAPACK `PZGESV` |
-| `getParameters_CBFM.f90` | CBF incident-wave directions; auto-tuning of the sparsification factor `fSR` and the plane-wave count `Nipws` |
-| `get_trans_Receiv.f90` | Builds the transmitter (incident) and receiver (scattering) direction sets for every integration type (`un/gl/tr/sm/sd/lb/rf`) |
+| `get_trans_Receiv.f90` | Builds the transmitter (incident) and receiver (scattering) direction sets for every integration type (`un/sd/lb/rf`) |
 | `Incident_Field.f90` | Incident plane-wave field at the cells and at the receivers |
 | `Compute_Scattered_Fields.f90` | Scattered electric fields at the receivers and `Es_files/` output (near-field path, `FFA=0`) |
-| `Compute_Scattering_Matrices.f90` | Far-field scattering (S) matrices and `S_files/` output (`FFA=1`) |
-| `Compute_ExtAbsCsec_fromIntField.f90` | Extinction and absorption cross-sections computed from the internal field |
-| `Compute_Scattering_Quantities.f90` | Direction-averaged efficiency factors (Qext, Qsca, Qabs, Qbks) and asymmetry parameter `g`; `Q_files/`/`qtable` output |
+| `Compute_Scattering_Matrices.f90` | Amplitude scattering (S) matrices saved to `S_files/` if `FFA=1` |
+| `Compute_Scattering_Quantities.f90` | Orientation-averaged efficiency factors (Qext, Qsca, Qabs, Qbks) and asymmetry parameter `g`; `Q_files/`/`qtable` output |
 
 ## Simulation Workflow
 
