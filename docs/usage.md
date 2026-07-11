@@ -62,11 +62,9 @@ Unit mapping: `MHz ↔ m`, `GHz ↔ mm`, `THz ↔ um`.
 
 <type_s> <info_s> [cells]
 ! type_s values:
-!   1 = sphere (analytical)
+!   1 = sphere 
 !   2 = complex shape read from shape.dat
-!   3 = cylinder (reads radius and length)
-!   6 = complex shape (variant of type 2)
-! append the word "cells" to read from Cells.dat instead of shape.dat
+!   3 = cylinder 
 
 <ap>              ! effective radius (in mm if GHz, um if THz, m if MHz)
                   ! for cylinders: <ac> <lc>  (radius and length)
@@ -84,8 +82,6 @@ Unit mapping: `MHz ↔ m`, `GHz ↔ mm`, `THz ↔ um`.
 |---|---|---|
 | `fromonlymfile` | Single homogeneous material; one `.m` file | 1 filename |
 | `fromshapefile` | Each cell's material index is read from shape.dat | `Ndiel` filenames |
-| `random1` | Random assignment between two materials | 2 filenames (min, max) |
-| `random2` | Random assignment with percentages | `Ndiel` pairs: `filename percentage` |
 | `fromdielcompositionfile` | Per-cell refractive index from `inputs/dielcomposition.dat` | none |
 | `fromdieltable` | Dielectric table from `inputs/dielectric_table.txt` | none |
 
@@ -120,8 +116,12 @@ Ndiel = <Ndiel> ; Nfreq = <Nfreq_dielfile>
 
 ```
 S
-<Sc>    ! cell size in um (THz/GHz) or m (MHz)
+<Sc>    ! cell size (genrellay noted d) in um (THz/GHz) or m (MHz)
 ```
+
+This cell size is used only when `type_s` ≠ 2. When `type_s = 2`, the cell size `d` (`Sc`) is instead derived from the effective radius `ap` by matching the total volume of the `N` discretization cells to that of the volume-equivalent sphere:
+
+$$N\,d^3 = \frac{4}{3}\pi\,a_p^3 \quad\Longrightarrow\quad d = a_p\left(\frac{4\pi}{3N}\right)^{1/3}$$
 
 The geometry is discretized once at the highest requested frequency.
 
@@ -140,10 +140,8 @@ Available method names:
 
 | Name | Description |
 |---|---|
-| `CBFM-E` | Characteristic Basis Function Method (electric) |
-| `MLCBFM-E` | Multi-Level CBFM |
+| `CBFM-E` | Characteristic Basis Function Method|
 | `MoM` | Method of Moments (full matrix) |
-| `RGE` | Rayleigh–Gans–Eberg approximation |
 
 ---
 
@@ -172,16 +170,9 @@ Direction distribution types (`NumIntType_t` for transmitters, `NumIntType_r` fo
 | Code | Type | Angular averaging used |
 |---|---|---|
 | `un` | Uniform step in theta and phi | Adaptive quadrature over the uniform grid |
-| `gl` | Gauss–Legendre quadrature | Gauss–Legendre weights |
-| `tr` | Uniform step in theta and phi | Cubature trapezoid rule |
-| `sm` | Uniform step in theta and phi | Simpson rule (requires **odd** NTheta/NPhi counts) |
 | `sd` | Spherical T-design | Equal-weight sum over design points |
 | `lb` | Lebedev quadrature | Lebedev weights |
 | `rf` | Custom directions read from `inputs/IncScattDirs.dat` | — |
-
-> **`sm` auto-switch:** if `NumIntType_t = sm` but any of `NTrTheta`, `NTrPhi`, `NRxTheta`, `NRxPhi` is even, MIDAS automatically falls back to `un` (Simpson requires odd point counts).
->
-> When `NumIntType_t` is `gl` or `sm`, the receiver type `NumIntType_r` is forced to match `NumIntType_t`.
 
 > If `NTr = 1`, both `wr_Sij` and `wr_Qij` are automatically set to 1.
 
@@ -232,17 +223,29 @@ Incident plane-wave distribution for CBF generation (`NipwsType`) maps to the sa
 
 ### 2. Geometry Files
 
-#### `shape.dat` (for `type_s = 2` or `6`)
+#### `shape.dat` (for `type_s = 2`)
 
-Accepted column formats (auto-detected):
+`shape.dat` follows the **DDSCAT** dipole-lattice convention and is read by `Read_ShapeFile`. Both the number of header lines and the number of data columns are auto-detected by `Inspect_ShapeFile`, so no format flag is needed:
 
-| Columns | Format |
-|---|---|
-| 7 | `num  ix  iy  iz  mx  my  mz` |
-| 5 | `num  ix  iy  iz  m_index` |
-| 4 | `ix  iy  iz  m_index` |
+- Any line that contains a letter, or is blank, is treated as a **header** line.
+- The **column count** is inferred from the first purely numeric line.
 
-The first line is a comment; the second line contains the total cell count.
+**Reading order:**
+
+1. **Line 1** — free-text comment (ignored).
+2. **Line 2** — the total number of cells; a trailing label after the count (e.g. `= NAT`) is allowed and ignored.
+3. **Any remaining header lines** are skipped.
+4. **One row per cell** follows, parsed according to the detected column count.
+
+**Accepted column formats (auto-detected):**
+
+| Columns | Format | Notes |
+|---|---|---|
+| 7 | `num  ix  iy  iz  mx  my  mz` | cell id, integer lattice indices, per-axis material indices (anisotropic) |
+| 5 | `num  ix  iy  iz  m_index` | cell id, integer lattice indices, single material index |
+| 4 | `ix  iy  iz  m_index` | integer lattice indices, single material index (no cell id) |
+
+The `ix iy iz` are **integer lattice coordinates**; the physical cell size `d` is applied separately (see [Discretization](#discretization)). The material index (`m_index`, or `mx my mz`) selects the corresponding `.m` file when `dielcomp_option = fromshapefile`.
 
 #### `Cells.dat` (alternative geometry, activated with `cells` keyword)
 
@@ -316,11 +319,9 @@ theta  phi  Re(Svv)  Im(Svv)  Re(Svh)  Im(Svh)  Re(Shv)  Im(Shv)  Re(Shh)  Im(Sh
 
 For multi-frequency runs, files are prefixed with `Sim<n>_` (e.g., `Sim2_Smtable_...`).
 
-> For equivalent-sphere runs (`EqSph = 1`), the S-matrix and Q files use the `...ES_` name variants (`SmtableES_...`, `QidtableES_...`, `qtableES_...`).
+### Scattered Field File Naming (`FFA = 0`)
 
-### Near-Field File Naming (`FFA = 0`)
-
-When the near-field path is selected, the scattered and incident fields at the receivers are written per incident direction:
+When the scattered field path is selected, the scattered and incident fields at the receivers are written per incident direction:
 
 ```
 Es_files/Esca_<freq><unit>_kt<kkt>_<method>.dat     ← scattered field
@@ -357,6 +358,5 @@ DielComposition(m_lambdas, Cells)
 - `fromonlymfile`: all cells share the same `m` value at each frequency.
 - `fromshapefile` / `fromdielcompositionfile`: each cell has an index `n_diel` pointing to a row in `m_lambdas`.
 - `fromdieltable`: `m_lambdas` is populated from a structured table file; supports both `m` and `eps` input formats.
-- `random1` / `random2`: random or weighted-random assignment (under development for some sub-options).
 
 The subroutine is called inside the frequency loop, so frequency-dependent dielectric values are correctly applied at each frequency step.
