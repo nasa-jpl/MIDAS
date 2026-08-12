@@ -113,10 +113,10 @@ SUBROUTINE Compute_Electric_Fields(SimScatterer,Cells,Transmitters,Receivers,met
         
         ! compute and write only scattered fields (if Scattered fields == 1)
         if (FFA .eq. 0) then ! No far field approximation, we compute and write the scattered and incident fields at observation points
-            Allocate(Es_total(NRx_tot,4*NTr),E_incident_at_Rx(NRx_tot,6*NTr))
+            Allocate(Es_total(NRx_tot,4*NTr),E_incident_at_Rx(NRx_tot,4*NTr))
             call Compute_Scattered_Fields('CBFM-E  ',Cells,E_total,CBFM_Blocks,MPI_CBFM_Blocks,Transmitters,Receivers,Es_total)
-            call Incident_Field_at_Rx('CBFM-E  ',Transmitters,Receivers,E_incident_at_Rx)  
-            deallocate(Es_total,E_incident_at_Rx)
+            call Incident_Field_at_Rx('CBFM-E  ',Transmitters,Receivers,E_incident_at_Rx)
+            deallocate(Es_total,E_incident_at_Rx,E_total)
         else  
             ! Scattering matrices (if scattered fields == 0)
             Allocate(S_total(NRx_tot,4*NTr),C_ext(NTr),C_abs((NTr)));

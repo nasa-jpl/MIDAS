@@ -63,21 +63,20 @@ SUBROUTINE Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
                 zc_b2 = CBFM_Blocks(BBp)%BSphCont(3);
                       
                 dis_12 = sqrt((xc_b2-xc_b1)**2.+(yc_b2-yc_b1)**2.+(zc_b2-zc_b1)**2.)
-                thr_dis = CBFM_Blocks(BB)%BSphCont(4)+CBFM_Blocks(BBp)%BSphCont(4);
+                thr_dis = CBFM_Blocks(BB)%BSphCont(4)+CBFM_Blocks(BBp)%BSphCont(4)+ExtLength;
                 If (dis_12 .le. thr_dis) Then
                     NbBadj = NbBadj + 1;
-                    Badj(NbBadj)=BBp;                    
-                EndIf                              
-            EndDo 
-            ! scan after BB  
+                    Badj(NbBadj)=BBp;
+                EndIf
+            EndDo
+            ! scan after BB
             Do BBp=BB+1,Block_final
                 xc_b2 = CBFM_Blocks(BBp)%BSphCont(1);
                 yc_b2 = CBFM_Blocks(BBp)%BSphCont(2);
                 zc_b2 = CBFM_Blocks(BBp)%BSphCont(3);
-                      
+
                 dis_12 = sqrt((xc_b2-xc_b1)**2.+(yc_b2-yc_b1)**2.+(zc_b2-zc_b1)**2.)
-                !Waiting the enhancment ... 
-                thr_dis = (CBFM_Blocks(BB)%BSphCont(4)+CBFM_Blocks(BBp)%BSphCont(4));
+                thr_dis = CBFM_Blocks(BB)%BSphCont(4)+CBFM_Blocks(BBp)%BSphCont(4)+ExtLength;
                 If (dis_12 .le. thr_dis) Then
                     NbBadj = NbBadj + 1;
                     Badj(NbBadj)=BBp;                    
@@ -120,13 +119,20 @@ SUBROUTINE Extend_blocks(SimScatterer,Cells,CBFM_Blocks,CBFM_Blocks_Ext)
                     Yc = positions(2,cel_in_Badj);
                     Zc = positions(3,cel_in_Badj);
                     if ((X_ext_min .le. Xc) .AND. (Xc .le. X_ext_max) .AND. &
-                        (Y_ext_min .le. Yc) .AND. (Yc .le. Y_ext_max) .AND. & 
+                        (Y_ext_min .le. Yc) .AND. (Yc .le. Y_ext_max) .AND. &
                         (Z_ext_min .le. Zc) .AND. (Zc .le. Z_ext_max)) then
-                      
+
                         NbCelExt = NbCelExt + 1;
-                        NbCelExt_Badj = NbCelExt_Badj + 1; 
+                        if (NbCelExt .gt. Nbext_max) then
+                            if (rank .eq. 0) then
+                                Write(*,'(a,i0,a,i0,a)') 'ERROR in Extend_blocks: extension-cell count exceeds Nbext_max (', &
+                                    Nbext_max, ') for block ', BB, ' — increase Fact_Nbext_max.'
+                            endif
+                            stop 1
+                        endif
+                        NbCelExt_Badj = NbCelExt_Badj + 1;
                         Extensions(BB,NbCelExt) = ii;  !or simply ii
-                    EndIf 
+                    EndIf
                     cel_in_Badj = cel_in_Badj + 1;                
                 EndDo 
                 ! here update NbBadj and Badj depending on NbCelExt_Badj
