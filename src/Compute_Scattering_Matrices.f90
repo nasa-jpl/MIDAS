@@ -221,7 +221,7 @@
             !! *******************************************************************************************************************************************
             ! Buffer the line for this receiver in memory; the actual file open/write/close now
             ! happens once per (Tx,Beta) file after the num_capteur loop (see below), not NRx times.
-            If ((wr_Sij .eq. 1) .and. (num_capteur .le. NRx)) Then
+            If ((wr_Sij .eq. 1) .and. (num_capteur .le. NRx) .and. (n_owned_kkt_abs .gt. 0)) Then
                   theta_wr_buf(num_capteur) = theta_capteur;
                   phi_wr_buf(num_capteur) = phi_capteur;
                   Do num_pol = 1,NPolBeta
