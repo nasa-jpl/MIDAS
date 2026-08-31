@@ -173,7 +173,7 @@ SUBROUTINE Incident_Field_at_Rx(nom_methode,Transmitters,Receivers,E_incident_at
     character(8), INTENT(IN):: nom_methode
     type (Dipole), Dimension(NTr), INTENT(IN) :: Transmitters
     type (Dipole), Dimension(NRx_tot), INTENT(IN) :: Receivers
-    COMPLEX(real64), Dimension(NRx_tot,6*NTr), INTENT(OUT) :: E_incident_at_Rx
+    COMPLEX(real64), Dimension(NRx_tot,4*NTr), INTENT(OUT) :: E_incident_at_Rx
     
 
     ! local
@@ -224,28 +224,17 @@ SUBROUTINE Incident_Field_at_Rx(nom_methode,Transmitters,Receivers,E_incident_at
               Ey_h = - exp(J*K11x*Rx)*exp(J*K11y*Ry)*exp(J*K11z*Rz)*sin(phi_transmit*Pi/180.)
               Ez_h = exp(J*K11x*Rx)*exp(J*K11y*Ry)*exp(J*K11z*Rz)*cos(phi_transmit*Pi/180.)            
               
-              !! ????????? 
-              ! Will I will be writing 6 or 4 elements ? if 6 uncomment the next 4 equations as I will not ned Vv, Vh, Hv and Hh 
               Vv= - Ex_v*sin(theta_capteur*Pi/180.)+ Ey_v*cos(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) &
-                +Ez_v*cos(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.)            
+                +Ez_v*cos(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.)
               Vh= - Ey_v*sin(phi_capteur*Pi/180.)+Ez_v*cos(phi_capteur*Pi/180.);
               Hv= - Ex_h*sin(theta_capteur*Pi/180.)+Ey_h*cos(theta_capteur*Pi/180.)*cos(phi_capteur*Pi/180.) &
                 + Ez_h*cos(theta_capteur*Pi/180.)*sin(phi_capteur*Pi/180.);
               Hh= - Ey_h*sin(phi_capteur*Pi/180.) + Ez_h*cos(phi_capteur*Pi/180.);
-                
-              E_incident_at_Rx(num_capteur,6*(num_trans-1)+1)= Ex_v
-              E_incident_at_Rx(num_capteur,6*(num_trans-1)+2)= Ey_v
-              E_incident_at_Rx(num_capteur,6*(num_trans-1)+3)= Ez_v
-              E_incident_at_Rx(num_capteur,6*(num_trans-1)+4)= Ex_h
-              E_incident_at_Rx(num_capteur,6*(num_trans-1)+5)= Ey_h
-              E_incident_at_Rx(num_capteur,6*(num_trans-1)+6)= Ez_h
-              
-              ! OR   ??? Update  E_incident_at_Rx dimensions above 
-              
-              !E_incident_at_Rx(num_capteur,4*(num_trans-1)+1)= Vv
-              !E_incident_at_Rx(num_capteur,4*(num_trans-1)+2)= Vh
-              !E_incident_at_Rx(num_capteur,4*(num_trans-1)+3)= Hv
-              !E_incident_at_Rx(num_capteur,4*(num_trans-1)+4)= Hh
+
+              E_incident_at_Rx(num_capteur,4*(num_trans-1)+1)= Vv
+              E_incident_at_Rx(num_capteur,4*(num_trans-1)+2)= Vh
+              E_incident_at_Rx(num_capteur,4*(num_trans-1)+3)= Hv
+              E_incident_at_Rx(num_capteur,4*(num_trans-1)+4)= Hh
             Enddo 
         EndIf          
     Enddo
