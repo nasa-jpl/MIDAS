@@ -25,7 +25,14 @@ SUBROUTINE DielComposition(m_lambdas,Cells)
     If (trim(dielcomp_option) == 'fromonlymfile') then 
         Cells(1:Nbc)%n_diel = 1;
     ElseIf ((trim(dielcomp_option) == 'fromdielcompositionfile') .OR. (trim(dielcomp_option) == 'random1')) then
-        Cells(1:Nbc)%n_diel = (/1:Nbc/); ! for the other option ('fromshapefile') is read from shape file ! 
+        if ((trim(dielcomp_option) == 'fromdielcompositionfile') .AND. (Ndiel .lt. Nbc)) then
+            if (rank .eq. 0) then
+                Write(*,'(a,i0,a,i0,a)') 'ERROR in DielComposition: dielcomposition.dat has only ', Ndiel, &
+                    ' rows but there are ', Nbc, ' cells to map - cannot assign a dielectric value to every cell.'
+            endif
+            stop 1
+        endif
+        Cells(1:Nbc)%n_diel = (/1:Nbc/); ! for the other option ('fromshapefile') is read from shape file !
     endif
     
     !! Since Cell.m_cell and Cell.Eps_cell can vary with the frequency this subroutine should be called inside the loop on lambda!
@@ -194,8 +201,14 @@ SUBROUTINE get_diel_values_lambdas(m_file_name,m_lambdas)
             Do ii=1,3; read (11,*); enddo !3 first info lines in an m file  
             Do
                 read (11,*, end=10),lmbd,mrp,mip
-                ms_mfile(nvals+1) = mrp+J*mip
                 nvals = nvals + 1;
+                if (nvals .gt. Nfreq) then
+                    if (rank .eq. 0) then
+                        Write(*,'(a,a)') 'Error: m-file has more entries than Nfreq in ',fname
+                    endif
+                    stop 1
+                endif
+                ms_mfile(nvals) = mrp+J*mip
             Enddo
 10          close(11);
             if (nvals .eq. Nfreq) then

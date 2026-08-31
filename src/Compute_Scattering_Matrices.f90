@@ -34,6 +34,9 @@
     CHARACTER(:), allocatable:: nom_meth_exact,stFreq,sim_name
     CHARACTER(200) :: file_name_s,Sfold_name
     CHARACTER(6) :: ty,kkt_st
+    Integer :: n_owned_kkt_abs, local_idx
+    Real(kind=8), Dimension(:), allocatable :: theta_wr_buf, phi_wr_buf
+    COMPLEX(real64), Dimension(:,:,:), allocatable :: Swr_buf
   
    
     If (rank == 0) Then 
@@ -99,10 +102,24 @@
         cel_beg = sum(CBFM_Blocks(1:kk-1)%Nbc_b)+1;
         cel_end = sum(CBFM_Blocks(1:kk)%Nbc_b);
         Cells_proc(curs_cel:curs_cel+Nbc_b-1) = Cells(cel_beg:cel_end);
-        curs_cel = curs_cel + Nbc_b; 
+        curs_cel = curs_cel + Nbc_b;
     EndDo
-        
-    DO num_capteur =1,NRx_tot  
+
+    ! Precompute, once, which (Tx,Beta) output files this rank owns, and buffer their
+    ! per-receiver lines in memory so each file is opened/written/closed exactly once
+    ! instead of once per receiver (avoids NRx repeated open+append+close calls).
+    n_owned_kkt_abs = 0
+    if (wr_Sij .eq. 1) then
+        NTr_WR_tot_ = NTr*NPolBeta;
+        NTr_wr_proc = (NTr_WR_tot_/nber_procs)+1;
+        n_owned_kkt_abs = max(0, min((rank+1)*NTr_wr_proc,NTr_WR_tot_) - rank*NTr_wr_proc);
+        if (n_owned_kkt_abs .gt. 0) then
+            Allocate(theta_wr_buf(NRx), phi_wr_buf(NRx));
+            Allocate(Swr_buf(NRx,n_owned_kkt_abs,4));
+        endif
+    endif
+
+    DO num_capteur =1,NRx_tot
 	    Allocate(S_total_capteur(4*NTr*NPolBeta),S_total_capteur_all(4*NTr*NPolBeta));   
         Allocate(ff_coeffs(Nbc_proc)); 
         !! Dyade de Greene singuliere
@@ -202,46 +219,59 @@
         
             !! New strategy 7/9/2022 (needs enhancement when we will output to hf5 files )  : write here on the fly before deleting S_total_capteur_all (not in Compute_Scattering_Quantities)
             !! *******************************************************************************************************************************************
-            ! The idea is to write on the fly 
-            If ((wr_Sij .eq. 1) .and. (num_capteur .le. NRx)) Then
-                  NTr_WR_tot_ = NTr*NPolBeta;
-                  !NTr_wr_proc = (NTr/nber_procs)+1;
-                  NTr_wr_proc = (NTr_WR_tot_/nber_procs)+1;
-                  Do num_pol = 1,NPolBeta 
-                      Beta =  beta_init_Pol + (num_pol-1)*step_beta
+            ! Buffer the line for this receiver in memory; the actual file open/write/close now
+            ! happens once per (Tx,Beta) file after the num_capteur loop (see below), not NRx times.
+            If ((wr_Sij .eq. 1) .and. (num_capteur .le. NRx) .and. (n_owned_kkt_abs .gt. 0)) Then
+                  theta_wr_buf(num_capteur) = theta_capteur;
+                  phi_wr_buf(num_capteur) = phi_capteur;
+                  Do num_pol = 1,NPolBeta
                       kkt_abs = (kkt-1)*NPolBeta+num_pol;
                       If ((kkt_abs .gt. (rank*NTr_wr_proc)) .and. (kkt_abs .le. (rank+1)*NTr_wr_proc)) then
-                                            
-                            Vv_pol = S_total_capteur_all(4*NPolBeta*(kkt-1)+4*(num_pol-1)+1);
-                            Vh_pol = S_total_capteur_all(4*NPolBeta*(kkt-1)+4*(num_pol-1)+2); 
-                            Hv_pol = S_total_capteur_all(4*NPolBeta*(kkt-1)+4*(num_pol-1)+3); 
-                            Hh_pol = S_total_capteur_all(4*NPolBeta*(kkt-1)+4*(num_pol-1)+4);
-                                                                                                          
-                            Write(kkt_st,'(a,i4.4)') 'kt',kkt_abs;
-                            if (EqSph == 0) then
-                                file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//trim(freq_unit)//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
-                            else
-                                file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//trim(freq_unit)//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
-                            endif
-                            if (num_capteur .gt. 1) then
-                                Open(unit=21+rank,File = file_name_s, Access='Append', Status='old');
-                            else
-                                Open(unit=21+rank,File = file_name_s);
-                                Write(21+rank, '(a,f10.4,a,f10.4,a,f10.4)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi,'; BETA =', Beta
-                                Write(21+rank,'(a,a)') '    theta       phi    Re(Svv)      Im(Svv)     Re(Svh)     Im(Svh) ',&
-                                            '    Re(Shv)     Im(Shv)    Re(Shh)      Im(Shh) '
-                            endif
-                                
-                            Write(21+rank,'(f10.4,f10.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4)') &
-                            theta_capteur,phi_capteur,Real(Vv_pol),Imag(Vv_pol),Real(Vh_pol),Imag(Vh_pol), Real(Hv_pol),Imag(Hv_pol),Real(Hh_pol),Imag(Hh_pol)
-                            
-                            Close(21+rank);
+                            local_idx = kkt_abs - rank*NTr_wr_proc;
+                            Swr_buf(num_capteur,local_idx,1) = S_total_capteur_all(4*NPolBeta*(kkt-1)+4*(num_pol-1)+1);
+                            Swr_buf(num_capteur,local_idx,2) = S_total_capteur_all(4*NPolBeta*(kkt-1)+4*(num_pol-1)+2);
+                            Swr_buf(num_capteur,local_idx,3) = S_total_capteur_all(4*NPolBeta*(kkt-1)+4*(num_pol-1)+3);
+                            Swr_buf(num_capteur,local_idx,4) = S_total_capteur_all(4*NPolBeta*(kkt-1)+4*(num_pol-1)+4);
                       Endif
                   EndDo
               EndIf
         EndDo
-        deallocate(S_total_capteur,S_total_capteur_all);        
+        deallocate(S_total_capteur,S_total_capteur_all);
     Enddo
+
+    ! Flush the buffered S-matrix lines: open each (Tx,Beta) file once, write all NRx
+    ! receiver lines, close once (replaces the previous open/write/close-per-receiver pattern).
+    if ((wr_Sij .eq. 1) .and. (n_owned_kkt_abs .gt. 0)) then
+        Do local_idx = 1,n_owned_kkt_abs
+            kkt_abs = rank*NTr_wr_proc + local_idx;
+            kkt = (kkt_abs-1)/NPolBeta + 1;
+            num_pol = kkt_abs - (kkt-1)*NPolBeta;
+            Beta = beta_init_Pol + (num_pol-1)*step_beta;
+
+            Write(kkt_st,'(a,i4.4)') 'kt',kkt_abs;
+            if (EqSph == 0) then
+                file_name_s = trim(Sfold_name)//Env_sep//sim_name//'Smtable_'//stFreq//trim(freq_unit)//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
+            else
+                file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//trim(freq_unit)//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
+            endif
+
+            Open(unit=21+rank,File = file_name_s);
+            Write(21+rank, '(a,f10.4,a,f10.4,a,f10.4)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi,'; BETA =', Beta
+            Write(21+rank,'(a,a)') '    theta       phi    Re(Svv)      Im(Svv)     Re(Svh)     Im(Svh) ',&
+                        '    Re(Shv)     Im(Shv)    Re(Shh)      Im(Shh) '
+            Do num_capteur = 1,NRx
+                Write(21+rank,'(f10.4,f10.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4)') &
+                theta_wr_buf(num_capteur),phi_wr_buf(num_capteur), &
+                Real(Swr_buf(num_capteur,local_idx,1)),Imag(Swr_buf(num_capteur,local_idx,1)), &
+                Real(Swr_buf(num_capteur,local_idx,2)),Imag(Swr_buf(num_capteur,local_idx,2)), &
+                Real(Swr_buf(num_capteur,local_idx,3)),Imag(Swr_buf(num_capteur,local_idx,3)), &
+                Real(Swr_buf(num_capteur,local_idx,4)),Imag(Swr_buf(num_capteur,local_idx,4))
+            EndDo
+            Close(21+rank);
+        EndDo
+        Deallocate(theta_wr_buf,phi_wr_buf,Swr_buf);
+    endif
+
     Deallocate(Cells_proc);
     
     ! I was having insufficient memory problem (buffer) with this approach (calculate all S_total and then in 1 communicate calculate the sum)
