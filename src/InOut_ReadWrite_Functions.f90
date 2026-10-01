@@ -788,9 +788,9 @@ SUBROUTINE Write_Sfiles(nom_methode,Transmitters,Receivers,S_total)
 
     !COMPLEX(real64), Dimension(NRx_tot,4*NTr), INTENT(IN):: S_total
     
-    Allocate(S_towrite(8*NTr,NRx));
+    Allocate(S_towrite(8*NTr,NRx_tot));
     Do ii=1,NTr
-        Do jj=1,NRx
+        Do jj=1,NRx_tot
             S_towrite(8*(ii-1)+1,jj) = real(S_total(jj,4*(ii-1)+1));
             S_towrite(8*(ii-1)+2,jj) = imag(S_total(jj,4*(ii-1)+1));
             S_towrite(8*(ii-1)+3,jj) = real(S_total(jj,4*(ii-1)+2));
@@ -1010,18 +1010,18 @@ SUBROUTINE Write_txt_Sfiles(nom_methode,Transmitters,Receivers,S_total)
                         file_name_s = trim(Sfold_name)//Env_sep//sim_name//'SmtableES_'//stFreq//freq_unit//'_'//trim(kkt_st)//'_'//nom_meth_exact//'.dat';
                     endif
                     Open(unit=21+rank,File = file_name_s)  
-                    Write(21+rank, '(a,f10.4,a,f10.4)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi  
+                    Write(21+rank, '(a,f10.4,a,f10.4,a,f10.4,a,i8)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi,'; BETA =', 0.0d0,'; NRX =', NRx
                     Write(21+rank,'(a,a)') '      theta       phi       Re(Svv)        Im(Svv)         Re(Svh)       Im(Svh) ',&
                                     '        Re(Shv)       Im(Shv)        Re(Shh)        Im(Shh) '
-                    Do kkr=1, NRx  
+                    Do kkr=1, NRx_tot
                         Vv = S_total(kkr,4*(kkt-1)+1);
                         Vh = S_total(kkr,4*(kkt-1)+2); 
                         Hv = S_total(kkr,4*(kkt-1)+3); 
                         Hh = S_total(kkr,4*(kkt-1)+4);
                           
-                        Write(21+rank,'(f9.2,a,f9.2,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4)') &
-                        Receivers(kkr)%theta,';  ',Receivers(kkr)%phi,';  ',Real(Vv),';  ',Imag(Vv),';  ',Real(Vh),&
-                      ';  ',Imag(Vh),';  ', Real(Hv),';  ',Imag(Hv),';  ',Real(Hh),';  ',Imag(Hh)
+                        Write(21+rank,'(f10.4,f10.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4)') &
+                        Receivers(kkr)%theta,Receivers(kkr)%phi,Real(Vv),Imag(Vv),Real(Vh),&
+                        Imag(Vh),Real(Hv),Imag(Hv),Real(Hh),Imag(Hh)
                     EndDo
                     Close(21+rank);  
                   Endif  
