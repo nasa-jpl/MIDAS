@@ -213,7 +213,7 @@ SUBROUTINE Compute_EFields_CBFME_ACA(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_
     deallocate(spr_perc_blocks);  
 
     ! SET Nipws FOR SELECTED BLOCKS
-    if (set_Nipws .ne. 0) then
+    if (set_Niws .ne. 0) then
         if (rank == 0) then 
             Write(*,'(a)') ''; Write(*,'(a)') '-> Set Nipws :'
         endif
@@ -246,7 +246,7 @@ SUBROUTINE Compute_EFields_CBFME_ACA(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_
         Write(*,'(a,ES7.1E1,a,f5.2)') ' -- > fSR for CBFM = ',fct_SR, ' -> spr % = ',spr_perc
     EndIf
     if (rank == 0) then 
-        Write(*,'(a,i6)') ' -- > Nipws for CBFM = ',Nipws    
+        Write(*,'(a,i6)') ' -- > Niws for CBFM = ',Niws    
         call date_and_time(date_final_N1,time_final_N1,zone_final_N1,values_final_N1)
         call Calcul_time_spent(values_init_N1,values_final_N1, time_calcul_N1)
         Write (*,'(a,i2,a,i2,a,i2,a,i2,a)') ' --> to set CBFM parameters : ',time_calcul_N1(1),'j',time_calcul_N1(2)&

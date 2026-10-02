@@ -81,19 +81,23 @@ SUBROUTINE Incident_Field_Spherical(cel_init,size_Cells,Cells_in,Nb_transmitters
     Complex :: K11x, K11y, K11z, Ex, Ey, Ez
     real(kind=8) :: theta_transmit, phi_transmit, Rx, Ry, Rz, Rbl
     real(kind=8) :: Dp, Rsource, Xs, Ys, Zs, Dx, Dy, Dz, R, ux, uy, uz, theta, phi
-    real(kind=8) :: Pbl(size_Cells,3), Cbl(3)
+    real(kind=8) :: Cbl(3)
     Complex :: phase
     Integer :: NcalcTr,num_trans,num_Eref_v, num_Eref_h,num_cel, sol,curs_cel
-    
-    ! get the minimum enclosing sphere parameters
-    call minimum_enclosing_sphere(Pbl, size_Cells, Cbl, Rbl)
+    logical, save :: Rsource_printed = .false.
 
-    !Rsource = 10000 !10*lambda_w
-    ! Rsource = 10*lambda_w
-    Dp = 1e-3
-    Rsource = 10* Dp/2.
-    if (rank .eq. 0) then
-        write(*,*) 'Rsource = ',Rsource*1e3, ' mm'
+    ! bounding sphere of the block: centroid + max distance (within ~2x of the minimum
+    ! enclosing sphere, which is all Rsource needs; no recursion, no N x 3 stack array)
+    Cbl(1) = sum(Cells_in(:)%Xc)/size_Cells
+    Cbl(2) = sum(Cells_in(:)%Yc)/size_Cells
+    Cbl(3) = sum(Cells_in(:)%Zc)/size_Cells
+    Rbl = sqrt(maxval((Cells_in(:)%Xc-Cbl(1))**2 + (Cells_in(:)%Yc-Cbl(2))**2 + (Cells_in(:)%Zc-Cbl(3))**2))
+
+    ! source distance from the block centre: 10 block radii (at least 10 wavelengths)
+    Rsource = 10.d0*max(Rbl, 2.d0*Pi/k_0)
+    if ((rank .eq. 0) .and. (.not. Rsource_printed)) then
+        write(*,'(a,f10.4,a)') ' -- > spherical IWs: Rsource = 10 x block radius (first block: ',Rsource*1e3,' mm)'
+        Rsource_printed = .true.
     endif
     E_ref_incident = 0
     NcalcTr = num_tr_end-num_tr_start+1;
@@ -105,11 +109,10 @@ SUBROUTINE Incident_Field_Spherical(cel_init,size_Cells,Cells_in,Nb_transmitters
         theta_transmit = Transmitters(num_trans)%theta
         phi_transmit = Transmitters(num_trans)%phi
   
-        ! the position of the source depends on R and my definition of (theta, phi)
-        ! For now I am considering the same center for definition for all blocks, I can change this later
-        Xs = Rsource*cos(theta_transmit*Pi/180.); 
-        Ys = Rsource*sin(theta_transmit*Pi/180.)*cos(phi_transmit*Pi/180.)
-        Zs = Rsource*sin(theta_transmit*Pi/180.)*sin(phi_transmit*Pi/180.) 
+        ! source on a sphere of radius Rsource around the block centre Cbl, in direction (theta, phi)
+        Xs = Cbl(1) + Rsource*cos(theta_transmit*Pi/180.);
+        Ys = Cbl(2) + Rsource*sin(theta_transmit*Pi/180.)*cos(phi_transmit*Pi/180.)
+        Zs = Cbl(3) + Rsource*sin(theta_transmit*Pi/180.)*sin(phi_transmit*Pi/180.)
   
         curs_cel = 1
         DO num_cel = cel_init, cel_init+size_Cells-1

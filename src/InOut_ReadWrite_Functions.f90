@@ -34,7 +34,7 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     character(200) :: file_name
     character(9) :: wave_descr,SR_Zc_type_ch 
     character(6) :: tdata
-    character(2) :: NipwsType
+    character(10) :: NiwsType
     character(11) :: freq_unit_tmp
     character(10) :: lamb_unit_tmp
     
@@ -362,18 +362,36 @@ SUBROUTINE Get_InputData(SimScatterer,Wavesle,methods_names,m_file_name,Transmit
     read(11,*)        
     
     ! CBFM parameters
-    read(11,'(a2)'), NipwsType
-    read(11,*), Nipws
+    read(11,'(a)'), NiwsType
+    read(11,*), Niws
     read(11,*)
-    if (trim(NipwsType) =='un') then
-        distr_ipws = 1
-    elseif (trim(NipwsType) =='sd') then
-        distr_ipws = 2
-    elseif (trim(NipwsType) =='lb') then
-        distr_ipws = 3
+    ! type 
+    ! sp/sh are tested BEFORE pl: e.g. 'splb' contains 'pl' and would otherwise be read as plane waves
+    if (index(trim(NiwsType), 'sp') > 0 .OR. index(trim(NiwsType), 'SP') > 0) then !spherical wave
+        type_iws = 2
+    elseif (index(trim(NiwsType), 'sh') > 0 .OR. index(trim(NiwsType), 'SH') > 0) then !spherical harmonics
+        ! spherical harmonics are not implemented yet: warn and fall back to spherical waves
+        if (rank == 0) then
+            write(*,'(a)') 'WARNING : incident wave type sh (spherical harmonics) is not implemented yet -> using sp (spherical waves)'
+        endif
+        type_iws = 2
+    elseif (index(trim(NiwsType), 'pl') > 0 .OR. index(trim(NiwsType), 'PL') > 0) then !plane wave
+        type_iws = 1
+    else ! default set to plane waves
+        type_iws = 1
+    endif
+    ! quadrature/distribution
+    if (index(trim(NiwsType), 'un') > 0 .OR. index(trim(NiwsType), 'UN') > 0) then
+        distr_iws = 1
+    elseif (index(trim(NiwsType), 'sd') > 0 .OR. index(trim(NiwsType), 'SD') > 0) then
+        distr_iws = 2
+    elseif (index(trim(NiwsType), 'lb') > 0 .OR. index(trim(NiwsType), 'LB') > 0) then
+        distr_iws = 3
+    else ! default set to 'un'
+        distr_iws = 1
     endif
     
-    set_Nipws = 0; Nc_extended =1 
+    set_Niws = 0; Nc_extended =1 
     DR=0; SR=1; res_SR=1e-2; SR_Zc = 0;
     Use_ACA = 0; Nb_it_max= 50; Epsilon_ACA = 1E-4; Vrb_ACA = 0; 
     SR_Zc_type_ch = 'threshold' ! takes 3 values 'threshold' or 'edistance' or 'spalgo_dz'
