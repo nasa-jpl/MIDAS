@@ -299,14 +299,14 @@ SUBROUTINE Compute_EFields_ST_MoM(nom_methode,Cells,Transmitters,Receivers,S_tot
               Write(21+rank,'(a,a)') '      theta       phi      Re(Svv)        Im(Svv)         Re(Svh)       Im(Svh) ',&
                           '        Re(Shv)       Im(Shv)        Re(Shh)        Im(Shh) '
               
-              Do num_capteur = 1, NRx                      
+              Do num_capteur = 1, NRx_tot                      
                 Vv_pol = S_total_pol(num_capteur,4*NPolBeta*(kkt-1)+4*(num_pol-1)+1);
                 Vh_pol = S_total_pol(num_capteur,4*NPolBeta*(kkt-1)+4*(num_pol-1)+2); 
                 Hv_pol = S_total_pol(num_capteur,4*NPolBeta*(kkt-1)+4*(num_pol-1)+3); 
                 Hh_pol = S_total_pol(num_capteur,4*NPolBeta*(kkt-1)+4*(num_pol-1)+4);
                 
-		theta_capteur = Receivers(num_capteur)%theta
-        	phi_capteur = Receivers(num_capteur)%phi
+		        theta_capteur = Receivers(num_capteur)%theta
+        	    phi_capteur = Receivers(num_capteur)%phi
          
                 Write(21+rank,'(f10.4,a,f10.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4,a,e12.4)') &
                 theta_capteur,';  ',phi_capteur,';  ',Real(Vv_pol),';  ',Imag(Vv_pol),';  ',Real(Vh_pol),&

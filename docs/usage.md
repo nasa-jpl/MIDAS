@@ -184,8 +184,8 @@ Direction distribution types (`NumIntType_t` for transmitters, `NumIntType_r` fo
 <div_type>       ! block division strategy: SPH | CSH
 <Navg_cells>     ! target average number of cells per block
 
-<NipwsType>      ! incident PW distribution for CBF generation: un | sd | lb
-<Nipws>          ! number of incident plane waves for CBF generation
+<NiwsType>       ! incident waves for CBF generation: type (pl | sp | sh) + distribution (un | sd | lb), e.g. "pl lb", "sp sd"
+<Niws>           ! number of incident waves for CBF generation
 ```
 
 Block division strategies (`div_type`):
@@ -195,7 +195,20 @@ Block division strategies (`div_type`):
 | `SPH` | Hierarchical octree subdivision — intended for sphere/Chebyshev-like compact shapes |
 | `CSH` | Geometry-driven adaptive division along the principal axes — intended for complex/arbitrary shapes |
 
-Incident plane-wave distribution for CBF generation (`NipwsType`) maps to the same families as the receiver/transmitter codes: `un` (uniform in cos θ and φ), `sd` (spherical T-design), `lb` (Lebedev). `Nipws` is a *suggested* count; MIDAS selects the closest available design/quadrature order, and (when `set_Nipws ≠ 0`) may auto-tune it from the block size and dielectric contrast.
+`NiwsType` sets the incident waves used to **generate the CBFs** of each block. The scattering problem itself is always solved for incident plane waves. It combines two codes on one line, in either order, with or without a separator (`pl lb`, `sp_sd`, `shun`), in lower or upper case:
+
+| Code | Meaning |
+|---|---|
+| `pl` | Plane waves (default when no type is given) |
+| `sp` | Spherical waves from point sources placed around each block centre, at 10 block radii (at least 10 wavelengths) |
+| `sh` | Spherical harmonics. **Not implemented yet:** MIDAS prints a warning and uses `sp`. |
+| `un` | Directions uniform in cos θ and φ (default when no distribution is given) |
+| `sd` | Spherical T-design |
+| `lb` | Lebedev quadrature |
+
+An older input that gives only the distribution (e.g. `sd`) still works and means plane waves with that distribution.
+
+`Niws` is a *suggested* count: MIDAS selects the closest available design or quadrature order. Automatic tuning of `Niws` from the block size and dielectric contrast (`set_Niws ≠ 0`) is currently disabled: `set_Niws` is fixed to 0 when the input is read.
 
 ---
 
