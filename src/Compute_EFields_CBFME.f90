@@ -81,6 +81,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
 
     character(200) :: file_name, Zcfilename
     CHARACTER(3), allocatable::number_chars(:)
+    character(4) :: type_iws_str
     CHARACTER(15) :: file_name_Z
     CHARACTER(3) :: kk_st
     COMPLEX(real64) :: alpha, beta
@@ -131,6 +132,14 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     vrb_cbfm_param = 0;
     track_time_Zc = 0; !Nt_display = 20; ! show time for each step in the generation of Zc for 'Nt_display' MPI tasks   !! IL VAUT MIEUX PEUT ETRE ECRIRE UN FICHIER QUE JE POURRAI LIRE AVEC MATLAB
     
+    if (type_iws  .eq. 1) then 
+        type_iws_str = 'PLWs'
+    elseif (type_iws  .eq. 2) then
+        type_iws_str = 'SPWs'
+    elseif (type_iws  .eq. 3) then
+        type_iws_str = 'SHWs'
+    endif
+       
     If (homogs == 1) Then ! mtype for PRADISO used later to solve the sparse Zii and Zc
       mtype = 6 !complex symmetric matrix
     Else
@@ -240,7 +249,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         deallocate(spr_perc_blocks);
 
         ! SET Nipws FOR SELECTED BLOCKS
-        if (set_Nipws .ne. 0) then
+        if (set_Niws .ne. 0) then
             if (rank == 0) then
                 Write(*,'(a)') ''; Write(*,'(a)') '-> Set Nipws :'
             endif
@@ -280,17 +289,17 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
             write(*,'(a,ES7.1E1)') ' -- > Threshold_CBFM = ',Threshold_CBFM
         endif
         
-        ! for distr_ipws = 1, try [91,190,231,325,496,703,861]; 
-        ! for distr_ipws= 2 try among 289,366,482,579,723,842,926; 
-        ! for distr_ipws= 3 try among [110,194,230,350,434,590,770,974,1202]
+        ! for distr_iws = 1, try [91,190,231,325,496,703,861]; 
+        ! for distr_iws= 2 try among 289,366,482,579,723,842,926; 
+        ! for distr_iws= 3 try among [110,194,230,350,434,590,770,974,1202]
         call getTransmitters_CBFM(Transmitters_CBFM);
         if (rank == 0) then 
-            if (distr_ipws .eq. 1) then 
-                Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (uniform in cos(theta) and phi)'
-            elseif (distr_ipws .eq. 2) then 
-                Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (sd)'
-            elseif (distr_ipws .eq. 3) then
-                Write(*,'(a,i6,a)') ' -- > Nipws for CBFM = ',Nipws, ' (lb)'
+            if (distr_iws .eq. 1) then 
+                Write(*,'(a,a,a,i6,a)') ' -- > Niws ',type_iws_str,' for CBFM = ',Niws, ' (uniform in cos(theta) and phi)'
+            elseif (distr_iws .eq. 2) then 
+                Write(*,'(a,a,a,i6,a)') ' -- > Niws ',type_iws_str,' for CBFM = ',Niws, ' (sd)'
+            elseif (distr_iws .eq. 3) then
+                Write(*,'(a,a,a,i6,a)') ' -- > Niws ',type_iws_str,' for CBFM = ',Niws, ' (lb)'
             endif
             call date_and_time(date_final_N1,time_final_N1,zone_final_N1,values_final_N1)
             call Calcul_time_spent(values_init_N1,values_final_N1, time_calcul_N1)
@@ -349,9 +358,14 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
 
             !! Incident field used to compute the CBFs (different from the scattering problem incident field )
             Allocate(EREFpatch_e(3*size,2*NTr_CBFM));
-            call print_allocate(30,'EREFpatch_e(3*size,2*NTr_CBFM)','DCOMP',3*size*2*NTr_CBFM);
-
-            Call Incident_Field(1,size,Cells_Block,NTr_CBFM,Transmitters_CBFM,1,NTr_CBFM,EREFpatch_e);
+            call print_allocate(30,'EREFpatch_e(3*size,2*NTr_CBFM)','DCOMP',3*size*2*NTr_CBFM)
+            if (type_iws .eq. 1) then 
+                Call Incident_Field(1,size,Cells_Block,NTr_CBFM,Transmitters_CBFM,1,NTr_CBFM,EREFpatch_e)
+            elseif (type_iws .eq. 2) then 
+                Call Incident_Field_Spherical(1,size,Cells_Block,NTr_CBFM,Transmitters_CBFM,1, NTr_CBFM,EREFpatch_e)
+            elseif (type_iws .eq. 3) then
+                Call Incident_Field_Spherical(1,size,Cells_Block,NTr_CBFM,Transmitters_CBFM,1, NTr_CBFM,EREFpatch_e)
+            endif
             !! Resolve locally the scattering problem (compute the electric field inside the block kk
             !! resulting from the CBFM incident field : EM plane waves from the entire space)
             Allocate(Epatch_e(3*size,2*NTr_CBFM));

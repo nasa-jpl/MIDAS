@@ -227,7 +227,7 @@
             !! New strategy 7/9/2022 (needs enhancement when we will output to hf5 files )  : write here on the fly before deleting S_total_capteur_all (not in Compute_Scattering_Quantities)
             !! *******************************************************************************************************************************************
             ! The idea is to write on the fly 
-            If ((wr_Sij .eq. 1) .and. (num_capteur .le. NRx)) Then
+            If (wr_Sij .eq. 1) Then
                   NTr_WR_tot_ = NTr*NPolBeta;
                   !NTr_wr_proc = (NTr/nber_procs)+1;
                   NTr_wr_proc = (NTr_WR_tot_/nber_procs)+1;
@@ -251,7 +251,7 @@
                                 Open(unit=21+rank,File = file_name_s, Access='Append', Status='old');
                             else
                                 Open(unit=21+rank,File = file_name_s);
-                                 Write(21+rank, '(a,f10.4,a,f10.4,a,f10.4)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi,'; BETA =', Beta
+                                 Write(21+rank, '(a,f10.4,a,f10.4,a,f10.4,a,i8)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi,'; BETA =', Beta,'; NRX =', NRx
                                 Write(21+rank,'(a,a)') '    theta       phi    Re(Svv)      Im(Svv)     Re(Svh)     Im(Svh) ',&
                                             '    Re(Shv)     Im(Shv)    Re(Shh)      Im(Shh) '
                             endif

@@ -31,28 +31,28 @@
     th_init = 0.;th_end = 180.
     ph_init = 0.;ph_end = 360.
 
-    if (distr_ipws == 1) then
+    if (distr_iws == 1) then
         ! step_theta_CBFM, step_phi_CBFM
         !(360/step+1)*(180/step+1) = Nipws
         ! --> (Nipws-1)*step**2-(360+180)*step-360*180 = 0
         ! delta = b**2-4ac and solution = (-b+sqrt(delta))/2a
         ! ou aussi 2*k^2+3*k+1-N = 0 si k =180/step
-        delta = (360+180)**2.+4*(Nipws-1)*(360*180);
-        step_theta_CBFM = ((360+180)+sqrt(delta))/(2*(Nipws-1))
+        delta = (360+180)**2.+4*(Niws-1)*(360*180);
+        step_theta_CBFM = ((360+180)+sqrt(delta))/(2*(Niws-1))
         step_phi_CBFM = step_theta_CBFM;
        
         ! finalement ca revient a :
-        !step_theta_CBFM = 720./(sqrt(8.*Nipws+1.)-3.)
-        !step_phi_CBFM = 720./(sqrt(8.*Nipws+1.)-3.)
+        !step_theta_CBFM = 720./(sqrt(8.*Niws+1.)-3.)
+        !step_phi_CBFM = 720./(sqrt(8.*Niws+1.)-3.)
         NTrTheta_CBFM = nint(180./step_theta_CBFM)+1
         NTrPhi_CBFM = nint(360./step_phi_CBFM)+1
         NTr_CBFM =  NTrTheta_CBFM*NTrPhi_CBFM
-        Nipws = NTr_CBFM;
+        Niws = NTr_CBFM;
     else
-        NTr_CBFM = Nipws
+        NTr_CBFM = Niws
     endif
 
-    If (distr_ipws == 1) Then !! uniform step in cos(theta) and Phi
+    If (distr_iws == 1) Then !! uniform step in cos(theta) and Phi
         margin_ph = ph_end - ph_init;
         step_phi_CBFM = margin_ph/(NTrPhi_CBFM-1);
 
@@ -73,12 +73,12 @@
                 Ind = Ind + 1;
             Enddo
         Enddo
-    elseif ((distr_ipws == 2) .OR. (distr_ipws == 3)) Then ! spherical T-design (x) or Lebedev quad points
-        if (distr_ipws == 2) then
+    elseif ((distr_iws == 2) .OR. (distr_iws == 3)) Then ! spherical T-design (x) or Lebedev quad points
+        if (distr_iws == 2) then
             !call design_closer_order (NTr_CBFM,order,Npts); ! update 2/23/2024
             call ESD_design_closer_order (NTr_CBFM,order,Npts);
             NTr_CBFM = Npts;
-            Nipws = Npts;
+            Niws = Npts;
             Allocate(XYZstd(3,Npts));
             call ESD_design_points(order,Npts,XYZstd)
         else
@@ -185,7 +185,7 @@
 
     ! arrays
     Integer, Dimension(:), allocatable :: row_sprZ,col_sprZ,col_sprZ_tmp
-    Integer, Dimension(:), allocatable :: Nipws_tests
+    Integer, Dimension(:), allocatable :: Niws_tests
 
     type (Dipole), Dimension(:),allocatable :: Transmitters_CBFM
     COMPLEX(real64), Dimension(:), allocatable :: Zpatch_e_spr,Zpatch_e_spr_tmp
@@ -217,7 +217,7 @@
     Zpatch_e_spr(1:nnz) = Zpatch_e_spr_tmp(1:nnz); col_sprZ(1:nnz) = col_sprZ_tmp(1:nnz)
     Deallocate(Zpatch_e_spr_tmp, col_sprZ_tmp)
 
-    curr_Nipws = Nipws;
+    curr_Nipws = Niws;
 
     If (homogs == 1) Then !
       mtype = 6 !complex symmetric matrix
@@ -226,64 +226,64 @@
     EndIf
 
     nb_iter_out = 0;
-    Nipws=0;
+    Niws=0;
     NiterNpw = 10; !8
     ! I prefer this approach (%2*Nipws from Chen & al URSI 2017) because Nipws increases more slowly
-    if (distr_ipws == 2) then ! ici cas particulier de sphere_design_rule
-        allocate(Nipws_tests(NiterNpw));
-        Nipws_tests = [84,94,108,120,144,156,180,204,216,240];! commencons ainsi avant d'avoir les valeurs superieurs de N
-    elseif (distr_ipws == 3) then
-        allocate(Nipws_tests(59));
-        Nipws_tests = [86,110,146,170,194,230,266,302,350,386,434,482,530,590, &
+    if (distr_iws == 2) then ! ici cas particulier de sphere_design_rule
+        allocate(Niws_tests(NiterNpw));
+        Niws_tests = [84,94,108,120,144,156,180,204,216,240];! commencons ainsi avant d'avoir les valeurs superieurs de N
+    elseif (distr_iws == 3) then
+        allocate(Niws_tests(59));
+        Niws_tests = [86,110,146,170,194,230,266,302,350,386,434,482,530,590, &
          650,  698,  770,  830,  890,  974, 1046, 1118, 1202, 1274, &
         1358, 1454, 1538, 1622, 1730, 1814, 1910, 2030, 2126, 2222, &
         2354, 2450, 2558, 2702, 2810, 2930, 3074, 3182, 3314, 3470, &
         3590, 3722, 3890, 4010, 4154, 4334, 4466, 4610, 4802, 4934, &
         5090, 5294, 5438, 5606, 5810];
     else
-        allocate(Nipws_tests(NiterNpw));
-        Nipws_tests = [91,190,231,325,496,703,861,1225,1891,2701]
+        allocate(Niws_tests(NiterNpw));
+        Niws_tests = [91,190,231,325,496,703,861,1225,1891,2701]
     endif
     !Nipws_init = 32;
     jj= 1; res = 1e3;
 
     do while ((jj .le. NiterNpw) .and. (floor(res) .gt. 1)) ! if the difference is larger than 1 %
         ! previous
-        pr_Nipws = Nipws;
+        pr_Nipws = Niws;
         pr_rank = nb_iter_out;
 
-        Nipws = Nipws_tests(jj)  !!Nipws_init*2**jj
+        Niws = Niws_tests(jj)  !!Nipws_init*2**jj
 
         call getTransmitters_CBFM(Transmitters_CBFM);
 
         !! Incident field used to compute the CBFs (different from the scattering problem incident field )
-        Allocate(EREFpatch_e(3*size,2*Nipws))
-        Call Incident_Field(1,size,Cells_Block,Transmitters_CBFM,Nipws,EREFpatch_e);
+        Allocate(EREFpatch_e(3*size,2*Niws))
+        Call Incident_Field(1,size,Cells_Block,Transmitters_CBFM,Niws,EREFpatch_e);
 
-        Allocate(Epatch_e(3*size,2*Nipws))
+        Allocate(Epatch_e(3*size,2*Niws))
         iparm3 = 0; ! here iparm3 is not used
-        Call pardiso_solver(3*size,2*Nipws,nnz,mtype,iparm3,row_sprZ,col_sprZ,Zpatch_e_spr,EREFpatch_e,Epatch_e)
+        Call pardiso_solver(3*size,2*Niws,nnz,mtype,iparm3,row_sprZ,col_sprZ,Zpatch_e_spr,EREFpatch_e,Epatch_e)
 
         Nmax = 3*size ;
-        Allocate(Matrix_U(3*size,Nmax), Matrix_V(Nmax,2*Nipws));
-        CALL Calcul_GenMatrix_ACA(3*size,2*Nipws,Epatch_e,Nmax,nb_iter_out,Matrix_U,Matrix_V);
+        Allocate(Matrix_U(3*size,Nmax), Matrix_V(Nmax,2*Niws));
+        CALL Calcul_GenMatrix_ACA(3*size,2*Niws,Epatch_e,Nmax,nb_iter_out,Matrix_U,Matrix_V);
         deallocate(Epatch_e,Matrix_U,Matrix_V);
 
-        res = real(nb_iter_out-pr_rank)/real(Nipws-pr_Nipws)*100.
+        res = real(nb_iter_out-pr_rank)/real(Niws-pr_Nipws)*100.
 
         if (vrb .eq. 1) then
-            Write(*,'(a,i4,a,i3,a,f7.2,a)') 'Nipws = ',Nipws,'; rank = ',nb_iter_out,'; Res = ',res,' %'
+            Write(*,'(a,i4,a,i3,a,f7.2,a)') 'Nipws = ',Niws,'; rank = ',nb_iter_out,'; Res = ',res,' %'
         endif
 
         jj = jj + 1;
         deallocate(Transmitters_CBFM, EREFpatch_e);
     enddo
 
-    Nipws = Nipws_tests(jj-2);
-    !Nipws = pr_Nipws ;
+    Niws = Niws_tests(jj-2);
+    !Niws = pr_Nipws ;
 
-    if (curr_Nipws .gt. Nipws) then !! in this case, get back our current Nipws determined from the previous considered block
-        Nipws = curr_Nipws;
+    if (curr_Nipws .gt. Niws) then !! in this case, get back our current Nipws determined from the previous considered block
+        Niws = curr_Nipws;
     EndIf
 
     if (vrb .eq. 1) then
@@ -305,29 +305,29 @@
         integer :: rr, Nipws_input
         real(kind=8) :: r_lambda
 
-        Nipws_input = Nipws
+        Nipws_input = Niws
         ! here decide Nipws for the generation of CBFs depending on hmax/lambda_s
         if ((CBFM .NE. 0) .OR. (MLCBFM .NE. 0)) Then
-            If (set_Nipws==0) then
+            If (set_Niws==0) then
             r_lambda = (hBlock/2.)/SimScatterer%lambda_min
-            If (distr_ipws .eq. 2) then   ! spherical design
+            If (distr_iws .eq. 2) then   ! spherical design
                 Do rr=1,8
                 If (r_lambda .le. rr) Then
-                    Nipws = SphDes_Nipws_f_rlamb(rr);
+                    Niws = SphDes_Nipws_f_rlamb(rr);
                     Exit;
                 EndIf
                 EndDo
-            ElseIf (distr_ipws .eq. 3) then   ! Lebedev quadrature
+            ElseIf (distr_iws .eq. 3) then   ! Lebedev quadrature
                 Do rr=1,8
                 If (r_lambda .le. rr) Then
-                    Nipws = LebQuad_Nipws_f_rlamb(rr);
+                    Niws = LebQuad_Nipws_f_rlamb(rr);
                     Exit;
                 EndIf
                 EndDo
             Else ! for the other distributions use Nipws_f_rlamb coming from my PhD
                 Do rr=1,8
                 If (r_lambda .le. rr) Then
-                    Nipws = Nipws_f_rlamb(rr);
+                    Niws = Nipws_f_rlamb(rr);
                     Exit;
                 EndIf
                 EndDo
@@ -336,13 +336,13 @@
                 if (rank .eq. 0) then
                 Write(*,'(a,f8.4,a)') 'WARNING : Problem when selecting Nipws :  r0/lambda =',r_lambda,'  > 8'
                 endif
-                Nipws = Nipws_f_rlamb(8);
-                Nipws = Nipws_f_rlamb(4);
+                Niws = Nipws_f_rlamb(8);
+                Niws = Nipws_f_rlamb(4);
                 !Stop 1;
             EndIf
             Else
-            Nipws = 2; ! Initialization
+            Niws = 2; ! Initialization
             EndIf
         EndIf
-        Nipws = max(Nipws_input,Nipws)
+        Niws = max(Nipws_input,Niws)
     END SUBROUTINE initializeNipws

@@ -47,14 +47,14 @@ MODULE common_variables
     Integer :: Nber_methods,leng_meth,CBFM, MLCBFM, MoM,RGE,ML_Extension
     Real(kind=8) :: Dlambda,hBlock,Epsilon_ACA,fct_SR,res_SR,Eps_SR_Zc 
     Integer :: Nblocks,Nccp_max,Navg_cells
-    Integer :: Nipws,set_Nipws,distr_ipws,Nbc_ext,Nc_extended
+    Integer :: Niws,set_Niws,type_iws,distr_iws,Nbc_ext,Nc_extended
     Integer :: NberLevels,NbBlksL2,Nber_IPWs_MLCBFM
     Integer :: Use_ACA,Nb_it_max,vrb_ACA,DR,SR,SR_Zc,SR_Zc_type
     Integer :: define_use_Copies,NcalBlks
     CHARACTER(2) :: NumIntType_t, NumIntType_r
     CHARACTER(3) :: div_type
     SAVE Nber_methods,leng_meth,CBFM, MLCBFM, MoM,RGE
-    SAVE Dlambda,Nc_extended,Nbc_ext,Nipws,set_Nipws,distr_ipws
+    SAVE Dlambda,Nc_extended,Nbc_ext,Niws,set_Niws,type_iws,distr_iws
     SAVE div_type,hBlock,Nblocks,Nccp_max,Navg_cells
     SAVE DR,SR,fct_SR,res_SR,SR_Zc,SR_Zc_type,Eps_SR_Zc       
     SAVE NberLevels,NbBlksL2,Nber_IPWs_MLCBFM

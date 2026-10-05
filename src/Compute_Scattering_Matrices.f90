@@ -114,8 +114,8 @@
         NTr_wr_proc = (NTr_WR_tot_/nber_procs)+1;
         n_owned_kkt_abs = max(0, min((rank+1)*NTr_wr_proc,NTr_WR_tot_) - rank*NTr_wr_proc);
         if (n_owned_kkt_abs .gt. 0) then
-            Allocate(theta_wr_buf(NRx), phi_wr_buf(NRx));
-            Allocate(Swr_buf(NRx,n_owned_kkt_abs,4));
+            Allocate(theta_wr_buf(NRx_tot), phi_wr_buf(NRx_tot));
+            Allocate(Swr_buf(NRx_tot,n_owned_kkt_abs,4));
         endif
     endif
 
@@ -220,8 +220,8 @@
             !! New strategy 7/9/2022 (needs enhancement when we will output to hf5 files )  : write here on the fly before deleting S_total_capteur_all (not in Compute_Scattering_Quantities)
             !! *******************************************************************************************************************************************
             ! Buffer the line for this receiver in memory; the actual file open/write/close now
-            ! happens once per (Tx,Beta) file after the num_capteur loop (see below), not NRx times.
-            If ((wr_Sij .eq. 1) .and. (num_capteur .le. NRx) .and. (n_owned_kkt_abs .gt. 0)) Then
+            ! happens once per (Tx,Beta) file after the num_capteur loop (see below), not NRx_tot times.
+            If ((wr_Sij .eq. 1) .and. (n_owned_kkt_abs .gt. 0)) Then
                   theta_wr_buf(num_capteur) = theta_capteur;
                   phi_wr_buf(num_capteur) = phi_capteur;
                   Do num_pol = 1,NPolBeta
@@ -239,7 +239,7 @@
         deallocate(S_total_capteur,S_total_capteur_all);
     Enddo
 
-    ! Flush the buffered S-matrix lines: open each (Tx,Beta) file once, write all NRx
+    ! Flush the buffered S-matrix lines: open each (Tx,Beta) file once, write all NRx_tot
     ! receiver lines, close once (replaces the previous open/write/close-per-receiver pattern).
     if ((wr_Sij .eq. 1) .and. (n_owned_kkt_abs .gt. 0)) then
         Do local_idx = 1,n_owned_kkt_abs
@@ -256,10 +256,10 @@
             endif
 
             Open(unit=21+rank,File = file_name_s);
-            Write(21+rank, '(a,f10.4,a,f10.4,a,f10.4)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi,'; BETA =', Beta
+            Write(21+rank, '(a,f10.4,a,f10.4,a,f10.4,a,i8)') 'THETA =',  Transmitters(kkt)%theta, '; PHI =',  Transmitters(kkt)%phi,'; BETA =', Beta,'; NRX =', NRx
             Write(21+rank,'(a,a)') '    theta       phi    Re(Svv)      Im(Svv)     Re(Svh)     Im(Svh) ',&
                         '    Re(Shv)     Im(Shv)    Re(Shh)      Im(Shh) '
-            Do num_capteur = 1,NRx
+            Do num_capteur = 1,NRx_tot
                 Write(21+rank,'(f10.4,f10.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4,e12.4)') &
                 theta_wr_buf(num_capteur),phi_wr_buf(num_capteur), &
                 Real(Swr_buf(num_capteur,local_idx,1)),Imag(Swr_buf(num_capteur,local_idx,1)), &
