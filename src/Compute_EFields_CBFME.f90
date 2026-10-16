@@ -836,7 +836,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         ! Vreduit(block rows, 1:2*NTr) = C_block^T * E_ref_incident : one BLAS-3 call per block,
         ! reading the block's CBFs in place in C_job_patchs (no Matrice1 copy, no per-column allocations)
         CALL ZGEMM('T','N',NbreCol_mat1,2*NTr,NbreLig_mat1,alpha, &
-                   C_job_patchs(curs_B_Cpatch(ii_job),1),size(C_job_patchs,1), &
+                   C_job_patchs(curs_B_Cpatch(ii_job),1),3*Nbc_proc, &
                    E_ref_incident,NbreLig_mat1,beta, &
                    Vreduit(curs_row_Z_blocks(ii_job),1),Ktot_proc_max)
         Deallocate(Cells_Block_ii,E_ref_incident)
@@ -992,7 +992,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         ii = MPI_CBFM_Blocks(rank+1,1+ii_job);
         BlockSize = 3*CBFM_Blocks(ii)%Nbc_b
         CALL ZGEMM('N','N',BlockSize,2*NTr,K_patchs(ii_job),alpha, &
-                   C_job_patchs(curs_B_Cpatch(ii_job),1),size(C_job_patchs,1), &
+                   C_job_patchs(curs_B_Cpatch(ii_job),1),3*Nbc_proc, &
                    AlphaProc(curseurf,1),Ktot_proc_max,beta, &
                    E_total(curs_lig_E,1),3*Nbc_proc)
         curseurf = curseurf + K_patchs(ii_job)
