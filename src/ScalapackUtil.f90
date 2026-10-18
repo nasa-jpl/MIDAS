@@ -9,8 +9,8 @@ SUBROUTINE Block_Cyclic_Distribution_v1(M_Z,N_Z,NRHS_Z,Zred,Vred,K_patchs,K_patc
     
     !IN/OUT
     Integer, INTENT(IN) :: M_Z, N_Z, NRHS_Z
-    DOUBLE COMPLEX, Dimension(M_Z,N_Z), INTENT(IN) :: Zred
-    DOUBLE COMPLEX, Dimension(M_Z,NRHS_Z), INTENT(IN) :: Vred  
+    DOUBLE COMPLEX, Dimension(M_Z,N_Z), INTENT(INOUT) :: Zred       ! INOUT: overwritten by the ring exchange below
+    DOUBLE COMPLEX, Dimension(M_Z,NRHS_Z), INTENT(INOUT) :: Vred
     Integer, Dimension(MyNBlocks), INTENT(IN) :: K_patchs
     Integer, Dimension(NBlocks), INTENT(IN) :: K_patchs_all
     Integer, Dimension(NBlocks+1), INTENT(IN) :: Curs_Kpatchs_all
@@ -24,10 +24,11 @@ SUBROUTINE Block_Cyclic_Distribution_v1(M_Z,N_Z,NRHS_Z,Zred,Vred,K_patchs,K_patc
     Integer :: iLoc, jLoc, iLoc_proc, iGlob, jGlob, block_iGlob, pos_loc_block
     INTEGER :: INDXL2G,INDXG2L, size1, size2, prev_job, next_job
     Integer :: Eff_rank, K_proc, NBlocks_eff
-    INTEGER, dimension(MPI_STATUS_SIZE) :: status     
+    Integer :: j1, nc, nchunk       ! column chunks for the ring exchange
+    INTEGER, dimension(MPI_STATUS_SIZE) :: status
     INTEGER, dimension(:), allocatable :: K_patchs_eff, Blocks_eff
-    
-    
+
+
     ! here distribution of both Zred and Vred when needed
     
     !! Rank : Start with distributing my proper data---------------------------- 
@@ -60,11 +61,21 @@ SUBROUTINE Block_Cyclic_Distribution_v1(M_Z,N_Z,NRHS_Z,Zred,Vred,K_patchs,K_patc
     ! identify previous and following MPI job 
     prev_job = mod(nber_procs+rank-1,nber_procs)
     next_job = mod(rank+1,nber_procs)
+    ! MPI_SENDRECV_REPLACE allocates an internal buffer as large as the message, so sending the whole
+    ! band at once needed a hidden copy of Zred (~GB). Send it in column chunks instead (columns are
+    ! contiguous): same result, since same-tag messages between the same two ranks arrive in order.
+    nchunk = max(1, 4194304/max(M_Z,1))      ! ~4M double-complex elements (64 MB) per message
     Do kk = 1, nber_procs-1
         ! SEND/RECEIVE Zc from/to the prev/next MPI job
-        !! Every job/process sends its 'Zc' to the previous process and receive the one of the next process     
-        Call MPI_SENDRECV_REPLACE(Zred,2*size1,MPI_COMPLEX,prev_job,tag,next_job,tag,MPI_COMM_WORLD,status,code)
-        Call MPI_SENDRECV_REPLACE(Vred,2*size2,MPI_COMPLEX,prev_job,tag,next_job,tag,MPI_COMM_WORLD,status,code)
+        !! Every job/process sends its 'Zc' to the previous process and receive the one of the next process
+        Do j1 = 1, N_Z, nchunk
+            nc = min(nchunk, N_Z-j1+1)
+            Call MPI_SENDRECV_REPLACE(Zred(1,j1),M_Z*nc,MPI_DOUBLE_COMPLEX,prev_job,tag,next_job,tag,MPI_COMM_WORLD,status,code)
+        EndDo
+        Do j1 = 1, NRHS_Z, nchunk
+            nc = min(nchunk, NRHS_Z-j1+1)
+            Call MPI_SENDRECV_REPLACE(Vred(1,j1),M_Z*nc,MPI_DOUBLE_COMPLEX,prev_job,tag,next_job,tag,MPI_COMM_WORLD,status,code)
+        EndDo
                                 
         !! ATTENTION : We should consider the change of the content of 'C_tot_patch_Zc_trans' through the different kk 
         !! So we should identify the effective job which created the CBFs included in the received C_trans_patchs for the current kk 

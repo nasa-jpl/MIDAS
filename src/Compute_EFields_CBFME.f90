@@ -60,6 +60,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     Integer :: SMWA,lev_SMW,no_aca,sp_band_thresh,ii_s,jj_s
     Integer :: NiterNpw,NiterSR,Nipw_n,Ntests,vrb_cbfm_param,track_time_Zc
     Integer :: Kmax_job,K_proc, jj_job, K_max, Nbc_proc_max, sizeTrans
+    Integer :: j1, nc, nchunk       ! column chunks for the CBF ring exchange
     Integer :: prev_job, next_job,rank_EffNextjob,NBlocks_EffNextjob,jj_Nextjob,prev_jj
     Integer :: spr_size,nnz,nnz_elts_Zc
 
@@ -711,8 +712,13 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
 
       ! SEND/RECEIVE the CBFs from/to the prev/next MPI job
       !! Every job/process sends its 'C_tot_patch_Zc_trans' to the previous process and receive the one of the next process
-      Call MPI_SENDRECV_REPLACE(C_trans_patchs,2*sizeTrans,MPI_COMPLEX,prev_job,tag,&
-                              	next_job,tag,MPI_COMM_WORLD,status,code)
+      ! in column chunks (~64 MB): MPI_SENDRECV_REPLACE allocates a hidden buffer as large as the message
+      nchunk = max(1, 4194304/max(3*Nbc_proc_max,1))
+      Do j1 = 1, K_max, nchunk
+          nc = min(nchunk, K_max-j1+1)
+          Call MPI_SENDRECV_REPLACE(C_trans_patchs(1,j1),3*Nbc_proc_max*nc,MPI_DOUBLE_COMPLEX,prev_job,tag,&
+                                  	next_job,tag,MPI_COMM_WORLD,status,code)
+      EndDo
 
       if (track_time_Zc .eq. 1) then
           call date_and_time(date_final_Zc,time_final_Zc,zone_final_Zc,values_final_Zc)
