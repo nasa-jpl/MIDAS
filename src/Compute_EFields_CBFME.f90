@@ -60,6 +60,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     Integer :: SMWA,lev_SMW,no_aca,sp_band_thresh,ii_s,jj_s
     Integer :: NiterNpw,NiterSR,Nipw_n,Ntests,vrb_cbfm_param,track_time_Zc
     Integer :: Kmax_job,K_proc, jj_job, K_max, Nbc_proc_max, sizeTrans
+    Integer :: j1, nc, nchunk       ! column chunks for the CBF ring exchange
     Integer :: prev_job, next_job,rank_EffNextjob,NBlocks_EffNextjob,jj_Nextjob,prev_jj
     Integer :: spr_size,nnz,nnz_elts_Zc
 
@@ -406,6 +407,7 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
                 Deallocate(Zpatch_e)
             EndIf
             Deallocate(Cells_Block);
+            Deallocate(EREFpatch_e)   ! RHS of the local solve only: free it before the SVD
     	    call date_and_time(date_final_ii,time_final_ii,zone_final_ii,values_final_ii)
             call Calcul_time_spent(values_init_ii,values_final_ii, time_calcul_ii)
             if (verbose .eq. 1) then
@@ -415,11 +417,11 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
 
             !! Decomposition en valeurs singulieres
             M = 3*size; N = 2*NTr_CBFM
-            Allocate(S(MIN(M,N)),U(M,M),VT(N,N), WW(MIN(M,N)-1))
-            call print_allocate(16,'U(3*size,3*size)','DCOMP',3*size*3*size);
-            call print_allocate(25,'VT(2*NTr_CBFM,2*NTr_CBFM)','DCOMP',2*NTr_CBFM*2*NTr_CBFM);
+            Allocate(S(MIN(M,N)), WW(MIN(M,N)-1))   ! no U(M,M)/VT(N,N): U is returned in Epatch_e (JOB='U'), VT not needed
 
-            CALL GESVD(A=Epatch_e,S=S,U=U, VT=VT, JOB='U')              
+            ! thin SVD in place: with JOB='U' and no U argument, the first MIN(M,N) left singular
+            ! vectors overwrite Epatch_e; right singular vectors are not computed
+            CALL GESVD(A=Epatch_e,S=S,JOB='U')
 
             !! Normalisation et comparaison au seuil, K designera le nombre de valeurs singulieres retenues (non nulles)
             K = 0
@@ -438,17 +440,17 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
             !! the local C_patch (K first columns of the matrix U)
             ! Fill C_tot_patchs from Cpatch_e
             ! we only take the CBFs corresponding to the original size of the block kk (not extended)
-            C_job_patchs(curs_B_Cpatch(kk_job):curs_B_Cpatch(kk_job)+3*Nbc_b-1,1:K) = U(1:3*Nbc_b,1:K);
+            C_job_patchs(curs_B_Cpatch(kk_job):curs_B_Cpatch(kk_job)+3*Nbc_b-1,1:K) = Epatch_e(1:3*Nbc_b,1:K);
             K_patchs(kk_job) = K
 
             !! Deallocaton de tous les vecteurs propores au bloc (Interieur de la boucle)
-            Deallocate(EREFpatch_e,Epatch_e)
-            Deallocate(S,U,VT,WW)
+            Deallocate(Epatch_e)
+            Deallocate(S,WW)
         ENDDO
 
         Kmax_job = maxval(K_patchs);
-        Do kk_job = 1, nber_procs !! re-allocating per job is all what I was able to do here to reduce memory use for the total node
-            if ((rank-1) .eq. kk_job) then
+        Do kk_job = 0, nber_procs-1 !! re-allocating per job is all what I was able to do here to reduce memory use for the total node
+            if (rank .eq. kk_job) then
                 Allocate(C_job_patchs_tmp(3*Nbc_proc,Kmax_job)); C_job_patchs_tmp = 0D0;
                 call print_allocate(37,'C_job_patchs_tmp(3*Nbc_proc,Kmax_job)','DCOMP',3*Nbc_proc*Kmax_job);
 
@@ -592,10 +594,8 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         Write(*,'(a,i6,a,i6,a,i6)') 'Mloc ~= ', Mlocal, ', Nloc ~= ', Nlocal,'and NRHSlocal ~= ',NRHSlocal
     endif
 
-    Allocate(ZredLoc(Mlocal,Nlocal),VredLoc(Mlocal,NRHSlocal))
-    ZredLoc = 0.0e0; VredLoc = 0.0e0
-    call print_allocate(22,'ZredLoc(Mlocal,Nlocal)','DCOMP',Mlocal*Nlocal);
-    call print_allocate(26,'VredLoc(Mlocal,NRHSlocal)','DCOMP',Mlocal*NRHSlocal);
+    ! ZredLoc/VredLoc are now allocated just before Block_Cyclic_Distribution_v1 (they are only used from
+    ! there on), so they no longer sit in memory, empty, next to Zreduite during the whole Zc generation
     !-------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -712,8 +712,13 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
 
       ! SEND/RECEIVE the CBFs from/to the prev/next MPI job
       !! Every job/process sends its 'C_tot_patch_Zc_trans' to the previous process and receive the one of the next process
-      Call MPI_SENDRECV_REPLACE(C_trans_patchs,2*sizeTrans,MPI_COMPLEX,prev_job,tag,&
-                              	next_job,tag,MPI_COMM_WORLD,status,code)
+      ! in column chunks (~64 MB): MPI_SENDRECV_REPLACE allocates a hidden buffer as large as the message
+      nchunk = max(1, 4194304/max(3*Nbc_proc_max,1))
+      Do j1 = 1, K_max, nchunk
+          nc = min(nchunk, K_max-j1+1)
+          Call MPI_SENDRECV_REPLACE(C_trans_patchs(1,j1),3*Nbc_proc_max*nc,MPI_DOUBLE_COMPLEX,prev_job,tag,&
+                                  	next_job,tag,MPI_COMM_WORLD,status,code)
+      EndDo
 
       if (track_time_Zc .eq. 1) then
           call date_and_time(date_final_Zc,time_final_Zc,zone_final_Zc,values_final_Zc)
@@ -834,19 +839,13 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         call print_allocate(35,'E_ref_incident(NbreLig_mat1,2*NTr)','DCOMP',NbreLig_mat1*2*NTr);
         Call Incident_Field(1,size,Cells_Block_ii,NTr,Transmitters,1,NTr,E_ref_incident);
 
-        Allocate(Matrice1(NbreLig_mat1,NbreCol_mat1));
-        call print_allocate(36,'Matrice1(NbreLig_mat1,NbreCol_mat1)','DCOMP',NbreLig_mat1*NbreCol_mat1);
-        Matrice1 = C_job_patchs(curs_B_Cpatch(ii_job):curs_B_Cpatch(ii_job)+NbreLig_mat1-1,1:NbreCol_mat1)
-
-        DO jj=1, 2*NTr
-          Allocate(Vect(NbreLig_mat1))
-          Vect = E_ref_incident(:,jj)
-          Allocate(VectProduit(NbreCol_mat1))
-          CALL ZGEMV('T',NbreLig_mat1,NbreCol_mat1,alpha,Matrice1,NbreLig_mat1,Vect,1,beta,VectProduit,1)
-          Vreduit(curs_row_Z_blocks(ii_job):curs_row_Z_blocks(ii_job)+NbreCol_mat1-1,jj) = VectProduit
-          Deallocate(Vect,VectProduit)
-        ENDDO
-        Deallocate(Cells_Block_ii,Matrice1,E_ref_incident)
+        ! Vreduit(block rows, 1:2*NTr) = C_block^T * E_ref_incident : one BLAS-3 call per block,
+        ! reading the block's CBFs in place in C_job_patchs (no Matrice1 copy, no per-column allocations)
+        CALL ZGEMM('T','N',NbreCol_mat1,2*NTr,NbreLig_mat1,alpha, &
+                   C_job_patchs(curs_B_Cpatch(ii_job),1),3*Nbc_proc, &
+                   E_ref_incident,NbreLig_mat1,beta, &
+                   Vreduit(curs_row_Z_blocks(ii_job),1),Ktot_proc_max)
+        Deallocate(Cells_Block_ii,E_ref_incident)
     ENDDO
 
     If (rank==0) then
@@ -882,6 +881,10 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
         Curs_Kpatchs_all(kk) = Curs_Kpatchs_all(kk-1)+K_patchs_all(kk-1);
     EndDo
 
+    Allocate(ZredLoc(Mlocal,Nlocal),VredLoc(Mlocal,NRHSlocal))
+    ZredLoc = 0.0e0; VredLoc = 0.0e0
+    call print_allocate(22,'ZredLoc(Mlocal,Nlocal)','DCOMP',Mlocal*Nlocal);
+    call print_allocate(26,'VredLoc(Mlocal,NRHSlocal)','DCOMP',Mlocal*NRHSlocal);
     Call Block_Cyclic_Distribution_v1(Ktot_proc_max,K_total,2*NTr,Zreduite,Vreduit,K_patchs,K_patchs_all,Curs_Kpatchs_all, Ktot_procs,MPI_CBFM_Blocks,ZredLoc,VredLoc);
     Deallocate(Zreduite,Vreduit);
 
@@ -987,21 +990,19 @@ SUBROUTINE Compute_EFields_CBFME(Cells,CBFM_Blocks,CBFM_Blocks_Ext,MPI_CBFM_Bloc
     Allocate(E_total(3*Nbc_proc,2*NTr));
     call print_allocate(26,'E_total(3*Nbc_proc,2*NTr)','DCOMP',3*Nbc_proc*2*NTr);
     E_total = 0D0
-    DO kk=1,2*NTr
-        curseurf = 1
-        curs_lig_E = 1
-        DO ii_job=1,MyNBlocks
-            ii = MPI_CBFM_Blocks(rank+1,1+ii_job);
-            BlockSize = 3*CBFM_Blocks(ii)%Nbc_b
-            DO jj=1,K_patchs(ii_job)
-                Allocate(VectProduit(BlockSize))
-                VectProduit = AlphaProc(curseurf,kk)*C_job_patchs(curs_B_Cpatch(ii_job):curs_B_Cpatch(ii_job)+BlockSize-1,jj)
-                E_total(curs_lig_E:curs_lig_E+BlockSize-1,kk)= E_total(curs_lig_E:curs_lig_E+BlockSize-1,kk)+ VectProduit
-                curseurf = curseurf + 1
-                Deallocate(VectProduit)
-            ENDDO
-            curs_lig_E = curs_lig_E + BlockSize
-        ENDDO
+    ! E_total(block rows, 1:2*NTr) = C_block(:,1:K) * AlphaProc(block's K rows, 1:2*NTr) : one BLAS-3 call per block
+    ! (block rows are disjoint and E_total starts at 0, so beta = 0 gives the same result as the former accumulation)
+    curseurf = 1
+    curs_lig_E = 1
+    DO ii_job=1,MyNBlocks
+        ii = MPI_CBFM_Blocks(rank+1,1+ii_job);
+        BlockSize = 3*CBFM_Blocks(ii)%Nbc_b
+        CALL ZGEMM('N','N',BlockSize,2*NTr,K_patchs(ii_job),alpha, &
+                   C_job_patchs(curs_B_Cpatch(ii_job),1),3*Nbc_proc, &
+                   AlphaProc(curseurf,1),Ktot_proc_max,beta, &
+                   E_total(curs_lig_E,1),3*Nbc_proc)
+        curseurf = curseurf + K_patchs(ii_job)
+        curs_lig_E = curs_lig_E + BlockSize
     ENDDO
 
     if (rank == 0) then
